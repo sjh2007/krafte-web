@@ -82,6 +82,34 @@ header.nav{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.86);bac
 .nav-links a{font-weight:600;color:var(--ink-2);font-size:.97rem;transition:color .15s}
 .nav-links a:hover{color:var(--ink)}
 .nav-links a.ai{color:var(--primary-700)}
+.nav-item{position:relative;display:inline-flex;align-items:center}
+.nav-item>.nav-top{display:inline-flex;align-items:center;gap:5px}
+.nav-item>.nav-top.ai{color:var(--primary-700)}
+.caret{width:13px;height:13px;stroke:currentColor;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;opacity:.65}
+.nav-item:hover .caret,.nav-item:focus-within .caret{transform:rotate(180deg)}
+.drop{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(8px);min-width:190px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-md);padding:8px;opacity:0;visibility:hidden;transition:opacity .18s ease,transform .18s ease;z-index:70}
+.drop::before{content:"";position:absolute;top:-12px;left:0;right:0;height:12px}
+.nav-item:hover .drop,.nav-item:focus-within .drop{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.drop a{display:block;padding:10px 14px;border-radius:9px;font-size:.94rem;font-weight:600;color:var(--ink-2);white-space:nowrap;transition:background .15s,color .15s}
+.drop a:hover{background:var(--bg-alt);color:var(--primary-700)}
+.mobile-menu .mm-group{display:block;padding:15px 24px 7px;font-weight:800;color:var(--ink);font-size:.92rem;border-top:1px solid var(--line-soft)}
+.mobile-menu .mm-sub{padding:11px 24px 11px 42px;border-top:none;font-weight:600;color:var(--ink-2);font-size:.95rem}
+.net-detail{margin-top:60px;border-top:1px solid var(--line);padding-top:34px}
+.svc{display:grid;grid-template-columns:84px 1fr;gap:26px;padding:30px 18px;border-radius:16px;border:1px solid transparent;scroll-margin-top:96px;position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.svc:hover{background:var(--bg-alt);border-color:var(--line)}
+.svc-more::after{content:"";position:absolute;inset:0;z-index:1}
+.svc:hover .svc-more{gap:9px}
+.svc-ic{width:72px;height:72px;border-radius:18px;background:var(--primary-50);display:flex;align-items:center;justify-content:center}
+.svc-ic svg{width:34px;height:34px;stroke:var(--primary);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.svc-en{font-family:var(--eng);font-size:.74rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.svc-body h3{font-size:1.5rem;margin:6px 0 0}
+.svc-more{display:inline-flex;align-items:center;gap:5px;margin-top:18px;font-weight:700;color:var(--primary-700);font-size:.96rem;transition:gap .15s}
+.svc-more:hover{gap:9px}
+.svc-body>p{color:var(--ink-2);margin-top:12px;font-size:1.04rem;line-height:1.8;max-width:48em}
+.svc-pts{list-style:none;padding:0;margin:18px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:11px 28px}
+.svc-pts li{position:relative;padding-left:26px;color:var(--ink-2);font-weight:600;font-size:.97rem;line-height:1.55}
+.svc-pts li::before{content:"";position:absolute;left:0;top:6px;width:17px;height:17px;border-radius:5px;background:var(--primary-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232F6BFF' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E") center no-repeat}
+@media (max-width:760px){.svc{grid-template-columns:1fr;gap:16px;padding:24px 16px}.svc-pts{grid-template-columns:1fr}}
 .nav-cta{display:flex;align-items:center;gap:14px}
 .nav-toggle{display:none;background:none;border:1.5px solid var(--line);border-radius:10px;width:44px;height:44px;cursor:pointer}
 .nav-toggle span{display:block;width:18px;height:2px;background:var(--ink);margin:4px auto;border-radius:2px}
@@ -217,8 +245,22 @@ footer{background:#070d1f;color:#9aa6c0;padding:56px 0 38px}
     </a>
     <nav class="nav-links" aria-label="주메뉴">
       <a href="#about">회사소개</a>
-      <a href="#business">사업영역</a>
-      <a class="ai" href="ai-youngsili-landing.html">AI 서비스 ▸ 영실이</a>
+      <div class="nav-item">
+        <a href="#business" class="nav-top" aria-haspopup="true">사업영역<svg class="caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></a>
+        <div class="drop" role="menu">
+          <a href="dedicated.html" role="menuitem">전용회선</a>
+          <a href="bizinternet.html" role="menuitem">기업인터넷</a>
+          <a href="cloudline.html" role="menuitem">cloudline</a>
+          <a href="managed.html" role="menuitem">매니지드</a>
+        </div>
+      </div>
+      <div class="nav-item">
+        <a href="ai-youngsili-landing.html" class="nav-top ai" aria-haspopup="true">AI 서비스<svg class="caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></a>
+        <div class="drop" role="menu">
+          <a href="ai-youngsili-landing.html" role="menuitem">AI 영실이</a>
+          <a href="cctv-ai.html" role="menuitem">CCTV AI 영상분석</a>
+        </div>
+      </div>
       <a href="#contact">문의</a>
     </nav>
     <div class="nav-cta">
@@ -228,8 +270,14 @@ footer{background:#070d1f;color:#9aa6c0;padding:56px 0 38px}
   </div>
   <div class="mobile-menu" id="mobileMenu">
     <a href="#about">회사소개</a>
-    <a href="#business">사업영역</a>
-    <a href="ai-youngsili-landing.html">AI 서비스 ▸ AI 영실이</a>
+    <span class="mm-group">사업영역</span>
+    <a class="mm-sub" href="dedicated.html">전용회선</a>
+    <a class="mm-sub" href="bizinternet.html">기업인터넷</a>
+    <a class="mm-sub" href="cloudline.html">cloudline</a>
+    <a class="mm-sub" href="managed.html">매니지드</a>
+    <span class="mm-group">AI 서비스</span>
+    <a class="mm-sub" href="ai-youngsili-landing.html">AI 영실이</a>
+    <a class="mm-sub" href="cctv-ai.html">CCTV AI 영상분석</a>
     <a href="#contact">문의</a>
     <a class="btn btn-primary" href="#contact">도입 문의</a>
   </div>
@@ -340,6 +388,78 @@ footer{background:#070d1f;color:#9aa6c0;padding:56px 0 38px}
           <span class="en">AI Platform</span><h3>AI</h3>
           <p>AI로 산업 현장의 위험을 예측하고 대응을 자동화합니다. 대표 사례가 'AI 영실이'입니다.</p>
           <a class="more" href="ai-youngsili-landing.html">AI 영실이 보기 →</a>
+        </div>
+      </div>
+
+      <div class="net-detail">
+        <div class="sec-head reveal" style="margin-bottom:6px">
+          <span class="eyebrow">Network &amp; Infra</span>
+          <h2 style="font-size:clamp(1.5rem,2.6vw,2.05rem)">네트워크·인프라 서비스</h2>
+          <p>연결의 기본기를 책임지는 네 가지 서비스입니다. 회선부터 클라우드, 운영까지 한 번에 맡길 수 있습니다.</p>
+        </div>
+
+        <div class="svc reveal" id="dedicated">
+          <div class="svc-ic"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.4"/><circle cx="19" cy="12" r="2.4"/><path d="M7.4 12h9.2"/></svg></div>
+          <div class="svc-body">
+            <span class="svc-en">Dedicated Line</span>
+            <h3>전용회선</h3>
+            <p>떨어진 두 지점을 하나의 독립 회선으로 연결해 음성과 데이터를 빠르고 안전하게 주고받습니다. 외부와 분리된 전용 경로라 보안이 중요한 기업·공공·금융 환경에 적합합니다.</p>
+            <ul class="svc-pts">
+              <li>외부 트래픽과 분리된 독립 보안 경로</li>
+              <li>보장된 고정 대역폭으로 끊김 없는 품질</li>
+              <li>경로 다중화·우회 구성으로 무중단 운영</li>
+              <li>본사–지사·데이터센터·관제망 연결</li>
+            </ul>
+            <a class="svc-more" href="dedicated.html">자세히 보기 →</a>
+          </div>
+        </div>
+
+        <div class="svc reveal" id="bizinternet">
+          <div class="svc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18"/></svg></div>
+          <div class="svc-body">
+            <span class="svc-en">Enterprise Internet</span>
+            <h3>기업인터넷</h3>
+            <p>기업 전용망을 기반으로 사업장까지 광케이블로 연결하는 고품질 인터넷입니다. 일반 회선보다 안정적인 대역과 빠른 장애 복구로 업무 연속성을 지킵니다.</p>
+            <ul class="svc-pts">
+              <li>기업 전용 광케이블 기반 고속 연결</li>
+              <li>안정적 대역 확보로 몰림에도 일정한 속도</li>
+              <li>망 다중화·신속 복구로 무중단 지원</li>
+              <li>보안·관제·호스팅을 묶은 ICT 토탈 케어</li>
+            </ul>
+            <a class="svc-more" href="bizinternet.html">자세히 보기 →</a>
+          </div>
+        </div>
+
+        <div class="svc reveal" id="cloudline">
+          <div class="svc-ic"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6 9.5 3.5 3.5 0 0 0 7 18z"/></svg></div>
+          <div class="svc-body">
+            <span class="svc-en">cloudline</span>
+            <h3>cloudline</h3>
+            <p>HCI 기반 클라우드 인프라와 전용 회선, 클라우드 연결을 하나로 묶은 패키지입니다. 초기 구축 투자 없이 월 임대 방식으로 전산실을 빠르게 현대화할 수 있습니다.</p>
+            <ul class="svc-pts">
+              <li>HCI·회선·클라우드 연결 올인원 패키지</li>
+              <li>초기 투자 부담 없는 월 임대형 도입</li>
+              <li>프라이빗·퍼블릭을 잇는 하이브리드 구성</li>
+              <li>전산실 현대화·확장을 간편하고 빠르게</li>
+            </ul>
+            <a class="svc-more" href="cloudline.html">자세히 보기 →</a>
+          </div>
+        </div>
+
+        <div class="svc reveal" id="managed">
+          <div class="svc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg></div>
+          <div class="svc-body">
+            <span class="svc-en">Managed Service</span>
+            <h3>매니지드</h3>
+            <p>회선부터 네트워크, 시스템까지 IT 인프라 운영·관리를 전문 인력이 대신 맡습니다. 모니터링과 장애 대응을 위임해 내부 자원을 핵심 업무에 집중시킬 수 있습니다.</p>
+            <ul class="svc-pts">
+              <li>회선·네트워크·시스템 전반 운영 아웃소싱</li>
+              <li>상시 모니터링과 신속한 장애 대응</li>
+              <li>보안·성능 관리로 안정적 가동률 유지</li>
+              <li>전문 운영 위임으로 내부 인력 효율화</li>
+            </ul>
+            <a class="svc-more" href="managed.html">자세히 보기 →</a>
+          </div>
         </div>
       </div>
     </div>
