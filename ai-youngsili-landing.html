@@ -217,8 +217,8 @@ svg[data-state="danger"] .pulse-ring{stroke:var(--red)}
 
 /* ---------- REALITY / STATS ---------- */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:26px 22px;box-shadow:var(--sh-sm)}
-.stat .n{font-size:clamp(1.6rem,3vw,2.3rem);font-weight:800;color:var(--navy);letter-spacing:-.03em}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:26px 22px;box-shadow:var(--sh-sm);text-align:center}
+.stat .n{font-size:clamp(1.4rem,2.5vw,2rem);font-weight:800;color:var(--navy);letter-spacing:-.03em;white-space:nowrap}
 .stat.warn .n{color:var(--amber)} .stat.danger .n{color:var(--red)}
 .stat .l{color:var(--ink-2);font-size:.92rem;margin-top:6px;font-weight:600}
 
@@ -646,7 +646,7 @@ select option{color:#111}
       <div class="stat warn"><div class="n" id="statDokgeo" data-count="2132000">0</div><div class="l">전국 독거노인 (추정)</div></div>
       <div class="stat danger"><div class="n">20.0%</div><div class="l">고령화율 · 초고령사회</div></div>
     </div>
-    <p style="text-align:center;color:var(--ink-3);font-size:.8rem;margin-top:16px;font-weight:600">출처: 행정안전부 주민등록인구 · 보건복지부 독거노인 현황 (2024년 기준)</p>
+    <p style="text-align:center;color:var(--ink-3);font-size:.8rem;margin-top:16px;font-weight:600">출처: 행정안전부 주민등록인구 · 보건복지부 독거노인 현황</p>
   </div>
 </section>
 
