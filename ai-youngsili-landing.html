@@ -389,6 +389,45 @@ svg[data-state="danger"] .pulse-ring{stroke:var(--red)}
 .price li .ck{color:var(--green);flex-shrink:0;font-weight:800}
 .price .btn{width:100%;justify-content:center}
 
+/* tiered plans */
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:stretch}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:28px 22px;display:flex;flex-direction:column;position:relative;transition:.25s}
+.plan:hover{transform:translateY(-4px);box-shadow:var(--sh)}
+.plan.feat{border:2px solid var(--blue);box-shadow:0 22px 50px rgba(46,91,214,.18)}
+.plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;font-size:.76rem;font-weight:800;padding:5px 15px;border-radius:999px;white-space:nowrap}
+.plan-name{font-weight:800;color:var(--ink-2);font-size:.96rem}
+.plan-price{font-size:1.9rem;font-weight:800;color:var(--navy);margin:10px 0 2px;letter-spacing:-.03em;line-height:1.1}
+.plan-price.free{color:var(--green)}
+.plan-price small{font-size:.5em;color:var(--ink-3);font-weight:700}
+.plan-sub{color:var(--ink-3);font-size:.82rem;font-weight:700;min-height:16px}
+.plan-tag{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);color:var(--ink-2);font-size:.86rem;font-weight:700}
+.plan-feats{list-style:none;padding:0;margin:16px 0;display:grid;gap:9px;flex:1}
+.plan-feats li{display:flex;gap:8px;font-size:.85rem;color:var(--ink);align-items:flex-start;line-height:1.45}
+.plan-feats .ck{color:var(--green);flex-shrink:0;font-weight:800}
+.plan-feats .lead-in{color:var(--ink-2);font-weight:800;font-size:.82rem}
+.plan .btn{width:100%;justify-content:center;margin-top:auto;font-size:.92rem;padding:13px 16px}
+.btn-out{background:var(--card);border:1.5px solid var(--line);color:var(--navy)}
+.btn-out:hover{border-color:var(--blue);color:var(--blue)}
+.plans-note{text-align:center;color:var(--ink-3);font-size:.84rem;margin-top:20px}
+/* comparison table (collapsible) */
+.cmp-details{max-width:940px;margin:34px auto 0;text-align:center}
+.cmp-details>summary{display:inline-block;cursor:pointer;list-style:none;background:var(--card);border:1px solid var(--line);color:var(--ink-2);font-weight:700;font-size:.9rem;padding:11px 22px;border-radius:999px;transition:.2s}
+.cmp-details>summary::-webkit-details-marker{display:none}
+.cmp-details>summary:hover{border-color:var(--blue);color:var(--blue)}
+.cmp-details[open]>summary{margin-bottom:18px}
+.cmp-wrap{overflow-x:auto;text-align:left}
+table.cmp{width:100%;border-collapse:collapse;min-width:660px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cmp th,.cmp td{padding:13px 14px;text-align:center;border-bottom:1px solid var(--line);font-size:.9rem}
+.cmp tbody tr:last-child th,.cmp tbody tr:last-child td{border-bottom:0}
+.cmp thead th{font-weight:800;color:var(--navy);background:var(--bg)}
+.cmp thead th.fcol{color:var(--blue)}
+.cmp tbody th{text-align:left;font-weight:600;color:var(--ink);white-space:nowrap}
+.cmp .yes{color:var(--green);font-weight:800}
+.cmp .no{color:var(--ink-3)}
+.cmp td.fcol{background:rgba(46,91,214,.05)}
+@media(max-width:900px){.plans{grid-template-columns:repeat(2,1fr)}.plan-badge{font-size:.72rem}}
+@media(max-width:540px){.plans{grid-template-columns:1fr}}
+
 /* ---------- CONTACT ---------- */
 .contact{background:linear-gradient(170deg,var(--navy),#0C1E3F);color:#fff}
 .contact .sec-head h2,.contact .sec-head p{color:#fff}
@@ -884,22 +923,94 @@ select option{color:#111}
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow"><span class="dot"></span>요금</span>
-      <h2>누구나 부담 없는, 단 하나의 요금.</h2>
-      <p>복잡한 약정도, 건당 요금도 없습니다. 매달 정해진 금액으로 매일의 안부를 지킵니다.</p>
+      <h2>기관에 맞춰, 4가지 요금제.</h2>
+      <p>30일 무료 체험으로 시작하고 필요에 따라 업그레이드하세요. 모든 요금제는 인 · 월 정액입니다.</p>
     </div>
-    <div class="price reveal">
-      <span class="pname">AI 영실이</span>
-      <div class="amt">₩13,000<small> / 월</small></div>
-      <div class="psub">월 정액 · 무제한 발신 · 통화비 0원 (하루 약 430원)</div>
-      <ul>
-        <li><span class="ck">✓</span> 무제한 안부 전화 발신</li>
-        <li><span class="ck">✓</span> 3단계 위험 신호 자동 감지</li>
-        <li><span class="ck">✓</span> 위험 시 보호자·119·복지사 자동 연결</li>
-        <li><span class="ck">✓</span> 보호자·복지사 안심 대시보드</li>
-        <li><span class="ck">✓</span> 기상청 연동 맞춤 안전 멘트</li>
-      </ul>
-      <a class="btn btn-primary" href="#contact">도입·구독 문의하기 →</a>
+
+    <div class="plans">
+      <!-- 시범사업 -->
+      <div class="plan reveal">
+        <div class="plan-name">시범사업</div>
+        <div class="plan-price free">무료</div>
+        <div class="plan-sub">30일 체험</div>
+        <div class="plan-tag">운영 기록까지 체험</div>
+        <ul class="plan-feats">
+          <li><span class="ck">✓</span> 관리자 대시보드 제공</li>
+          <li><span class="ck">✓</span> 전화 발신 관리 (매일 무제한)</li>
+          <li><span class="ck">✓</span> 3단계 위험 감지 (위험·주의·정상)</li>
+          <li><span class="ck">✓</span> 119·보호자 자동연결</li>
+          <li><span class="ck">✓</span> 어르신 관리 · 통화 기록</li>
+        </ul>
+        <a class="btn btn-out" href="youngsili-login.html#trial">30일 무료 체험</a>
+      </div>
+
+      <!-- 베이직 -->
+      <div class="plan reveal">
+        <div class="plan-name">베이직</div>
+        <div class="plan-price">11,000<small>원</small></div>
+        <div class="plan-sub">인 · 월</div>
+        <div class="plan-tag">기본 운영·멘트</div>
+        <ul class="plan-feats">
+          <li><span class="lead-in">시범사업 기능 전체 +</span></li>
+          <li><span class="ck">✓</span> 건강 상태 추적</li>
+          <li><span class="ck">✓</span> 전화멘트 관리</li>
+        </ul>
+        <a class="btn btn-out" href="#contact">도입 문의</a>
+      </div>
+
+      <!-- 스탠다드 (추천) -->
+      <div class="plan feat reveal">
+        <span class="plan-badge">추천</span>
+        <div class="plan-name">스탠다드</div>
+        <div class="plan-price">13,000<small>원</small></div>
+        <div class="plan-sub">인 · 월</div>
+        <div class="plan-tag">행정·재난 대응</div>
+        <ul class="plan-feats">
+          <li><span class="lead-in">베이직 기능 전체 +</span></li>
+          <li><span class="ck">✓</span> 리포트 / 통계</li>
+          <li><span class="ck">✓</span> 공공데이터 연동 (산불·폭염·재난)</li>
+        </ul>
+        <a class="btn btn-primary" href="#contact">도입·구독 문의하기 →</a>
+      </div>
+
+      <!-- 프리미엄 -->
+      <div class="plan reveal">
+        <div class="plan-name">프리미엄</div>
+        <div class="plan-price">19,000<small>원</small></div>
+        <div class="plan-sub">인 · 월</div>
+        <div class="plan-tag">IoT·현장 올케어</div>
+        <ul class="plan-feats">
+          <li><span class="lead-in">스탠다드 기능 전체 +</span></li>
+          <li><span class="ck">✓</span> 방문 필요 · 현장출동 연계</li>
+          <li><span class="ck">✓</span> IoT 연동</li>
+        </ul>
+        <a class="btn btn-out" href="#contact">도입 문의</a>
+      </div>
     </div>
+    <p class="plans-note reveal">지자체·복지기관 단체 도입 시 별도 요금을 안내해 드립니다.</p>
+
+    <details class="cmp-details reveal">
+      <summary>전체 기능 비교표 보기</summary>
+      <div class="cmp-wrap">
+        <table class="cmp">
+          <thead><tr><th>기능</th><th>시범사업</th><th>베이직</th><th class="fcol">스탠다드</th><th>프리미엄</th></tr></thead>
+          <tbody>
+            <tr><th>관리자 대시보드 제공</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>전화 발신 관리 (매일 무제한)</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>3단계 위험 감지 (위험·주의·정상)</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>119·보호자 자동연결</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>어르신 관리</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>통화 기록</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>건강 상태 추적</th><td class="no">–</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>전화멘트 관리</th><td class="no">–</td><td class="yes">✓</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>리포트 / 통계</th><td class="no">–</td><td class="no">–</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>공공데이터 연동 (산불·폭염·재난)</th><td class="no">–</td><td class="no">–</td><td class="yes fcol">✓</td><td class="yes">✓</td></tr>
+            <tr><th>방문 필요 · 현장출동 연계</th><td class="no">–</td><td class="no">–</td><td class="no fcol">–</td><td class="yes">✓</td></tr>
+            <tr><th>IoT 연동</th><td class="no">–</td><td class="no">–</td><td class="no fcol">–</td><td class="yes">✓</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
   </div>
 </section>
 
