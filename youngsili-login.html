@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>기관 로그인 — AI 영실이 관제 대시보드 | KRAFT</title>
-<meta name="description" content="AI 영실이 기관 전용 관제 대시보드 로그인. 지자체·복지기관 계정으로 로그인하거나 30일 무료 체험을 신청하세요." />
+<meta name="description" content="AI 영실이 기관 전용 관제 대시보드 로그인. 지자체·복지기관 계정으로 로그인하거나 회원가입 후 바로 시작하세요." />
 <meta name="robots" content="noindex, follow" />
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
@@ -73,6 +73,20 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,91,214,.12)}
 .back{display:inline-block;margin-top:26px;color:var(--ink-2);font-weight:600;font-size:.9rem}
 .back:hover{color:var(--blue)}
 
+/* 인증(아이디 인증번호) */
+.inline{display:flex;gap:8px;align-items:stretch}
+.inline input{flex:1;min-width:0}
+.btn-sub{flex:0 0 auto;white-space:nowrap;border:1px solid var(--blue);background:#fff;color:var(--blue);font-family:inherit;font-weight:700;font-size:.86rem;padding:0 14px;border-radius:11px;cursor:pointer;transition:.2s}
+.btn-sub:hover:not(:disabled){background:var(--blue);color:#fff}
+.btn-sub:disabled{border-color:var(--line);color:var(--ink-3);cursor:default}
+.coderow{margin-top:8px}
+.code-timer{align-self:center;color:var(--blue);font-weight:700;font-size:.82rem;white-space:nowrap;padding:0 2px}
+.is-hidden{display:none}
+.verified{display:none;align-items:center;gap:6px;color:var(--green);font-weight:700;font-size:.84rem;margin-top:9px}
+.verified.on{display:flex}
+input[readonly]{background:var(--bg);color:var(--ink-2);cursor:default}
+.lbl-note{font-weight:600;font-size:.76rem;color:var(--ink-3);margin-left:4px}
+
 @media(max-width:860px){
   .auth{grid-template-columns:1fr}
   .brandside{padding:30px 26px}
@@ -113,7 +127,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,91,214,.12)}
     <div class="auth-card">
       <div class="tabs">
         <button class="tab on" data-tab="login">로그인</button>
-        <button class="tab" data-tab="trial">30일 무료 체험</button>
+        <button class="tab" data-tab="signup">회원가입</button>
       </div>
 
       <!-- 로그인 -->
@@ -129,29 +143,40 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,91,214,.12)}
           <a href="#" onclick="alert('계정 담당자(kraft@krafte.net)에게 문의해 주세요.');return false">비밀번호 찾기</a>
         </div>
         <button class="btn btn-primary" type="submit">관제 대시보드 로그인 →</button>
-        <p class="alt">아직 계정이 없으신가요? <a href="#" data-goto="trial">30일 무료 체험 신청</a></p>
+        <p class="alt">아직 계정이 없으신가요? <a href="#" data-goto="signup">회원가입</a></p>
       </form>
 
-      <!-- 30일 무료 체험 신청 -->
-      <form class="pane" id="trialPane" novalidate>
-        <h2>30일 무료 체험 신청</h2>
-        <p class="pane-sub">기관 정보를 남겨주시면 체험 계정을 발급해 드립니다.</p>
-        <label for="torg">기관 · 단체명</label>
-        <input id="torg" name="org" type="text" placeholder="○○구청 / ○○복지관" required>
-        <div class="grid2">
-          <div><label for="tname">담당자명</label><input id="tname" name="name" type="text" placeholder="홍길동" required></div>
-          <div><label for="tphone">연락처</label><input id="tphone" name="phone" type="tel" placeholder="010-1234-5678" required></div>
-        </div>
-        <label for="temail">이메일</label>
-        <input id="temail" name="email" type="email" placeholder="name@example.com" required>
-        <button class="btn btn-primary" type="submit">30일 무료 체험 신청 →</button>
+      <!-- 회원가입 -->
+      <form class="pane" id="signupPane" novalidate>
+        <h2>회원가입</h2>
+        <p class="pane-sub">가입 후 이메일 인증을 마치면 바로 사용할 수 있습니다.</p>
+
+        <label for="sid">아이디 <span class="lbl-note">실제 사용하시는 이메일을 입력해주세요 (인증 메일 발송)</span></label>
+        <input id="sid" name="userid" type="email" placeholder="example@example.com" autocomplete="email" required>
+
+        <label for="spw">비밀번호 <span class="lbl-note">6자 이상</span></label>
+        <input id="spw" name="password" type="password" placeholder="비밀번호 입력" autocomplete="new-password" minlength="6" required>
+
+        <label for="spw2">비밀번호 확인</label>
+        <input id="spw2" name="password2" type="password" placeholder="비밀번호 입력" autocomplete="new-password" minlength="6" required>
+
+        <label for="sorg">기관 · 단체명</label>
+        <input id="sorg" name="org" type="text" placeholder="예) ○○구 노인복지관" required>
+
+        <label for="sphone">휴대폰번호</label>
+        <input id="sphone" name="phone" type="tel" inputmode="numeric" placeholder="숫자만 입력" autocomplete="tel" required>
+
+        <label class="chk" style="margin-top:18px"><input type="checkbox" id="sagree"> <span style="font-weight:700">약관 전체동의</span></label>
+
+        <button class="btn btn-primary" type="submit">회원가입 →</button>
         <p class="alt">이미 계정이 있으신가요? <a href="#" data-goto="login">로그인</a></p>
       </form>
 
-      <div class="ok" id="trialOk">
+      <div class="ok" id="signupOk">
         <div class="ic">✓</div>
-        <h2>체험 신청이 접수되었습니다.</h2>
-        <p class="pane-sub" style="margin-top:8px">담당자가 영업일 1~2일 내 체험 계정을 발급해 연락드립니다.</p>
+        <h2>가입이 완료되었습니다.</h2>
+        <p class="pane-sub" style="margin-top:8px"><b id="okEmail"></b>로 <b>인증 메일</b>을 보냈습니다. 메일(스팸함 포함)의 <b>인증 링크</b>를 클릭한 뒤, 아래 버튼으로 대시보드에서 로그인하세요.</p>
+        <a class="btn btn-primary" id="goDash" href="#" style="margin-top:18px">관제 대시보드로 이동 →</a>
       </div>
 
       <p class="help"><span class="help-label">계정 문의</span><a href="mailto:kraft@krafte.net">kraft@krafte.net</a> · <a href="tel:1877-1979">1877-1979</a></p>
@@ -163,48 +188,79 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,91,214,.12)}
 <script>
 (function(){
   var DASHBOARD='https://youngsili-dashboard.vercel.app';
-  var WEB3FORMS_KEY='c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';
-  var RECIPIENT='kraft@krafte.net';
+  var FB_KEY='AIzaSyCumRaTUWawpIk_QFnXW9gY_2q8_P-a4p4';                 // Firebase 웹 API키(공개값)
+  var FB='https://identitytoolkit.googleapis.com/v1/accounts:';
+  var PROVISION='https://youngsili-server-production.up.railway.app/signup/provision';
   var EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   /* 탭 전환 */
-  var tabs=document.querySelectorAll('.tab'), panes={login:document.getElementById('loginPane'),trial:document.getElementById('trialPane')};
+  var tabs=document.querySelectorAll('.tab'),
+      panes={login:document.getElementById('loginPane'),signup:document.getElementById('signupPane')};
   function show(name){
     tabs.forEach(function(t){t.classList.toggle('on',t.getAttribute('data-tab')===name);});
     panes.login.classList.toggle('on',name==='login');
-    panes.trial.classList.toggle('on',name==='trial');
-    document.getElementById('trialOk').classList.remove('show');
+    panes.signup.classList.toggle('on',name==='signup');
+    panes.signup.style.display='';
+    document.getElementById('signupOk').classList.remove('show');
   }
   tabs.forEach(function(t){t.addEventListener('click',function(){show(t.getAttribute('data-tab'));});});
   document.querySelectorAll('[data-goto]').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();show(a.getAttribute('data-goto'));});});
-  if(location.hash==='#trial')show('trial');
+  if(location.hash==='#signup'||location.hash==='#trial')show('signup');
 
-  /* 로그인 → 대시보드 이동
-     ⚠️ 실제 계정·비밀번호 검증은 대시보드(백엔드)에서 처리해야 합니다. 현재는 입력 확인 후 대시보드로 이동합니다. */
+  /* 로그인 → 대시보드 이동 (세션은 도메인별이라 실제 로그인은 대시보드에서) */
   document.getElementById('loginPane').addEventListener('submit',function(e){
     e.preventDefault();
     var email=document.getElementById('lemail').value.trim(), pw=document.getElementById('lpw').value;
     if(!EMAIL_RE.test(email)||pw.length<1){alert('이메일과 비밀번호를 입력해 주세요.');return;}
     var btn=this.querySelector('button[type=submit]');btn.textContent='이동 중…';btn.disabled=true;
-    location.href=DASHBOARD;
+    location.href=DASHBOARD;   // 대시보드 로그인 화면으로
   });
 
-  /* 체험 신청 → Web3Forms (kraft@krafte.net) */
-  document.getElementById('trialPane').addEventListener('submit',function(e){
+  /* ===== 회원가입: Firebase 계정생성 + 기관 자동생성 + 인증메일(링크) 발송 ===== */
+  document.getElementById('signupPane').addEventListener('submit',function(e){
     e.preventDefault();
     var f=this.elements;
-    var d={org:f.org.value.trim(),name:f.name.value.trim(),phone:f.phone.value.trim(),email:f.email.value.trim()};
-    if(!d.org||!d.name||!d.phone||!EMAIL_RE.test(d.email)){alert('모든 항목을 입력해 주세요.');return;}
-    var subject='[AI 영실이] 30일 무료 체험 신청 — '+d.org;
-    var body='30일 무료 체험을 신청했습니다.\n기관·단체: '+d.org+'\n담당자: '+d.name+'\n연락처: '+d.phone+'\n이메일: '+d.email;
-    var pane=this;
-    function done(){pane.style.display='none';document.getElementById('trialOk').classList.add('show');}
-    var btn=this.querySelector('button[type=submit]'),orig=btn.textContent;btn.disabled=true;btn.textContent='신청 중…';
-    fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},
-      body:JSON.stringify({access_key:WEB3FORMS_KEY,botcheck:'',subject:subject,from_name:d.name,email:d.email,message:body})})
-      .then(function(r){return r.json();}).then(function(res){if(res.success){done();}else{throw 0;}})
-      .catch(function(){btn.disabled=false;btn.textContent=orig;
-        location.href='mailto:'+RECIPIENT+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);done();});
+    var email=f.userid.value.trim(), pw=f.password.value, pw2=f.password2.value,
+        org=f.org.value.trim(), phone=f.phone.value.trim();
+    if(!EMAIL_RE.test(email)){alert('아이디는 이메일 형식으로 입력해 주세요.');return;}
+    if(pw.length<6){alert('비밀번호는 6자 이상이어야 합니다.');return;}
+    if(pw!==pw2){alert('비밀번호가 일치하지 않습니다.');return;}
+    if(!org){alert('기관·단체명을 입력해 주세요.');return;}
+    if(phone.replace(/[^0-9]/g,'').length<10){alert('올바른 휴대폰번호를 입력해 주세요.');return;}
+    if(!document.getElementById('sagree').checked){alert('약관에 전체동의해 주세요.');return;}
+
+    var pane=this, btn=this.querySelector('button[type=submit]'), orig=btn.textContent;
+    btn.disabled=true; btn.textContent='가입 중…';
+
+    function fail(msg){ btn.disabled=false; btn.textContent=orig; alert(msg||'회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'); }
+    function done(){
+      document.getElementById('okEmail').textContent=email;
+      pane.style.display='none';
+      document.getElementById('goDash').setAttribute('href',DASHBOARD);
+      document.getElementById('signupOk').classList.add('show');
+    }
+    function jpost(url,body,headers){
+      return fetch(url,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},headers||{}),body:JSON.stringify(body)})
+        .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j||{}};});});
+    }
+    // 1) Firebase 계정 생성
+    jpost(FB+'signUp?key='+FB_KEY,{email:email,password:pw,returnSecureToken:true})
+      .then(function(res){
+        if(!res.ok){
+          var code=(res.j.error&&res.j.error.message)||'';
+          if(code.indexOf('EMAIL_EXISTS')>=0) throw '이미 가입된 이메일입니다. 로그인해 주세요.';
+          if(code.indexOf('WEAK_PASSWORD')>=0) throw '비밀번호는 6자 이상이어야 합니다.';
+          if(code.indexOf('INVALID_EMAIL')>=0) throw '이메일 형식이 올바르지 않습니다.';
+          throw '가입에 실패했습니다. ('+code+')';
+        }
+        var idToken=res.j.idToken;
+        // 2) 기관 자동 생성(provision) → 3) 인증 메일 발송
+        return jpost(PROVISION,{orgName:org,phone:phone},{Authorization:'Bearer '+idToken})
+          .catch(function(){ return null; })
+          .then(function(){ return jpost(FB+'sendOobCode?key='+FB_KEY,{requestType:'VERIFY_EMAIL',idToken:idToken}).catch(function(){return null;}); })
+          .then(function(){ done(); });
+      })
+      .catch(function(err){ fail(typeof err==='string'?err:null); });
   });
 })();
 </script>
