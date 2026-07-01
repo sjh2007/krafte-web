@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>이메일 인증 · AI 영실이</title>
+<style>
+  :root{ --navy:#1e3a6e; --blue:#2563eb; --green:#16a34a; --ink:#334155; --sub:#64748b; }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--navy),#0f1f3d);font-family:-apple-system,'Malgun Gothic','맑은 고딕',sans-serif;padding:20px;}
+  .card{background:#fff;border-radius:20px;padding:40px 34px;width:400px;max-width:92vw;
+    box-shadow:0 12px 40px rgba(0,0,0,.25);text-align:center;}
+  .logo{width:64px;height:64px;border-radius:16px;object-fit:cover;margin-bottom:8px}
+  .brand{font-size:20px;font-weight:900;color:var(--navy)}
+  .brand-sub{font-size:13px;color:var(--sub);margin-bottom:22px}
+  .ic{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:38px;margin:6px auto 14px}
+  .ic.ok{background:#dcfce7;color:var(--green)}
+  .ic.err{background:#fee2e2;color:#dc2626}
+  .ic.load{background:#eff6ff}
+  h1{font-size:20px;color:var(--navy);margin:0 0 8px}
+  p{font-size:14px;color:var(--ink);line-height:1.6;margin:0 0 6px}
+  .muted{color:var(--sub);font-size:13px}
+  .btn{display:block;width:100%;margin-top:20px;padding:14px;border-radius:10px;border:none;
+    background:var(--blue);color:#fff;font-weight:800;font-size:16px;cursor:pointer;text-decoration:none}
+  .btn.green{background:var(--green)}
+  .spin{width:44px;height:44px;border:4px solid #dbeafe;border-top-color:var(--blue);border-radius:50%;
+    animation:sp 1s linear infinite;margin:0 auto}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hide{display:none}
+  .foot{margin-top:20px;font-size:12px;color:#94a3b8}
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="youngsili.png" alt="영실이" onerror="this.style.display='none'">
+    <div class="brand">AI 영실이 관제</div>
+    <div class="brand-sub">기관 전용 돌봄 대시보드</div>
+
+    <!-- 처리 중 -->
+    <div id="loading">
+      <div class="ic load"><div class="spin"></div></div>
+      <h1>이메일 인증 중…</h1>
+      <p class="muted">잠시만 기다려 주세요.</p>
+    </div>
+
+    <!-- 성공 -->
+    <div id="ok" class="hide">
+      <div class="ic ok">✓</div>
+      <h1>이메일 인증이 완료되었습니다</h1>
+      <p>이제 가입하신 아이디·비밀번호로 로그인해 바로 사용하실 수 있습니다.</p>
+      <p class="muted"><span id="cnt">3</span>초 후 로그인 페이지로 이동합니다.</p>
+      <a class="btn green" id="goLogin" href="#">로그인하러 가기 →</a>
+    </div>
+
+    <!-- 실패 -->
+    <div id="err" class="hide">
+      <div class="ic err">!</div>
+      <h1>인증 링크가 유효하지 않습니다</h1>
+      <p id="errmsg" class="muted">링크가 만료되었거나 이미 인증된 계정일 수 있습니다. 로그인 페이지에서 다시 시도해 주세요.</p>
+      <a class="btn" id="goLogin2" href="#">로그인 페이지로 이동 →</a>
+    </div>
+
+    <div class="foot">문의 kraft@krafte.net · 1877-1979</div>
+  </div>
+
+<script>
+(function(){
+  var FB_KEY='AIzaSyCumRaTUWawpIk_QFnXW9gY_2q8_P-a4p4';
+  var LOGIN='https://youngsili-dashboard.vercel.app/?login=1';   // 대시보드 로그인(기존 세션 로그아웃)
+  var q=new URLSearchParams(location.search);
+  var mode=q.get('mode'), oobCode=q.get('oobCode');
+  document.getElementById('goLogin').href=LOGIN;
+  document.getElementById('goLogin2').href=LOGIN;
+
+  function show(id){ ['loading','ok','err'].forEach(function(x){document.getElementById(x).classList.toggle('hide',x!==id);}); }
+  function fail(msg){ if(msg)document.getElementById('errmsg').textContent=msg; show('err'); }
+  function success(){
+    show('ok');
+    var n=3, el=document.getElementById('cnt');
+    var t=setInterval(function(){ n--; el.textContent=n; if(n<=0){clearInterval(t); location.href=LOGIN;} },1000);
+  }
+
+  if(mode==='verifyEmail' && oobCode){
+    // Firebase REST: oobCode 적용 → 이메일 인증 확정
+    fetch('https://identitytoolkit.googleapis.com/v1/accounts:update?key='+FB_KEY,
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({oobCode:oobCode})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+      .then(function(res){ if(res.ok && res.j && res.j.emailVerified!==false){ success(); } else { fail(); } })
+      .catch(function(){ fail('네트워크 오류로 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.'); });
+  } else if(mode==='resetPassword'){
+    fail('비밀번호 재설정은 담당자(kraft@krafte.net)에게 문의해 주세요.');
+  } else {
+    fail('잘못된 접근입니다. 이메일의 인증 링크로 다시 접속해 주세요.');
+  }
+})();
+</script>
+</body>
+</html>
