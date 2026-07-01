@@ -207,6 +207,9 @@ h1,h2,h3{margin:0;font-family:var(--display);letter-spacing:-.035em;line-height:
 .node-el circle{transition:.4s}
 .chip-g rect{transition:.45s}
 .chip-g text{transition:.45s}
+.say{filter:drop-shadow(0 4px 9px rgba(16,30,22,.28))}
+.say-bg,.say-tail{transition:fill .4s}
+.say-tx{font-family:var(--body,'Pretendard',sans-serif);font-size:14px;font-weight:800;fill:#fff;letter-spacing:-.02em}
 /* status-driven states (toggled via JS on the <svg> data-state) */
 svg[data-state="warn"] .core-fill{fill:url(#gWarn)}
 svg[data-state="warn"] .pulse-ring{stroke:var(--amber)}
@@ -597,6 +600,23 @@ select option{color:#111}
           <g class="node-el">
             <circle cx="150" cy="460" r="30" fill="#16294D" stroke="rgba(255,255,255,.18)"/>
             <text x="150" y="472" font-size="28" text-anchor="middle">🧓</text>
+          </g>
+
+          <!-- 어르신 말풍선 (상태별 대사, careNet 상태머신과 동기화) -->
+          <g class="say" id="say1">
+            <path class="say-tail" d="M112,134 L120,145 L128,134 Z" fill="#1FA971"/>
+            <rect class="say-bg" x="66" y="104" width="108" height="30" rx="15" fill="#1FA971"/>
+            <text class="say-tx" id="sayTx1" x="120" y="124" text-anchor="middle">괜찮아</text>
+          </g>
+          <g class="say" id="say2">
+            <path class="say-tail" d="M88,294 L96,305 L104,294 Z" fill="#1FA971"/>
+            <rect class="say-bg" x="42" y="264" width="108" height="30" rx="15" fill="#1FA971"/>
+            <text class="say-tx" id="sayTx2" x="96" y="284" text-anchor="middle">별일없어</text>
+          </g>
+          <g class="say" id="say3">
+            <path class="say-tail" d="M142,424 L150,435 L158,424 Z" fill="#1FA971"/>
+            <rect class="say-bg" x="96" y="394" width="108" height="30" rx="15" fill="#1FA971"/>
+            <text class="say-tx" id="sayTx3" x="150" y="414" text-anchor="middle">잘 지내고있어</text>
           </g>
 
           <!-- CORE: 영실이 -->
@@ -1107,7 +1127,14 @@ select option{color:#111}
   var svg=document.getElementById('careNet'),pillBg=document.getElementById('pillBg'),
       pillTxt=document.getElementById('pillTxt'),
       chips=['chip1','chip2','chip3'].map(function(id){return document.getElementById(id);}),
-      outs=Array.prototype.slice.call(document.querySelectorAll('.alertable'));
+      outs=Array.prototype.slice.call(document.querySelectorAll('.alertable')),
+      sayTx=['sayTx1','sayTx2','sayTx3'].map(function(id){return document.getElementById(id);}),
+      sayEls=Array.prototype.slice.call(document.querySelectorAll('.say-bg,.say-tail')),
+      sayPhrases={
+        normal:['괜찮아','별일없어','잘 지내고있어'],
+        warn:['어지러워','속이 안좋아','밥 맛이 없어'],
+        danger:['살려줘','119 불러줘','죽겠어']
+      };
   var states=[
     {k:'normal', label:'정상', color:'#1FA971', alert:false},
     {k:'warn',   label:'관찰', color:'#F2A93B', alert:false},
@@ -1125,6 +1152,9 @@ select option{color:#111}
       if(s.alert){r.setAttribute('fill','#3a1117');r.setAttribute('stroke','var(--red)');}
       else{r.setAttribute('fill','#16294D');r.setAttribute('stroke','rgba(255,255,255,.18)');}
     });
+    var ph=sayPhrases[s.k]||sayPhrases.normal;
+    sayTx.forEach(function(t,n){ if(t) t.textContent=ph[n]; });
+    sayEls.forEach(function(el){ el.setAttribute('fill',s.color); });
   }
   if(!reduce){ apply(states[0]); setInterval(function(){i=(i+1)%states.length;apply(states[i]);},2600); }
 
