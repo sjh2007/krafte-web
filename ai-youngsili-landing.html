@@ -324,6 +324,30 @@ svg[data-state="danger"] .pulse-ring{stroke:var(--red)}
 .wx-call.calling .wx-tag{background:var(--green-soft);color:#8FE7BF}
 .wx-call.heat .wx-tag{background:var(--amber-soft);color:#FFD27A}
 .wx-call.fire .wx-tag{background:var(--red-soft);color:#FF9AA0}
+/* 추가 기상 상태: 한파·미세먼지·호우·태풍 */
+.wx-alert.blue{background:#E7F0FB;color:#2049B5}
+.wx-alert.gray{background:#EEF1F5;color:#5A6472}
+.wx-alert.purple{background:#EFE9FB;color:#6B46C1}
+.wx-card.cold{background:linear-gradient(180deg,#E8F1FC,#D3E4FA);border-color:#2E5BD6}
+.wx-card.cold .t,.wx-card.cold .c{color:#2049B5}
+.wx-card.rain{background:linear-gradient(180deg,#E4EEFB,#CBDDF5);border-color:#2E5BD6}
+.wx-card.rain .t,.wx-card.rain .c{color:#2049B5}
+.wx-card.dust{background:linear-gradient(180deg,#EFECE5,#E2DBCE);border-color:#B08968}
+.wx-card.dust .t,.wx-card.dust .c{color:#7A5C3A}
+.wx-card.storm{background:linear-gradient(180deg,#E8E4F5,#D5CFEC);border-color:#6B46C1}
+.wx-card.storm .t,.wx-card.storm .c{color:#553C9A}
+.wx-call.cold .wx-status,.wx-call.rain .wx-status{color:#7FB0FF}
+.wx-call.dust .wx-status{color:#D9B98C}
+.wx-call.storm .wx-status{color:#B79CF0}
+.wx-call.cold .wx-avatar,.wx-call.rain .wx-avatar{border-color:#2E5BD6;box-shadow:0 10px 26px rgba(46,91,214,.4)}
+.wx-call.dust .wx-avatar{border-color:#B08968;box-shadow:0 10px 26px rgba(176,137,104,.4)}
+.wx-call.storm .wx-avatar{border-color:#6B46C1;box-shadow:0 10px 26px rgba(107,70,193,.42)}
+.wx-call.cold .wx-ring,.wx-call.rain .wx-ring{border-color:#2E5BD6}
+.wx-call.dust .wx-ring{border-color:#B08968}
+.wx-call.storm .wx-ring{border-color:#6B46C1}
+.wx-call.cold .wx-tag,.wx-call.rain .wx-tag{background:rgba(46,91,214,.18);color:#AECBFF}
+.wx-call.dust .wx-tag{background:rgba(176,137,104,.2);color:#E6CDA9}
+.wx-call.storm .wx-tag{background:rgba(107,70,193,.22);color:#CDB8F5}
 
 /* ---------- DASHBOARD SHOWCASE ---------- */
 .dash-grid{display:grid;gap:22px}
@@ -1170,7 +1194,7 @@ select option{color:#111}
     io2.observe(card);
   });
 
-  /* weather auto-response: 경보없음 → 폭염경보 → 산불발생 → (반복) */
+  /* weather auto-response: 경보없음 → 폭염 → 한파 → 미세먼지 → 호우 → 태풍 → 산불 → (반복) */
   (function(){
     var call=document.getElementById('wxCall'); if(!call) return;
     var alert=document.getElementById('wxAlert'),aIc=document.getElementById('wxAlertIc'),aTxt=document.getElementById('wxAlertTxt'),
@@ -1185,6 +1209,22 @@ select option{color:#111}
        cardCls:'hot', icon:'☀️', cond:'폭염', delta:17,
        status:'📞 자동 발신 중…', tag:'🔥 폭염 안전 멘트 자동 삽입',
        bubble:'어르신, 오늘 낮 기온이 35도까지 오른대요. 물 자주 드시고, 한낮에는 바깥 활동을 잠시만 미뤄 주세요.'},
+      {k:'cold', cls:'calling cold', aCls:'blue', aIc:'❄️', aTxt:'한파경보 발령',
+       cardCls:'cold', icon:'❄️', cond:'한파', delta:-24,
+       status:'📞 자동 발신 중…', tag:'🧣 한파 안전 멘트 자동 삽입',
+       bubble:'어르신, 오늘 밤 기온이 영하로 뚝 떨어진대요. 보일러 꼭 켜 두시고, 따뜻하게 챙겨 입으세요.'},
+      {k:'dust', cls:'calling dust', aCls:'gray', aIc:'😷', aTxt:'미세먼지 나쁨',
+       cardCls:'dust', icon:'🌫️', cond:'미세먼지', delta:1,
+       status:'📞 자동 발신 중…', tag:'😷 미세먼지 안내 자동 삽입',
+       bubble:'어르신, 오늘 미세먼지가 아주 나빠요. 창문은 닫아 두시고, 바깥에 나가실 땐 마스크 꼭 챙기세요.'},
+      {k:'rain', cls:'calling rain', aCls:'blue', aIc:'🌧️', aTxt:'호우주의보 발령',
+       cardCls:'rain', icon:'🌧️', cond:'호우', delta:-4,
+       status:'📞 자동 발신 중…', tag:'☔ 호우 안전 멘트 자동 삽입',
+       bubble:'어르신, 오늘 비가 많이 온대요. 미끄러운 길 조심하시고, 급한 일 아니면 외출은 잠시 미뤄 주세요.'},
+      {k:'storm', cls:'calling storm', aCls:'purple', aIc:'🌀', aTxt:'태풍경보 발령',
+       cardCls:'storm', icon:'🌀', cond:'태풍', delta:-2,
+       status:'📞 긴급 발신 중…', tag:'🌀 태풍 대피 안내 자동 발신',
+       bubble:'어르신, 큰 태풍이 올라오고 있어요. 창문 단단히 닫으시고 바깥에는 나가지 마세요. 제가 계속 함께 확인할게요.'},
       {k:'fire', cls:'calling fire', aCls:'red', aIc:'🔥', aTxt:'산불발생',
        cardCls:'fire', icon:'🔥', cond:'산불 경보', delta:8,
        status:'📞 긴급 발신 중…', tag:'🚨 산불 대피 안내 자동 발신',
