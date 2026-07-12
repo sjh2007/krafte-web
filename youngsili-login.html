@@ -161,7 +161,16 @@ input[readonly]{background:var(--bg);color:var(--ink-2);cursor:default}
         <input id="spw2" name="password2" type="password" placeholder="비밀번호 입력" autocomplete="new-password" minlength="6" required>
 
         <label for="sorg">기관 · 단체명</label>
-        <input id="sorg" name="org" type="text" placeholder="예) ○○구 노인복지관" required>
+        <input id="sorg" name="org" type="text" placeholder="예) ○○구 노인복지관 / ○○장애인자립센터" required>
+
+        <label>기관 유형 <span class="lbl-note">화면 구성이 유형에 맞게 제공됩니다</span></label>
+        <style>.orgtype{display:flex;gap:8px;margin-top:6px}.orgtype .ot{flex:1;padding:11px 4px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-weight:700;font-size:13px;cursor:pointer}.orgtype .ot.on{border:2px solid #2f6bff;background:#eef4ff;color:#2f6bff}</style>
+        <div class="orgtype" id="orgTypeGroup">
+          <button type="button" class="ot on" data-ot="senior">노인맞춤돌봄</button>
+          <button type="button" class="ot" data-ot="disability">장애인활동지원</button>
+          <button type="button" class="ot" data-ot="etc">기타 돌봄기관</button>
+        </div>
+        <input id="sorgTypeEtc" type="text" placeholder="기관 유형을 적어 주세요 (예: 방문요양센터, 주야간보호)" style="display:none">
 
         <label for="sphone">휴대폰번호</label>
         <input id="sphone" name="phone" type="tel" inputmode="numeric" placeholder="숫자만 입력" autocomplete="tel" required>
@@ -216,6 +225,15 @@ input[readonly]{background:var(--bg);color:var(--ink-2);cursor:default}
     location.href=DASHBOARD;   // 대시보드 로그인 화면으로
   });
 
+  /* 기관 유형 선택 (senior 기본) — etc는 직접 입력, 수요 조사용으로 서버에 저장 */
+  var orgType='senior';
+  var otBtns=document.querySelectorAll('#orgTypeGroup .ot');
+  otBtns.forEach(function(b){b.addEventListener('click',function(){
+    orgType=b.getAttribute('data-ot');
+    otBtns.forEach(function(x){x.classList.toggle('on',x===b);});
+    document.getElementById('sorgTypeEtc').style.display=(orgType==='etc')?'':'none';
+  });});
+
   /* ===== 회원가입: Firebase 계정생성 + 기관 자동생성 + 인증메일(링크) 발송 ===== */
   document.getElementById('signupPane').addEventListener('submit',function(e){
     e.preventDefault();
@@ -255,7 +273,7 @@ input[readonly]{background:var(--bg);color:var(--ink-2);cursor:default}
         }
         var idToken=res.j.idToken;
         // 2) 기관 자동 생성(provision) → 3) 인증 메일 발송
-        return jpost(PROVISION,{orgName:org,phone:phone},{Authorization:'Bearer '+idToken})
+        return jpost(PROVISION,{orgName:org,phone:phone,orgType:(orgType==='etc'?'senior':orgType),orgTypeEtc:(orgType==='etc'?(document.getElementById('sorgTypeEtc').value.trim()||'기타'):'')},{Authorization:'Bearer '+idToken})
           .catch(function(){ return null; })
           .then(function(){ return jpost(FB+'sendOobCode?key='+FB_KEY,{requestType:'VERIFY_EMAIL',idToken:idToken}).catch(function(){return null;}); })
           .then(function(){ done(); });
