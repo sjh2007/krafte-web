@@ -59,7 +59,14 @@
   }
   .call-card.tilting{transition:transform .06s linear}
   .call-head{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px dashed var(--line);margin-bottom:16px}
-  .call-avatar{flex:none;width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem}
+  .call-avatar{flex:none;width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;position:relative}
+  /* P1: 착신 링 파동 — 전화가 걸려오는 상시 모션 */
+  .call-avatar::before,.call-avatar::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--blue);opacity:0;animation:callring 2.6s ease-out infinite;pointer-events:none}
+  .call-avatar::after{animation-delay:1.3s}
+  @keyframes callring{0%{transform:scale(1);opacity:.45}70%{transform:scale(2);opacity:0}100%{transform:scale(2);opacity:0}}
+  /* P2: 알림 도착 시 벨 흔들림 */
+  .notify.show .bell{display:inline-block;transform-origin:top center;animation:bellring .9s .5s}
+  @keyframes bellring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-5deg)}}
   .call-head .who{font-weight:700;font-size:.95rem}
   .call-head .status{font-size:.78rem;color:var(--ok);font-weight:600}
   .bubble{max-width:88%;padding:12px 15px;border-radius:16px;font-size:.95rem;line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
@@ -162,8 +169,42 @@
 
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
   .reveal.in{opacity:1;transform:none}
+
+  /* P2: 그룹 자식 스태거 — 스텝 4개 */
+  .steps .step.reveal:nth-of-type(2){transition-delay:.1s}
+  .steps .step.reveal:nth-of-type(3){transition-delay:.2s}
+  .steps .step.reveal:nth-of-type(4){transition-delay:.3s}
+  /* P2: 고민 리스트 3줄 순차 등장 */
+  .pain li{opacity:0;transform:translateY(12px);transition:opacity .5s ease,transform .5s ease}
+  .reveal.in .pain li{opacity:1;transform:none}
+  .reveal.in .pain li:nth-child(1){transition-delay:.08s}
+  .reveal.in .pain li:nth-child(2){transition-delay:.22s}
+  .reveal.in .pain li:nth-child(3){transition-delay:.36s}
+  /* P2: 비교표 행 순차 등장 */
+  .compare tbody tr{opacity:0;transform:translateX(-10px);transition:opacity .45s ease,transform .45s ease}
+  .reveal.in tbody tr{opacity:1;transform:none}
+  .reveal.in tbody tr:nth-child(1){transition-delay:.05s}
+  .reveal.in tbody tr:nth-child(2){transition-delay:.13s}
+  .reveal.in tbody tr:nth-child(3){transition-delay:.21s}
+  .reveal.in tbody tr:nth-child(4){transition-delay:.29s}
+  .reveal.in tbody tr:nth-child(5){transition-delay:.37s}
+  .reveal.in tbody tr:nth-child(6){transition-delay:.45s}
+  /* P2: 가격 혜택 리스트 순차 등장 */
+  .free li{opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .45s ease}
+  .reveal.in .free li{opacity:1;transform:none}
+  .reveal.in .free li:nth-child(1){transition-delay:.08s}
+  .reveal.in .free li:nth-child(2){transition-delay:.18s}
+  .reveal.in .free li:nth-child(3){transition-delay:.28s}
+  .reveal.in .free li:nth-child(4){transition-delay:.38s}
+  /* P1: 존댓말 타이핑 커서 */
+  .type-caret{display:inline-block;width:2px;height:1.05em;background:var(--blue);vertical-align:-2px;margin-left:2px;animation:caretblink .8s step-end infinite}
+  @keyframes caretblink{50%{opacity:0}}
+  #politeText{display:inline-block;min-height:1.55em}
+
   @media (prefers-reduced-motion:reduce){
-    .reveal,.bubble,.notify{opacity:1 !important;transform:none !important;transition:none !important}
+    .reveal,.bubble,.notify,.pain li,.compare tbody tr,.free li{opacity:1 !important;transform:none !important;transition:none !important}
+    .call-avatar::before,.call-avatar::after,.notify.show .bell,.type-caret{animation:none !important}
+    .call-avatar::before,.call-avatar::after{display:none}
   }
   @media (min-width:720px){
     .hero{padding:88px 0}
@@ -304,7 +345,7 @@
     <p style="margin-bottom:14px;color:var(--gray);font-size:.95rem">평소 하던 말투로 한마디만 녹음하세요.<br>방글이가 자연스러운 존댓말로 바꿔 여쭤봅니다.</p>
     <div class="becomes">
       <span class="name">방글이</span>
-      "따님이 무릎은 어떠신지 여쭤봐 달라고 하셨어요."
+      <span id="politeText" data-text="&quot;따님이 무릎은 어떠신지 여쭤봐 달라고 하셨어요.&quot;"></span>
     </div>
     <p class="after">바빠서 전화 못 한 날에도, 당신의 마음은 전해집니다.</p>
   </div>
@@ -401,11 +442,50 @@
 </footer>
 
 <script>
-  // 히어로 통화 시퀀스
-  var seq = document.querySelectorAll('#callDemo .bubble, #callDemo .notify');
+  // P1: 히어로 통화 시퀀스 — 루프 재생 (재생 → 3.5초 여운 → 리셋 → 재생)
+  var seq = Array.prototype.slice.call(document.querySelectorAll('#callDemo .bubble, #callDemo .notify'));
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var callDemo = document.getElementById('callDemo');
   if (reduced) { seq.forEach(function(el){ el.classList.add('show'); }); }
-  else { seq.forEach(function(el, i){ setTimeout(function(){ el.classList.add('show'); }, 700 + i * 1100); }); }
+  else if (callDemo) {
+    var seqTimers = [];
+    function playCallSeq(){
+      seqTimers.forEach(clearTimeout); seqTimers = [];
+      seq.forEach(function(el){ el.classList.remove('show'); });
+      void callDemo.offsetWidth; // 리플로우로 트랜지션 재시작
+      seq.forEach(function(el, i){
+        seqTimers.push(setTimeout(function(){ el.classList.add('show'); }, 600 + i * 1100));
+      });
+      seqTimers.push(setTimeout(playCallSeq, 600 + seq.length * 1100 + 3500));
+    }
+    playCallSeq();
+    // 탭이 백그라운드로 가면 루프 정지, 돌아오면 재시작
+    document.addEventListener('visibilitychange', function(){
+      if (document.hidden) { seqTimers.forEach(clearTimeout); seqTimers = []; }
+      else if (!seqTimers.length) { playCallSeq(); }
+    });
+  }
+
+  // P1: 존댓말 변환 타이핑 효과 (voice 섹션 진입 시 1회)
+  var polite = document.getElementById('politeText');
+  if (polite) {
+    var politeFull = polite.getAttribute('data-text');
+    if (reduced) { polite.textContent = politeFull; }
+    else {
+      var tIO = new IntersectionObserver(function(es){ es.forEach(function(e){
+        if (!e.isIntersecting) return;
+        tIO.disconnect();
+        var caret = document.createElement('span'); caret.className = 'type-caret';
+        polite.after(caret);
+        var i = 0;
+        var iv = setInterval(function(){
+          polite.textContent = politeFull.slice(0, ++i);
+          if (i >= politeFull.length) { clearInterval(iv); setTimeout(function(){ caret.remove(); }, 1500); }
+        }, 55);
+      }); }, { threshold: .6 });
+      tIO.observe(polite.closest('.becomes'));
+    }
+  }
 
   // 스크롤 리빌
   var io = new IntersectionObserver(function(es){ es.forEach(function(e){
