@@ -406,7 +406,7 @@
   document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
 
   // 사전예약 폼 — 사이트 공통 web3forms 패턴 (키 미설정 시 메일 폴백)
-  var WEB3FORMS_KEY = '';   // TODO: web3forms access key 입력 (cctv-ai.html과 동일 키 사용 가능)
+  var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
   function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
   document.querySelectorAll('.cta-form.preorder').forEach(function(f){
     f.addEventListener('submit', function(ev){
