@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI방글이 — 매일 부모님께 안부전화를 겁니다 | (주)크래프트</title>
+<meta name="description" content="AI 방글이가 매일 부모님께 안부전화를 걸고 결과를 알려드립니다. 하루 300원이 안 되는 매일의 안부. 14일 무료체험, 결제카드 없이.">
+<link rel="canonical" href="https://www.krafte.net/ai-banggeul-landing.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AI방글이 — 매일 부모님께 안부전화를 겁니다">
+<meta property="og:description" content="오늘도 부모님께 전화 못 하셨나요? 방글이가 대신 걸었어요. 하루 300원이 안 되는 매일의 안부.">
+<meta property="og:url" content="https://www.krafte.net/ai-banggeul-landing.html">
+<meta property="og:locale" content="ko_KR">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#0062FF; --blue-deep:#0044B4; --blue-bg:#EDF5FF;
+    --ink:#151A23; --gray:#6B7280; --line:#E7EAF0;
+    --paper:#F7FAFF;
+    --warm:#F59E0B; --warm-bg:#FFF4E2;
+    --ok:#16A34A; --ok-bg:#E8F7EC;
+    --r:18px;
+    font-size:16px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Pretendard Variable",Pretendard,-apple-system,"Noto Sans KR",sans-serif;
+    color:var(--ink);background:#fff;line-height:1.6;word-break:keep-all;
+  }
+  .serif{font-family:"Gowun Batang","Pretendard Variable",serif}
+  .wrap{max-width:680px;margin:0 auto;padding:0 20px}
+  .wrap-wide{max-width:1060px;margin:0 auto;padding:0 20px}
+  section{padding:72px 0}
+  .eyebrow{display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.12em;color:var(--blue);margin-bottom:14px}
+  h2{font-size:1.6rem;line-height:1.35;font-weight:800;margin-bottom:12px}
+  .lead{color:var(--gray);font-size:1.02rem}
+
+  header{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:50}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:1060px;margin:0 auto;padding:0 20px}
+  .logo{font-weight:800;font-size:1.1rem;color:var(--blue);text-decoration:none}
+  .logo small{color:var(--gray);font-weight:500;font-size:.72rem;margin-left:6px}
+  .nav-right{display:flex;align-items:center;gap:14px}
+  .nav-right .home{font-size:.82rem;color:var(--gray);text-decoration:none}
+  .nav-right .home:hover{color:var(--ink)}
+  .nav a.cta-mini{background:var(--blue);color:#fff;text-decoration:none;font-size:.85rem;font-weight:700;padding:9px 16px;border-radius:999px}
+
+  .hero{background:linear-gradient(180deg,var(--paper) 0%,#fff 100%);padding:64px 0 72px}
+  .hero h1{font-size:2rem;line-height:1.3;font-weight:800;margin-bottom:14px}
+  .hero h1 .serif{display:block;font-size:2.15rem;color:var(--blue-deep)}
+  .hero .lead{margin-bottom:28px}
+  .call-card{
+    background:#fff;border:1px solid var(--line);border-radius:24px;
+    box-shadow:0 18px 50px rgba(21,42,102,.10);padding:22px 18px 18px;margin:0 0 28px;
+  }
+  .call-head{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px dashed var(--line);margin-bottom:16px}
+  .call-avatar{flex:none;width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem}
+  .call-head .who{font-weight:700;font-size:.95rem}
+  .call-head .status{font-size:.78rem;color:var(--ok);font-weight:600}
+  .bubble{max-width:88%;padding:12px 15px;border-radius:16px;font-size:.95rem;line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(8px);transition:opacity .5s ease,transform .5s ease}
+  .bubble.show{opacity:1;transform:none}
+  .bubble.banggle{background:var(--blue-bg);border-bottom-left-radius:4px}
+  .bubble.mom{background:var(--warm-bg);border-bottom-right-radius:4px;margin-left:auto}
+  .bubble .name{display:block;font-size:.72rem;font-weight:700;margin-bottom:3px}
+  .bubble.banggle .name{color:var(--blue)}
+  .bubble.mom .name{color:var(--warm)}
+  .notify{
+    display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:#fff;border-radius:14px;padding:13px 15px;margin-top:16px;
+    opacity:0;transform:translateY(8px);transition:opacity .5s ease,transform .5s ease;
+  }
+  .notify.show{opacity:1;transform:none}
+  .notify .bell{font-size:1.1rem}
+  .notify .t{font-size:.85rem;line-height:1.5}
+  .notify .t b{color:#7FE2A0}
+  .notify .app{font-size:.7rem;color:#A6ADBB;display:block;margin-bottom:2px}
+
+  .cta-box{display:flex;flex-direction:column;gap:10px}
+  .cta-form{display:flex;gap:8px}
+  .cta-form input{
+    flex:1;min-width:0;height:54px;border:1.5px solid var(--line);border-radius:14px;padding:0 16px;font-size:.95rem;font-family:inherit;
+  }
+  .cta-form input:focus{outline:none;border-color:var(--blue)}
+  .btn{
+    height:54px;border:none;border-radius:14px;background:var(--blue);color:#fff;
+    font-size:.98rem;font-weight:700;padding:0 22px;cursor:pointer;font-family:inherit;white-space:nowrap;
+  }
+  .btn:hover{background:var(--blue-deep)}
+  .btn:focus-visible,.cta-form input:focus-visible,a:focus-visible{outline:3px solid rgba(0,98,255,.4);outline-offset:2px}
+  .cta-sub{font-size:.82rem;color:var(--gray)}
+  .cta-done{display:none;background:var(--ok-bg);color:var(--ok);font-weight:700;border-radius:14px;padding:16px;text-align:center}
+
+  .empathy{background:#fff}
+  .empathy h2{font-weight:400}
+  .empathy .serif b{font-weight:700}
+  .pain{list-style:none;margin:24px 0}
+  .pain li{padding:14px 0;border-bottom:1px solid var(--line);color:var(--gray);font-size:.98rem}
+  .pain li::before{content:"—";color:var(--warm);margin-right:10px}
+  .empathy .closer{margin-top:22px;font-size:1.05rem}
+
+  .steps{background:var(--paper)}
+  .step{display:flex;gap:16px;margin-top:30px}
+  .step .no{
+    flex:none;width:44px;height:44px;border-radius:14px;background:#fff;border:1.5px solid var(--blue);
+    color:var(--blue);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+  }
+  .step h3{font-size:1.08rem;font-weight:700;margin-bottom:4px}
+  .step p{color:var(--gray);font-size:.94rem}
+  .step p b{color:var(--ink)}
+
+  .compare table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:22px}
+  .compare th,.compare td{padding:11px 8px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+  .compare th:first-child,.compare td:first-child{text-align:left;font-weight:600}
+  .compare thead th{font-size:.8rem;color:var(--gray)}
+  .compare thead th.me{color:var(--blue);font-weight:800}
+  .compare td.me{background:var(--blue-bg);font-weight:700;color:var(--blue-deep)}
+  .compare .x{color:#C1C7D2}
+  .compare-scroll{overflow-x:auto}
+  .footnote{font-size:.76rem;color:#9AA1AD;margin-top:10px}
+
+  .voice{background:var(--warm-bg)}
+  .voice .eyebrow{color:var(--warm)}
+  .voice blockquote{
+    font-size:1.15rem;line-height:1.6;margin:22px 0;padding-left:18px;border-left:3px solid var(--warm);
+  }
+  .voice .becomes{background:#fff;border-radius:var(--r);padding:18px;font-size:.95rem;box-shadow:0 8px 24px rgba(120,80,0,.06)}
+  .voice .becomes .name{font-size:.72rem;font-weight:700;color:var(--blue);display:block;margin-bottom:4px}
+  .voice .after{margin-top:18px;font-size:.95rem;color:var(--gray)}
+
+  .price{background:var(--ink);color:#fff}
+  .price .eyebrow{color:#8FB8FF}
+  .price h2{color:#fff}
+  .price-card{background:#fff;color:var(--ink);border-radius:24px;padding:28px 24px;margin-top:26px}
+  .price-card .day{font-family:"Gowun Batang",serif;font-size:1.9rem;font-weight:700;color:var(--blue-deep)}
+  .price-card .month{color:var(--gray);font-size:.95rem;margin-bottom:18px}
+  .free{list-style:none;margin:0 0 20px}
+  .free li{padding:8px 0;font-size:.95rem}
+  .free li::before{content:"✓";color:var(--ok);font-weight:800;margin-right:10px}
+  .price-note{font-size:.8rem;color:#A6ADBB;margin-top:14px}
+
+  details{border-bottom:1px solid var(--line);padding:4px 0}
+  summary{cursor:pointer;font-weight:700;font-size:.98rem;padding:16px 0;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  summary::after{content:"+";color:var(--blue);font-size:1.3rem;font-weight:400;transition:transform .2s}
+  details[open] summary::after{transform:rotate(45deg)}
+  details p{color:var(--gray);font-size:.93rem;padding:0 0 16px}
+
+  .final{background:linear-gradient(180deg,#fff 0%,var(--paper) 100%);text-align:center}
+  .final h2{font-weight:400}
+  .final .serif b{font-weight:700;color:var(--blue-deep)}
+  .final .lead{margin-bottom:26px}
+  footer{padding:36px 0 48px;border-top:1px solid var(--line);color:#9AA1AD;font-size:.78rem;text-align:center}
+  footer a{color:#9AA1AD}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    .reveal,.bubble,.notify{opacity:1 !important;transform:none !important;transition:none !important}
+  }
+  @media (min-width:720px){
+    .hero{padding:88px 0}
+    .hero h1{font-size:2.5rem}
+    .hero h1 .serif{font-size:2.7rem}
+    h2{font-size:1.85rem}
+    .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center;max-width:1060px;margin:0 auto;padding:0 20px}
+    .call-card{padding:26px 22px 20px;margin:0}
+  }
+  @media (max-width:719px){
+    .hero-grid{max-width:680px;margin:0 auto;padding:0 20px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a class="logo" href="ai-banggeul-landing.html">AI방글이<small>가족용 AI 안부전화</small></a>
+    <div class="nav-right">
+      <a class="home" href="index.html">(주)크래프트 홈</a>
+      <a class="cta-mini" href="#reserve">출시 알림 받기</a>
+    </div>
+  </div>
+</header>
+
+<!-- 히어로 -->
+<section class="hero">
+  <div class="hero-grid">
+    <div>
+      <h1>
+        오늘도 부모님께<br>전화 못 하셨나요?
+        <span class="serif">방글이가 대신 걸었어요.</span>
+      </h1>
+      <p class="lead">AI 방글이가 매일 부모님께 안부전화를 걸고,<br>결과를 당신에게 알려드립니다.</p>
+      <div class="cta-box">
+        <form class="cta-form preorder">
+          <label for="email-hero" style="position:absolute;left:-9999px">이메일</label>
+          <input id="email-hero" type="email" required placeholder="이메일을 남겨주세요">
+          <button class="btn" type="submit">2주 무료체험 먼저 받기</button>
+        </form>
+        <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요 😊</div>
+        <p class="cta-sub">결제카드 없이 시작 · 부모님 폰은 항상 무료</p>
+      </div>
+    </div>
+    <div class="call-card" id="callDemo" aria-label="방글이 통화 예시">
+      <div class="call-head">
+        <div class="call-avatar">방</div>
+        <div>
+          <div class="who">어머니 (정순임)</div>
+          <div class="status">● 안부전화 연결됨</div>
+        </div>
+      </div>
+      <div class="bubble banggle"><span class="name">방글이</span>어머니, 안녕하세요! 아드님이 보내서 안부 전화 드렸어요~ 저 방글이예요. 점심은 드셨어요?</div>
+      <div class="bubble mom"><span class="name">어머니</span>아이고 그려, 먹었지. 오늘은 무릎이 쪼끔 쑤시네…</div>
+      <div class="bubble banggle"><span class="name">방글이</span>무릎이 쑤시셨구나. 언제부터 그러셨어요?</div>
+      <div class="notify">
+        <span class="bell">🔔</span>
+        <div class="t">
+          <span class="app">AI방글이 · 방금</span>
+          오늘 어머님 통화 완료 · <b>정상</b><br>무릎 통증 언급이 있어 알려드려요
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 문제 공감 -->
+<section class="empathy">
+  <div class="wrap reveal">
+    <span class="eyebrow">우리 모두의 이야기</span>
+    <h2 class="serif">마음은 매일인데,<br><b>전화는 일주일에 한 번.</b></h2>
+    <ul class="pain">
+      <li>퇴근하면 이미 부모님 주무실 시간이라서</li>
+      <li>막상 전화하면 "밥 먹었니" 3분이면 끝나서</li>
+      <li>형제끼리 "네가 좀 자주 전화드려"만 반복해서</li>
+    </ul>
+    <p class="closer serif">그 사이, 부모님의 하루는<br>아무도 모른 채 지나갑니다.</p>
+  </div>
+</section>
+
+<!-- 가치 4단계 -->
+<section class="steps">
+  <div class="wrap">
+    <span class="eyebrow reveal">방글이가 하는 일</span>
+    <h2 class="reveal">방글이는 이렇게<br>부모님을 챙깁니다</h2>
+    <div class="step reveal">
+      <div class="no">1</div>
+      <div><h3>1분이면 연결돼요</h3>
+      <p>부모님 폰에 앱을 깔고 <b>6자리 코드</b>만 입력하면 끝. 주말 부모님 댁에서 직접 해드려도 1분이면 충분합니다.</p></div>
+    </div>
+    <div class="step reveal">
+      <div class="no">2</div>
+      <div><h3>매일, 정해진 시간에 안부전화</h3>
+      <p>로봇 안내멘트가 아닙니다. <b>부모님 대답을 알아듣고 이어서 대화</b>하며 식사, 수면, 컨디션까지 자연스럽게 여쭤봅니다.</p></div>
+    </div>
+    <div class="step reveal">
+      <div class="no">3</div>
+      <div><h3>통화가 끝나면 바로 알려드려요</h3>
+      <p>"오늘 어머님 통화 완료 · 정상" — 매일 도착하는 이 한 줄이 멀리 사는 자녀의 하루를 가볍게 합니다. <b>평소와 다르면 즉시 알림</b>이 갑니다.</p></div>
+    </div>
+    <div class="step reveal">
+      <div class="no">4</div>
+      <div><h3>위급할 땐 SOS</h3>
+      <p>부모님 화면의 SOS 버튼 하나로 <b>등록된 가족 모두</b>에게 연락이 갑니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 비교 -->
+<section class="compare">
+  <div class="wrap reveal">
+    <span class="eyebrow">무엇이 다른가요</span>
+    <h2>그냥 안부전화<br>서비스가 아닙니다</h2>
+    <div class="compare-scroll">
+      <table>
+        <thead><tr><th></th><th class="me">AI방글이</th><th>전화망 안부전화</th><th>지자체 케어콜</th></tr></thead>
+        <tbody>
+          <tr><td>개인이 바로 신청</td><td class="me">오늘부터</td><td>가능</td><td class="x">대상자 선정 대기</td></tr>
+          <tr><td>대화 방식</td><td class="me">AI 음성 대화</td><td>정해진 질문</td><td>정해진 질문</td></tr>
+          <tr><td>이상 징후 알림</td><td class="me">실시간 푸시</td><td>리포트</td><td class="x">복지담당자만</td></tr>
+          <tr><td>응급 SOS</td><td class="me">있음</td><td class="x">없음</td><td class="x">없음</td></tr>
+          <tr><td>내가 남긴 한마디</td><td class="me">통화에 삽입</td><td class="x">없음</td><td class="x">없음</td></tr>
+          <tr><td>가족 함께 보기</td><td class="me">10명 무료</td><td>서비스별 상이</td><td class="x">없음</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">※ 타 서비스 항목은 공개된 서비스 형태 기준의 일반 비교입니다.</p>
+  </div>
+</section>
+
+<!-- 안부멘트 -->
+<section class="voice">
+  <div class="wrap reveal">
+    <span class="eyebrow">당신의 목소리</span>
+    <h2 class="serif">당신의 한마디가<br>통화에 담깁니다</h2>
+    <blockquote class="serif">"엄마, 오늘 무릎은 어때?"</blockquote>
+    <p style="margin-bottom:14px;color:var(--gray);font-size:.95rem">평소 하던 말투로 한마디만 녹음하세요.<br>방글이가 자연스러운 존댓말로 바꿔 여쭤봅니다.</p>
+    <div class="becomes">
+      <span class="name">방글이</span>
+      "따님이 무릎은 어떠신지 여쭤봐 달라고 하셨어요."
+    </div>
+    <p class="after">바빠서 전화 못 한 날에도, 당신의 마음은 전해집니다.</p>
+  </div>
+</section>
+
+<!-- 가격 -->
+<section class="price" id="price">
+  <div class="wrap reveal">
+    <span class="eyebrow">이용 요금</span>
+    <h2 class="serif">하루 300원이 안 되는<br>매일의 안부</h2>
+    <div class="price-card">
+      <div class="day">월 8,900원</div>
+      <div class="month">부모님 1명 · 매일 안부전화 · 이상 징후 알림 · SOS</div>
+      <ul class="free">
+        <li>부모님 폰은 <b>항상 무료</b></li>
+        <li>가족(형제자매) <b>10명까지 무료</b>로 함께 받아요</li>
+        <li>부모님 한 분 더 등록 시 <b>월 7,900원</b></li>
+        <li>연간 결제 시 <b>2개월 무료</b> (89,000원/년)</li>
+      </ul>
+      <div class="cta-box">
+        <form class="cta-form preorder">
+          <label for="email-price" style="position:absolute;left:-9999px">이메일</label>
+          <input id="email-price" type="email" required placeholder="이메일을 남겨주세요">
+          <button class="btn" type="submit">14일 무료로 시작</button>
+        </form>
+        <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요 😊</div>
+        <p class="cta-sub">결제카드 없이 · 언제든 버튼 하나로 해지</p>
+      </div>
+    </div>
+    <p class="price-note">방글이는 어르신 말씀을 끊지 않습니다. 요금은 하나, 대화는 마음껏.</p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="wrap reveal">
+    <span class="eyebrow">자주 묻는 질문</span>
+    <h2>망설여지는 것들,<br>먼저 답해드릴게요</h2>
+    <div style="margin-top:18px">
+      <details>
+        <summary>부모님이 앱 설치를 어려워하시면요?</summary>
+        <p>연결까지 자녀가 다 해드릴 수 있습니다. 주말에 부모님 폰으로 1분이면 끝나고, 그 후 부모님은 걸려오는 전화를 받기만 하시면 됩니다.</p>
+      </details>
+      <details>
+        <summary>부모님이 감시받는다고 느끼지 않을까요?</summary>
+        <p>방글이는 몰래 지켜보지 않습니다. 정해진 시간에 걸려오는 안부전화이고, 부모님이 받고 대화한 내용의 요약만 가족에게 전달됩니다.</p>
+      </details>
+      <details>
+        <summary>아버지, 어머니 두 분 모두 등록하면요?</summary>
+        <p>첫 분은 월 8,900원, 두 번째 분부터는 월 7,900원 — 두 분 합쳐 하루 550원입니다. 각자의 폰으로 각자 전화를 받으시고, 가족 모두가 두 분의 소식을 함께 받습니다.</p>
+      </details>
+      <details>
+        <summary>형제끼리 나눠 낼 수 있나요?</summary>
+        <p>결제는 가족 관리자 1명이 하지만, 보호자는 10명까지 무료라 형제 모두 같은 알림을 받습니다. 하루 550원을 삼남매가 나누면 한 사람당 하루 183원입니다.</p>
+      </details>
+      <details>
+        <summary>통화 시간에 제한이 있나요?</summary>
+        <p>아니요. 부모님이 대화를 이어가시면 방글이는 끊지 않습니다.</p>
+      </details>
+      <details>
+        <summary>부모님이 전화를 안 받으시면요?</summary>
+        <p>정해진 규칙으로 다시 전화를 걸고, 계속 연결되지 않으면 가족에게 부재중 알림을 보냅니다.</p>
+      </details>
+      <details>
+        <summary>해지는요?</summary>
+        <p>앱에서 버튼 하나로 언제든 해지할 수 있습니다. 남은 기간은 정상 이용됩니다.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- 마지막 CTA -->
+<section class="final" id="reserve">
+  <div class="wrap reveal">
+    <h2 class="serif">매일 전화하는 자식이 되는<br><b>가장 쉬운 방법.</b></h2>
+    <p class="lead">이번 추석, 부모님 폰에 방글이를 연결해 드리세요.<br>내려가기 전에 출시 알림을 먼저 받아두세요.</p>
+    <div class="cta-box" style="max-width:440px;margin:0 auto">
+      <form class="cta-form preorder">
+        <label for="email-final" style="position:absolute;left:-9999px">이메일</label>
+        <input id="email-final" type="email" required placeholder="이메일을 남겨주세요">
+        <button class="btn" type="submit">출시 알림 받기</button>
+      </form>
+      <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요 😊</div>
+      <p class="cta-sub">이메일만 남기면 끝 · 출시 시 얼리버드 혜택 우선 안내</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    AI방글이 · (주)크래프트 · <a href="index.html">krafte.net</a><br>
+    문의 <a href="mailto:kraft@krafte.net">kraft@krafte.net</a> · <a href="tel:1877-1979">1877-1979</a>
+  </div>
+</footer>
+
+<script>
+  // 히어로 통화 시퀀스
+  var seq = document.querySelectorAll('#callDemo .bubble, #callDemo .notify');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) { seq.forEach(function(el){ el.classList.add('show'); }); }
+  else { seq.forEach(function(el, i){ setTimeout(function(){ el.classList.add('show'); }, 700 + i * 1100); }); }
+
+  // 스크롤 리빌
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }); }, { threshold: .15 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+
+  // 사전예약 폼 — 사이트 공통 web3forms 패턴 (키 미설정 시 메일 폴백)
+  var WEB3FORMS_KEY = '';   // TODO: web3forms access key 입력 (cctv-ai.html과 동일 키 사용 가능)
+  function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
+  document.querySelectorAll('.cta-form.preorder').forEach(function(f){
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var email = f.querySelector('input').value.trim();
+      if (!email) return;
+      function done(){ f.style.display='none'; f.parentElement.querySelector('.cta-done').style.display='block'; }
+      var subject = '[AI방글이 사전예약] ' + email;
+      if (!keyReady()) {
+        location.href = 'mailto:kraft@krafte.net?subject=' + encodeURIComponent(subject) +
+          '&body=' + encodeURIComponent('AI방글이 출시 알림을 신청합니다.\n이메일: ' + email);
+        done(); return;
+      }
+      var btn = f.querySelector('button'), orig = btn.textContent;
+      btn.disabled = true; btn.textContent = '신청 중…';
+      fetch('https://api.web3forms.com/submit', { method:'POST',
+        headers:{ 'Content-Type':'application/json', Accept:'application/json' },
+        body: JSON.stringify({ access_key: WEB3FORMS_KEY, botcheck:'', subject: subject, email: email,
+          message: 'AI방글이 사전예약 신청\n이메일: ' + email }) })
+        .then(function(r){ return r.json(); })
+        .then(function(res){ if (res.success) { done(); } else { throw 0; } })
+        .catch(function(){ btn.disabled=false; btn.textContent=orig;
+          location.href='mailto:kraft@krafte.net?subject='+encodeURIComponent(subject); done(); });
+    });
+  });
+</script>
+</body>
+</html>
