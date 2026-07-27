@@ -54,12 +54,15 @@
   .call-card{
     background:#fff;border:1px solid var(--line);border-radius:24px;
     box-shadow:0 18px 50px rgba(21,42,102,.10);padding:22px 18px 18px;margin:0 0 28px;
+    transform-style:preserve-3d;will-change:transform;
+    transition:transform .25s ease-out,box-shadow .25s ease-out;
   }
+  .call-card.tilting{transition:transform .06s linear}
   .call-head{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px dashed var(--line);margin-bottom:16px}
   .call-avatar{flex:none;width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem}
   .call-head .who{font-weight:700;font-size:.95rem}
   .call-head .status{font-size:.78rem;color:var(--ok);font-weight:600}
-  .bubble{max-width:88%;padding:12px 15px;border-radius:16px;font-size:.95rem;line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(8px);transition:opacity .5s ease,transform .5s ease}
+  .bubble{max-width:88%;padding:12px 15px;border-radius:16px;font-size:.95rem;line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
   .bubble.show{opacity:1;transform:none}
   .bubble.banggle{background:var(--blue-bg);border-bottom-left-radius:4px}
   .bubble.mom{background:var(--warm-bg);border-bottom-right-radius:4px;margin-left:auto}
@@ -68,7 +71,8 @@
   .bubble.mom .name{color:var(--warm)}
   .notify{
     display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:#fff;border-radius:14px;padding:13px 15px;margin-top:16px;
-    opacity:0;transform:translateY(8px);transition:opacity .5s ease,transform .5s ease;
+    opacity:0;transform:translateY(10px) scale(.94);
+    transition:opacity .45s ease,transform .55s cubic-bezier(.34,1.56,.64,1);
   }
   .notify.show{opacity:1;transform:none}
   .notify .bell{font-size:1.1rem}
@@ -85,8 +89,12 @@
   .btn{
     height:54px;border:none;border-radius:14px;background:var(--blue);color:#fff;
     font-size:.98rem;font-weight:700;padding:0 22px;cursor:pointer;font-family:inherit;white-space:nowrap;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s ease,background .18s ease;
   }
-  .btn:hover{background:var(--blue-deep)}
+  .btn:hover{background:var(--blue-deep);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,98,255,.28)}
+  .btn:active{transform:translateY(0) scale(.97);box-shadow:0 3px 8px rgba(0,98,255,.2)}
+  .nav a.cta-mini{transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s ease}
+  .nav a.cta-mini:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,98,255,.25)}
   .btn:focus-visible,.cta-form input:focus-visible,a:focus-visible{outline:3px solid rgba(0,98,255,.4);outline-offset:2px}
   .cta-sub{font-size:.82rem;color:var(--gray)}
   .cta-done{display:none;background:var(--ok-bg);color:var(--ok);font-weight:700;border-radius:14px;padding:16px;text-align:center}
@@ -404,6 +412,28 @@
     if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
   }); }, { threshold: .15 });
   document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+
+  // 히어로 통화 카드 3D 틸트 (데스크톱·모션 허용 시에만, Amicro 인터랙션 패턴 각색)
+  var card = document.getElementById('callDemo');
+  var canTilt = window.matchMedia('(hover: hover) and (min-width: 720px)').matches && !reduced;
+  if (card && canTilt) {
+    var raf = null;
+    card.addEventListener('pointermove', function(ev){
+      if (raf) return;
+      raf = requestAnimationFrame(function(){
+        raf = null;
+        var r = card.getBoundingClientRect();
+        var px = (ev.clientX - r.left) / r.width - .5;
+        var py = (ev.clientY - r.top) / r.height - .5;
+        card.classList.add('tilting');
+        card.style.transform = 'perspective(900px) rotateY(' + (px * 6).toFixed(2) + 'deg) rotateX(' + (-py * 5).toFixed(2) + 'deg)';
+      });
+    });
+    card.addEventListener('pointerleave', function(){
+      card.classList.remove('tilting');
+      card.style.transform = '';
+    });
+  }
 
   // 사전예약 폼 — 사이트 공통 web3forms 패턴 (키 미설정 시 메일 폴백)
   var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
