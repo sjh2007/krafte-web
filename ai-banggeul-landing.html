@@ -518,9 +518,19 @@
     });
   }
 
-  // 사전예약 폼 — 사이트 공통 web3forms 패턴 (키 미설정 시 메일 폴백)
+  // 사전예약 폼 — ① web3forms(회사 알림) + ② Apps Script(명단 저장 + 신청자 환영 메일 발송)
   var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
+  var PREORDER_ENDPOINT = '';   // TODO: Google Apps Script 웹 앱 URL (배포 후 붙여넣기 — 마케팅팀/AI방글이/사전예약메일/설치가이드.md)
   function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
+  function sendWelcome(email){
+    if (!PREORDER_ENDPOINT) return;
+    // Apps Script는 no-cors + text/plain으로 프리플라이트 없이 수신 (응답은 확인 불가 — 발송 실패해도 UX엔 영향 없음)
+    try {
+      fetch(PREORDER_ENDPOINT, { method:'POST', mode:'no-cors',
+        headers:{ 'Content-Type':'text/plain' },
+        body: JSON.stringify({ email: email, source: 'landing' }) });
+    } catch (e) {}
+  }
   document.querySelectorAll('.cta-form.preorder').forEach(function(f){
     f.addEventListener('submit', function(ev){
       ev.preventDefault();
@@ -528,6 +538,7 @@
       if (!email) return;
       function done(){ f.style.display='none'; f.parentElement.querySelector('.cta-done').style.display='block'; }
       var subject = '[AI방글이 사전예약] ' + email;
+      sendWelcome(email);
       if (!keyReady()) {
         location.href = 'mailto:kraft@krafte.net?subject=' + encodeURIComponent(subject) +
           '&body=' + encodeURIComponent('AI방글이 출시 알림을 신청합니다.\n이메일: ' + email);
