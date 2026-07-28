@@ -520,7 +520,7 @@
 
   // 사전예약 폼 — ① web3forms(회사 알림) + ② Apps Script(명단 저장 + 신청자 환영 메일 발송)
   var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
-  var PREORDER_ENDPOINT = '';   // TODO: Google Apps Script 웹 앱 URL (배포 후 붙여넣기 — 마케팅팀/AI방글이/사전예약메일/설치가이드.md)
+  var PREORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwQWRzHSKbU6bct2VyqDizr8-euR3kwKQlTIU8XkOHShNzd7AIyre_8RoKc7vUwVPCl/exec';   // Apps Script: 명단 저장 + 환영 메일 발송
   function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
   function sendWelcome(email){
     if (!PREORDER_ENDPOINT) return;
