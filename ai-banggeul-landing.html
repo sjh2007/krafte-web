@@ -34,12 +34,16 @@
     color:var(--ink);background:#fff;line-height:1.6;word-break:keep-all;
   }
   .serif{font-family:"Gowun Batang","Pretendard Variable",serif}
-  .wrap{max-width:680px;margin:0 auto;padding:0 20px}
-  .wrap-wide{max-width:1060px;margin:0 auto;padding:0 20px}
-  section{padding:72px 0}
-  .eyebrow{display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.12em;color:var(--blue);margin-bottom:14px}
-  h2{font-size:1.6rem;line-height:1.35;font-weight:800;margin-bottom:12px}
-  .lead{color:var(--gray);font-size:1.02rem}
+  /* 컨테이너 2종 — 본문(가독 폭) / 와이드(카드·그리드) */
+  /* 본문 섹션도 와이드 섹션과 같은 좌측 기준선을 쓰되, 글줄은 가독 폭으로 제한 */
+  .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
+  .wrap > *{max-width:840px}
+  .wrap > .compare, .wrap > table{max-width:960px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
+  section{padding:clamp(64px,6vw,104px) 0}
+  .eyebrow{display:inline-block;font-size:clamp(.8rem,.95vw,.92rem);font-weight:700;letter-spacing:.12em;color:var(--blue);margin-bottom:clamp(14px,1.2vw,18px)}
+  h2{font-size:clamp(1.6rem,2.4vw,2.2rem);line-height:1.32;font-weight:800;margin-bottom:clamp(12px,1.2vw,18px)}
+  .lead{color:var(--gray);font-size:clamp(1.02rem,1.15vw,1.2rem);line-height:1.62}
 
   header{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:50}
   .nav{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:1060px;margin:0 auto;padding:0 20px}
@@ -57,12 +61,13 @@
   }
 
   .hero{background:linear-gradient(180deg,var(--paper) 0%,#fff 100%);padding:64px 0 72px}
-  .hero h1{font-size:2rem;line-height:1.3;font-weight:800;margin-bottom:14px}
-  .hero h1 .serif{display:block;font-size:2.15rem;color:var(--blue-deep)}
+  .hero h1{font-size:clamp(2rem,3.4vw,3.1rem);line-height:1.28;font-weight:800;margin-bottom:clamp(14px,1.4vw,20px)}
+  .hero h1 .serif{display:block;font-size:clamp(2.15rem,3.7vw,3.4rem);color:var(--blue-deep)}
   .hero .lead{margin-bottom:28px}
   .call-card{
-    background:#fff;border:1px solid var(--line);border-radius:24px;
-    box-shadow:0 18px 50px rgba(21,42,102,.10);padding:22px 18px 18px;margin:0 0 28px;
+    background:#fff;border:1px solid var(--line);border-radius:clamp(24px,2vw,30px);
+    box-shadow:0 18px 50px rgba(21,42,102,.10);
+    padding:clamp(22px,2vw,32px) clamp(18px,1.8vw,28px) clamp(18px,1.8vw,26px);margin:0 0 28px;
     transform-style:preserve-3d;will-change:transform;
     transition:transform .25s ease-out,box-shadow .25s ease-out;
   }
@@ -78,7 +83,7 @@
   @keyframes bellring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-5deg)}}
   .call-head .who{font-weight:700;font-size:.95rem}
   .call-head .status{font-size:.78rem;color:var(--ok);font-weight:600}
-  .bubble{max-width:88%;padding:12px 15px;border-radius:16px;font-size:.95rem;line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+  .bubble{max-width:88%;padding:clamp(12px,1.1vw,16px) clamp(15px,1.3vw,20px);border-radius:16px;font-size:clamp(.95rem,1.05vw,1.06rem);line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
   .bubble.show{opacity:1;transform:none}
   .bubble.banggle{background:var(--blue-bg);border-bottom-left-radius:4px}
   .bubble.mom{background:var(--warm-bg);border-bottom-right-radius:4px;margin-left:auto}
@@ -119,7 +124,7 @@
   .empathy h2{font-weight:400}
   .empathy .serif b{font-weight:700}
   .pain{list-style:none;margin:24px 0}
-  .pain li{padding:14px 0;border-bottom:1px solid var(--line);color:var(--gray);font-size:.98rem}
+  .pain li{padding:clamp(14px,1.3vw,20px) 0;border-bottom:1px solid var(--line);color:var(--gray);font-size:clamp(.98rem,1.1vw,1.12rem)}
   .pain li::before{content:"—";color:var(--warm);margin-right:10px}
   .empathy .closer{margin-top:22px;font-size:1.05rem}
 
@@ -222,11 +227,11 @@
     .hero h1{font-size:2.5rem}
     .hero h1 .serif{font-size:2.7rem}
     h2{font-size:1.85rem}
-    .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center;max-width:1060px;margin:0 auto;padding:0 20px}
+    .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(40px,4.5vw,80px);align-items:center;max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
     .call-card{padding:26px 22px 20px;margin:0}
   }
   @media (max-width:719px){
-    .hero-grid{max-width:680px;margin:0 auto;padding:0 20px}
+    .hero-grid{max-width:780px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
   }
   /* ── 얼리버드 개편 (2026-08-10) ───────────────────────────── */
   .eb-badge{display:inline-block;margin:14px 0 4px;padding:8px 14px;border-radius:999px;
@@ -236,7 +241,6 @@
     gap:clamp(14px,1.6vw,26px);margin-top:clamp(22px,2.6vw,36px)}
   .eb-card{background:#fff;border:1px solid var(--line);border-radius:clamp(18px,1.6vw,24px);
     padding:clamp(22px,2.4vw,36px) clamp(18px,2vw,28px);text-align:center}
-  .earlybird .wrap-price h2{font-size:clamp(1.6rem,2.4vw,2.2rem)}
   .eb-tag{font-size:clamp(.76rem,.95vw,.92rem) !important}
   .eb-num{font-size:clamp(2rem,2.8vw,2.7rem) !important}
   .eb-card p{font-size:clamp(.86rem,1.05vw,1.02rem) !important}
@@ -272,8 +276,6 @@
   }
 
   /* 3단 요금제 (v1.1) — 화면 폭에 따라 카드가 함께 커지는 유동 스케일 */
-  .wrap-price{max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
-  .price .wrap-price h2{font-size:clamp(1.6rem,2.4vw,2.2rem)}
   .plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
     gap:clamp(14px,1.6vw,26px);margin-top:clamp(26px,3vw,40px);align-items:stretch}
   .plan{background:#fff;color:var(--ink);border-radius:clamp(20px,1.8vw,28px);
@@ -298,7 +300,7 @@
   .plan-common li::before{content:"✓";color:var(--ok);font-weight:800;margin-right:8px}
   .plan-common .cta-form input{height:clamp(54px,4vw,62px)}
   .plan-common .btn{height:clamp(54px,4vw,62px)}
-  .price .wrap-price .price-note{margin-top:clamp(14px,1.6vw,22px);font-size:clamp(.8rem,.95vw,.95rem)}
+  .price .price-note{margin-top:clamp(14px,1.6vw,22px);font-size:clamp(.8rem,.95vw,.95rem)}
   @media (max-width:900px){
     .plans{grid-template-columns:1fr;gap:18px}
     .plan.best{order:-1}
@@ -443,7 +445,7 @@
 
 <!-- 얼리버드 혜택 -->
 <section class="earlybird" id="earlybird">
-  <div class="wrap-price reveal">
+  <div class="wrap-wide reveal">
     <span class="eyebrow">얼리버드</span>
     <h2 class="serif">일찍 온 가족이<br>더 받아요</h2>
     <div class="eb-grid">
@@ -469,7 +471,7 @@
 
 <!-- 가격 -->
 <section class="price" id="price">
-  <div class="wrap-price reveal">
+  <div class="wrap-wide reveal">
     <span class="eyebrow">이용 요금</span>
     <h2 class="serif">하루 300원이 안 되는<br>매일의 안부</h2>
     <div class="plans">
