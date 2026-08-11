@@ -48,7 +48,13 @@
   .nav-right{display:flex;align-items:center;gap:14px}
   .nav-right .home{font-size:.82rem;color:var(--gray);text-decoration:none}
   .nav-right .home:hover{color:var(--ink)}
-  .nav a.cta-mini{background:var(--blue);color:#fff;text-decoration:none;font-size:.85rem;font-weight:700;padding:9px 16px;border-radius:999px}
+  .nav a.cta-mini{background:var(--blue);color:#fff;text-decoration:none;font-size:.85rem;font-weight:700;padding:9px 16px;border-radius:999px;white-space:nowrap}
+  /* CTA 문구가 길어져 좁은 화면에서 헤더가 접히지 않도록 */
+  @media (max-width:560px){
+    .nav-right .home{display:none}
+    .nav a.cta-mini{font-size:.78rem;padding:8px 13px}
+    .logo small{display:none}
+  }
 
   .hero{background:linear-gradient(180deg,var(--paper) 0%,#fff 100%);padding:64px 0 72px}
   .hero h1{font-size:2rem;line-height:1.3;font-weight:800;margin-bottom:14px}
@@ -226,8 +232,15 @@
   .eb-badge{display:inline-block;margin:14px 0 4px;padding:8px 14px;border-radius:999px;
     background:var(--warm-bg);color:#B45309;font-size:.82rem;font-weight:800;letter-spacing:-.2px}
   .earlybird{padding:64px 0;background:var(--paper);border-top:1px solid var(--line)}
-  .eb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}
-  .eb-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:22px 18px;text-align:center}
+  .eb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:clamp(14px,1.6vw,26px);margin-top:clamp(22px,2.6vw,36px)}
+  .eb-card{background:#fff;border:1px solid var(--line);border-radius:clamp(18px,1.6vw,24px);
+    padding:clamp(22px,2.4vw,36px) clamp(18px,2vw,28px);text-align:center}
+  .earlybird .wrap-price h2{font-size:clamp(1.6rem,2.4vw,2.2rem)}
+  .eb-tag{font-size:clamp(.76rem,.95vw,.92rem) !important}
+  .eb-num{font-size:clamp(2rem,2.8vw,2.7rem) !important}
+  .eb-card p{font-size:clamp(.86rem,1.05vw,1.02rem) !important}
+  .eb-note{font-size:clamp(.74rem,.9vw,.88rem) !important}
   .eb-card.hot{border-color:var(--blue);box-shadow:0 10px 30px rgba(0,98,255,.10)}
   .eb-tag{font-size:.76rem;font-weight:800;color:var(--gray);margin-bottom:10px}
   .eb-card.hot .eb-tag{color:var(--blue)}
@@ -253,34 +266,44 @@
   .queue .qkakao{background:#FEE500;color:#191600}
   .queue .qcopy{background:#fff;border:1px solid var(--line) !important;color:var(--ink)}
   .queue .qfoot{margin-top:10px;font-size:.72rem;color:#9AA1AD;line-height:1.55}
-  @media (max-width:720px){
+  @media (max-width:900px){
     .eb-grid{grid-template-columns:1fr}
     .queue .qnum{font-size:2rem}
   }
 
-  /* 3단 요금제 (v1.1) */
-  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px;align-items:stretch}
-  .plan{background:#fff;color:var(--ink);border-radius:20px;padding:24px 20px;display:flex;flex-direction:column;
+  /* 3단 요금제 (v1.1) — 화면 폭에 따라 카드가 함께 커지는 유동 스케일 */
+  .wrap-price{max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
+  .price .wrap-price h2{font-size:clamp(1.6rem,2.4vw,2.2rem)}
+  .plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:clamp(14px,1.6vw,26px);margin-top:clamp(26px,3vw,40px);align-items:stretch}
+  .plan{background:#fff;color:var(--ink);border-radius:clamp(20px,1.8vw,28px);
+    padding:clamp(24px,2.4vw,38px) clamp(20px,2vw,32px);display:flex;flex-direction:column;
     border:2px solid transparent;position:relative}
   .plan.best{border-color:var(--blue);box-shadow:0 16px 40px rgba(0,98,255,.22)}
-  .plan .rec{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;
-    font-size:.72rem;font-weight:800;padding:6px 14px;border-radius:999px;white-space:nowrap}
-  .plan .pname{font-size:1.05rem;font-weight:800;letter-spacing:-.3px}
-  .plan .pcycle{margin-top:6px;color:var(--gray);font-size:.84rem;min-height:2.4em;line-height:1.4}
-  .plan .pprice{font-family:"Gowun Batang",serif;font-size:1.7rem;font-weight:700;color:var(--blue-deep);
-    margin-top:14px;letter-spacing:-1px}
-  .plan .psub{margin-top:8px;padding-top:12px;border-top:1px dashed var(--line);color:var(--gray);
-    font-size:.78rem;line-height:1.6}
+  .plan .rec{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;
+    font-size:clamp(.72rem,.85vw,.86rem);font-weight:800;padding:7px 16px;border-radius:999px;white-space:nowrap}
+  .plan .pname{font-size:clamp(1.05rem,1.5vw,1.45rem);font-weight:800;letter-spacing:-.4px}
+  .plan .pcycle{margin-top:8px;color:var(--gray);font-size:clamp(.84rem,1vw,1rem);
+    min-height:2.4em;line-height:1.45}
+  .plan .pprice{font-family:"Gowun Batang",serif;font-size:clamp(1.7rem,2.8vw,2.6rem);font-weight:700;
+    color:var(--blue-deep);margin-top:clamp(14px,1.6vw,24px);letter-spacing:-1.5px;white-space:nowrap}
+  .plan .psub{margin-top:auto;padding-top:clamp(12px,1.4vw,20px);border-top:1px dashed var(--line);
+    color:var(--gray);font-size:clamp(.78rem,.92vw,.92rem);line-height:1.65}
   .plan .psub b{color:var(--ink);white-space:nowrap}
-  .plan-common{margin-top:16px;background:#fff;border-radius:18px;padding:18px 20px;color:var(--ink)}
-  .plan-common .pc-t{font-size:.8rem;font-weight:800;color:var(--gray);margin-bottom:10px}
-  .plan-common ul{list-style:none;margin:0;display:flex;flex-wrap:wrap;gap:8px 18px}
-  .plan-common li{font-size:.9rem;font-weight:600}
+  .plan-common{margin-top:clamp(16px,1.8vw,26px);background:#fff;border-radius:clamp(18px,1.6vw,24px);
+    padding:clamp(18px,2vw,30px) clamp(20px,2.2vw,34px);color:var(--ink)}
+  .plan-common .pc-t{font-size:clamp(.8rem,.95vw,.94rem);font-weight:800;color:var(--gray);margin-bottom:12px}
+  .plan-common ul{list-style:none;margin:0;display:flex;flex-wrap:wrap;gap:10px clamp(18px,2.4vw,36px)}
+  .plan-common li{font-size:clamp(.9rem,1.05vw,1.05rem);font-weight:600}
   .plan-common li::before{content:"✓";color:var(--ok);font-weight:800;margin-right:8px}
-  @media (max-width:820px){
+  .plan-common .cta-form input{height:clamp(54px,4vw,62px)}
+  .plan-common .btn{height:clamp(54px,4vw,62px)}
+  .price .wrap-price .price-note{margin-top:clamp(14px,1.6vw,22px);font-size:clamp(.8rem,.95vw,.95rem)}
+  @media (max-width:900px){
     .plans{grid-template-columns:1fr;gap:18px}
     .plan.best{order:-1}
     .plan .pcycle{min-height:0}
+    .plan .psub{margin-top:12px}
   }
 
 </style>
@@ -420,7 +443,7 @@
 
 <!-- 얼리버드 혜택 -->
 <section class="earlybird" id="earlybird">
-  <div class="wrap reveal">
+  <div class="wrap-price reveal">
     <span class="eyebrow">얼리버드</span>
     <h2 class="serif">일찍 온 가족이<br>더 받아요</h2>
     <div class="eb-grid">
@@ -446,7 +469,7 @@
 
 <!-- 가격 -->
 <section class="price" id="price">
-  <div class="wrap reveal">
+  <div class="wrap-price reveal">
     <span class="eyebrow">이용 요금</span>
     <h2 class="serif">하루 300원이 안 되는<br>매일의 안부</h2>
     <div class="plans">
