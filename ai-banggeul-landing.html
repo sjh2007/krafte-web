@@ -658,19 +658,9 @@
     });
   }
 
-  // 사전예약 폼 — ① web3forms(회사 알림) + ② Apps Script(명단 저장 + 신청자 환영 메일 발송)
-  var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
-  var PREORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwQWRzHSKbU6bct2VyqDizr8-euR3kwKQlTIU8XkOHShNzd7AIyre_8RoKc7vUwVPCl/exec';   // Apps Script: 명단 저장 + 환영 메일 발송
-  function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
-  function sendWelcome(email){
-    if (!PREORDER_ENDPOINT) return;
-    // Apps Script는 no-cors + text/plain으로 프리플라이트 없이 수신 (응답은 확인 불가 — 발송 실패해도 UX엔 영향 없음)
-    try {
-      fetch(PREORDER_ENDPOINT, { method:'POST', mode:'no-cors',
-        headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({ email: email, source: 'landing' }) });
-    } catch (e) {}
-  }
+  // 사전예약 폼 제출 로직은 preorder-form.js 로 옮겼습니다 (개발팀 소유 파일).
+  // 이 파일에서는 얼리버드 순번 화면만 정의합니다 — 아래 renderQueue를
+  // preorder-form.js 가 완료 시점에 불러 씁니다.
 
   // ── 얼리버드 순번 화면 ──
   // 개발팀 순번 API 연동이 끝나면 아래 한 줄만 true 로 바꾸면 켜집니다.
@@ -719,37 +709,7 @@
       document.body.removeChild(ta); ok();
     }
   }
-  document.querySelectorAll('.cta-form.preorder').forEach(function(f){
-    f.addEventListener('submit', function(ev){
-      ev.preventDefault();
-      var email = f.querySelector('input').value.trim();
-      if (!email) return;
-      function done(){ f.style.display='none';
-        var box = f.parentElement.querySelector('.cta-done');
-        if (EB_QUEUE_ENABLED) {
-          var sub = f.parentElement.querySelector('.cta-sub'); if (sub) sub.style.display='none';
-          renderQueue(box);
-        } else { box.style.display='block'; }
-      }
-      var subject = '[AI방글이 얼리버드] ' + email;
-      sendWelcome(email);
-      if (!keyReady()) {
-        location.href = 'mailto:kraft@krafte.net?subject=' + encodeURIComponent(subject) +
-          '&body=' + encodeURIComponent('AI방글이 얼리버드 대기명단을 신청합니다.\n이메일: ' + email);
-        done(); return;
-      }
-      var btn = f.querySelector('button'), orig = btn.textContent;
-      btn.disabled = true; btn.textContent = '신청 중…';
-      fetch('https://api.web3forms.com/submit', { method:'POST',
-        headers:{ 'Content-Type':'application/json', Accept:'application/json' },
-        body: JSON.stringify({ access_key: WEB3FORMS_KEY, botcheck:'', subject: subject, email: email,
-          message: 'AI방글이 얼리버드 대기명단 신청\n이메일: ' + email }) })
-        .then(function(r){ return r.json(); })
-        .then(function(res){ if (res.success) { done(); } else { throw 0; } })
-        .catch(function(){ btn.disabled=false; btn.textContent=orig;
-          location.href='mailto:kraft@krafte.net?subject='+encodeURIComponent(subject); done(); });
-    });
-  });
 </script>
+<script src="preorder-form.js"></script>
 </body>
 </html>
