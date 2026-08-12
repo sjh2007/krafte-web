@@ -664,29 +664,16 @@
     });
   }
 
-  // 사전예약 폼 — ① web3forms(회사 알림) + ② Apps Script(명단 저장 + 신청자 환영 메일 발송)
-  var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
-  var PREORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwQWRzHSKbU6bct2VyqDizr8-euR3kwKQlTIU8XkOHShNzd7AIyre_8RoKc7vUwVPCl/exec';   // Apps Script: 명단 저장 + 환영 메일 발송
-  function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
-  function sendWelcome(email){
-    if (!PREORDER_ENDPOINT) return;
-    // Apps Script는 no-cors + text/plain으로 프리플라이트 없이 수신 (응답은 확인 불가 — 발송 실패해도 UX엔 영향 없음)
-    try {
-      fetch(PREORDER_ENDPOINT, { method:'POST', mode:'no-cors',
-        headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({ email: email, source: 'landing' }) });
-    } catch (e) {}
-  }
-
   // ── 얼리버드 순번 화면 ──
   // 개발팀 순번 API 연동이 끝나면 아래 한 줄만 true 로 바꾸면 켜집니다.
   // (false 인 동안에는 기존 '신청 완료' 메시지가 그대로 노출됩니다)
-  var EB_QUEUE_ENABLED = false;
+  // preorder-form.js(개발팀 소유)가 읽는 값 — 순번 API 연동 후 true 로만 바꾸면 켜집니다.
+  window.EB_QUEUE_ENABLED = false;
   var EB = { queueNo: 1247, firstOpen: 1000, inviteJump: 150,
              link: 'https://www.krafte.net/ai-banggeul-landing.html?ref=DEMO1234',
              msg: '나 이번 추석에 엄마 폰에 AI 안부전화 연결해 주려고 대기 걸어놨어. 이 링크로 들어오면 너도 나도 무료 한 달씩 더 받아 \uD83D\uDE0A' };
   function ebNeeded(){ return Math.max(0, Math.ceil((EB.queueNo - EB.firstOpen) / EB.inviteJump)); }
-  function renderQueue(box){
+  window.renderQueue = function(box){
     var n = ebNeeded();
     box.innerHTML =
       '<div class="queue">' +
@@ -713,7 +700,7 @@
     box.querySelector('.qcopy').addEventListener('click', function(){
       ebCopy(EB.link, this, '복사 완료');
     });
-  }
+  };
   function ebCopy(text, btn, okLabel){
     var orig = btn.textContent;
     function ok(){ btn.textContent = okLabel; setTimeout(function(){ btn.textContent = orig; }, 1600); }
@@ -725,37 +712,7 @@
       document.body.removeChild(ta); ok();
     }
   }
-  document.querySelectorAll('.cta-form.preorder').forEach(function(f){
-    f.addEventListener('submit', function(ev){
-      ev.preventDefault();
-      var email = f.querySelector('input').value.trim();
-      if (!email) return;
-      function done(){ f.style.display='none';
-        var box = f.parentElement.querySelector('.cta-done');
-        if (EB_QUEUE_ENABLED) {
-          var sub = f.parentElement.querySelector('.cta-sub'); if (sub) sub.style.display='none';
-          renderQueue(box);
-        } else { box.style.display='block'; }
-      }
-      var subject = '[AI방글이 얼리버드] ' + email;
-      sendWelcome(email);
-      if (!keyReady()) {
-        location.href = 'mailto:kraft@krafte.net?subject=' + encodeURIComponent(subject) +
-          '&body=' + encodeURIComponent('AI방글이 얼리버드 대기명단을 신청합니다.\n이메일: ' + email);
-        done(); return;
-      }
-      var btn = f.querySelector('button'), orig = btn.textContent;
-      btn.disabled = true; btn.textContent = '신청 중…';
-      fetch('https://api.web3forms.com/submit', { method:'POST',
-        headers:{ 'Content-Type':'application/json', Accept:'application/json' },
-        body: JSON.stringify({ access_key: WEB3FORMS_KEY, botcheck:'', subject: subject, email: email,
-          message: 'AI방글이 얼리버드 대기명단 신청\n이메일: ' + email }) })
-        .then(function(r){ return r.json(); })
-        .then(function(res){ if (res.success) { done(); } else { throw 0; } })
-        .catch(function(){ btn.disabled=false; btn.textContent=orig;
-          location.href='mailto:kraft@krafte.net?subject='+encodeURIComponent(subject); done(); });
-    });
-  });
 </script>
+<script src="preorder-form.js"></script>
 </body>
 </html>
