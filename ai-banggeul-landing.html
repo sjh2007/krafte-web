@@ -25,6 +25,12 @@
     --warm:#F59E0B; --warm-bg:#FFF4E2;
     --ok:#16A34A; --ok-bg:#E8F7EC;
     --r:18px;
+    /* 타이포 스케일 — 요금·얼리버드 카드를 기준으로 전 섹션 통일 */
+    --fs-title:clamp(1.05rem,1.5vw,1.45rem);   /* 카드·스텝·FAQ 제목 */
+    --fs-body:clamp(.95rem,1.1vw,1.06rem);     /* 설명글 본문 */
+    --fs-sub:clamp(.84rem,1vw,1rem);           /* 보조 설명 */
+    --fs-note:clamp(.74rem,.9vw,.88rem);       /* 각주·캡션 */
+    --fs-quote:clamp(1.15rem,1.7vw,1.55rem);   /* 인용문 */
     font-size:16px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -83,7 +89,7 @@
   @keyframes bellring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-5deg)}}
   .call-head .who{font-weight:700;font-size:.95rem}
   .call-head .status{font-size:.78rem;color:var(--ok);font-weight:600}
-  .bubble{max-width:88%;padding:clamp(12px,1.1vw,16px) clamp(15px,1.3vw,20px);border-radius:16px;font-size:clamp(.95rem,1.05vw,1.06rem);line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+  .bubble{max-width:88%;padding:clamp(12px,1.1vw,16px) clamp(15px,1.3vw,20px);border-radius:16px;font-size:var(--fs-body);line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
   .bubble.show{opacity:1;transform:none}
   .bubble.banggle{background:var(--blue-bg);border-bottom-left-radius:4px}
   .bubble.mom{background:var(--warm-bg);border-bottom-right-radius:4px;margin-left:auto}
@@ -117,45 +123,45 @@
   .nav a.cta-mini{transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s ease}
   .nav a.cta-mini:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,98,255,.25)}
   .btn:focus-visible,.cta-form input:focus-visible,a:focus-visible{outline:3px solid rgba(0,98,255,.4);outline-offset:2px}
-  .cta-sub{font-size:.82rem;color:var(--gray)}
+  .cta-sub{font-size:var(--fs-note);color:var(--gray)}
   .cta-done{display:none;background:var(--ok-bg);color:var(--ok);font-weight:700;border-radius:14px;padding:16px;text-align:center}
 
   .empathy{background:#fff}
   .empathy h2{font-weight:400}
   .empathy .serif b{font-weight:700}
   .pain{list-style:none;margin:24px 0}
-  .pain li{padding:clamp(14px,1.3vw,20px) 0;border-bottom:1px solid var(--line);color:var(--gray);font-size:clamp(.98rem,1.1vw,1.12rem)}
+  .pain li{padding:clamp(14px,1.3vw,20px) 0;border-bottom:1px solid var(--line);color:var(--gray);font-size:var(--fs-body)}
   .pain li::before{content:"—";color:var(--warm);margin-right:10px}
-  .empathy .closer{margin-top:22px;font-size:1.05rem}
+  .empathy .closer{margin-top:clamp(22px,2vw,32px);font-size:var(--fs-title);font-weight:700}
 
   .steps{background:var(--paper)}
-  .step{display:flex;gap:16px;margin-top:30px}
+  .step{display:flex;gap:clamp(16px,1.6vw,24px);margin-top:clamp(30px,2.8vw,44px)}
   .step .no{
-    flex:none;width:44px;height:44px;border-radius:14px;background:#fff;border:1.5px solid var(--blue);
-    color:var(--blue);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+    flex:none;width:clamp(44px,3.4vw,54px);height:clamp(44px,3.4vw,54px);border-radius:14px;background:#fff;border:1.5px solid var(--blue);
+    color:var(--blue);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:var(--fs-title);
   }
-  .step h3{font-size:1.08rem;font-weight:700;margin-bottom:4px}
-  .step p{color:var(--gray);font-size:.94rem}
+  .step h3{font-size:var(--fs-title);font-weight:800;margin-bottom:6px;letter-spacing:-.4px}
+  .step p{color:var(--gray);font-size:var(--fs-body);line-height:1.62}
   .step p b{color:var(--ink)}
 
-  .compare table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:22px}
-  .compare th,.compare td{padding:11px 8px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+  .compare table{width:100%;border-collapse:collapse;font-size:var(--fs-sub);margin-top:clamp(22px,2.4vw,34px)}
+  .compare th,.compare td{padding:clamp(11px,1.2vw,18px) 8px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
   .compare th:first-child,.compare td:first-child{text-align:left;font-weight:600}
-  .compare thead th{font-size:.8rem;color:var(--gray)}
+  .compare thead th{font-size:var(--fs-note);color:var(--gray);font-weight:700}
   .compare thead th.me{color:var(--blue);font-weight:800}
   .compare td.me{background:var(--blue-bg);font-weight:700;color:var(--blue-deep)}
   .compare .x{color:#C1C7D2}
   .compare-scroll{overflow-x:auto}
-  .footnote{font-size:.76rem;color:#9AA1AD;margin-top:10px}
+  .footnote{font-size:var(--fs-note);color:#9AA1AD;margin-top:clamp(10px,1.2vw,16px)}
 
   .voice{background:var(--warm-bg)}
   .voice .eyebrow{color:var(--warm)}
   .voice blockquote{
-    font-size:1.15rem;line-height:1.6;margin:22px 0;padding-left:18px;border-left:3px solid var(--warm);
+    font-size:var(--fs-quote);line-height:1.55;margin:clamp(22px,2.4vw,34px) 0;padding-left:clamp(18px,1.6vw,26px);border-left:3px solid var(--warm);
   }
-  .voice .becomes{background:#fff;border-radius:var(--r);padding:18px;font-size:.95rem;box-shadow:0 8px 24px rgba(120,80,0,.06)}
-  .voice .becomes .name{font-size:.72rem;font-weight:700;color:var(--blue);display:block;margin-bottom:4px}
-  .voice .after{margin-top:18px;font-size:.95rem;color:var(--gray)}
+  .voice .becomes{background:#fff;border-radius:var(--r);padding:clamp(18px,1.8vw,28px);font-size:var(--fs-body);box-shadow:0 8px 24px rgba(120,80,0,.06)}
+  .voice .becomes .name{font-size:var(--fs-note);font-weight:800;color:var(--blue);display:block;margin-bottom:6px}
+  .voice .after{margin-top:clamp(18px,1.8vw,26px);font-size:var(--fs-body);color:var(--gray)}
 
   .price{background:var(--ink);color:#fff}
   .price .eyebrow{color:#8FB8FF}
@@ -166,15 +172,15 @@
   .free{list-style:none;margin:0 0 20px}
   .free li{padding:8px 0;font-size:.95rem}
   .free li::before{content:"✓";color:var(--ok);font-weight:800;margin-right:10px}
-  .price-note{font-size:.8rem;color:#A6ADBB;margin-top:14px}
-  .paytypes{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);font-size:.78rem;color:var(--gray)}
-  .paytypes span{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-left:6px;font-weight:600;color:var(--ink);font-size:.78rem}
+  .price-note{font-size:var(--fs-sub);color:#A6ADBB;margin-top:clamp(14px,1.6vw,22px)}
+  .paytypes{margin-top:clamp(16px,1.8vw,24px);padding-top:clamp(14px,1.6vw,20px);border-top:1px dashed var(--line);font-size:var(--fs-note);color:var(--gray)}
+  .paytypes span{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 14px;margin-left:6px;font-weight:700;color:var(--ink);font-size:var(--fs-note)}
 
   details{border-bottom:1px solid var(--line);padding:4px 0}
-  summary{cursor:pointer;font-weight:700;font-size:.98rem;padding:16px 0;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  summary{cursor:pointer;font-weight:800;font-size:var(--fs-title);padding:clamp(16px,1.6vw,22px) 0;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px}
   summary::after{content:"+";color:var(--blue);font-size:1.3rem;font-weight:400;transition:transform .2s}
   details[open] summary::after{transform:rotate(45deg)}
-  details p{color:var(--gray);font-size:.93rem;padding:0 0 16px}
+  details p{color:var(--gray);font-size:var(--fs-body);line-height:1.65;padding:0 0 clamp(16px,1.6vw,22px)}
 
   .final{background:linear-gradient(180deg,#fff 0%,var(--paper) 100%);text-align:center}
   .final h2{font-weight:400}
@@ -241,10 +247,10 @@
     gap:clamp(14px,1.6vw,26px);margin-top:clamp(22px,2.6vw,36px)}
   .eb-card{background:#fff;border:1px solid var(--line);border-radius:clamp(18px,1.6vw,24px);
     padding:clamp(22px,2.4vw,36px) clamp(18px,2vw,28px);text-align:center}
-  .eb-tag{font-size:clamp(.76rem,.95vw,.92rem) !important}
+  .eb-tag{font-size:var(--fs-note) !important}
   .eb-num{font-size:clamp(2rem,2.8vw,2.7rem) !important}
-  .eb-card p{font-size:clamp(.86rem,1.05vw,1.02rem) !important}
-  .eb-note{font-size:clamp(.74rem,.9vw,.88rem) !important}
+  .eb-card p{font-size:var(--fs-body) !important}
+  .eb-note{font-size:var(--fs-note) !important}
   .eb-card.hot{border-color:var(--blue);box-shadow:0 10px 30px rgba(0,98,255,.10)}
   .eb-tag{font-size:.76rem;font-weight:800;color:var(--gray);margin-bottom:10px}
   .eb-card.hot .eb-tag{color:var(--blue)}
@@ -284,19 +290,19 @@
   .plan.best{border-color:var(--blue);box-shadow:0 16px 40px rgba(0,98,255,.22)}
   .plan .rec{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;
     font-size:clamp(.72rem,.85vw,.86rem);font-weight:800;padding:7px 16px;border-radius:999px;white-space:nowrap}
-  .plan .pname{font-size:clamp(1.05rem,1.5vw,1.45rem);font-weight:800;letter-spacing:-.4px}
-  .plan .pcycle{margin-top:8px;color:var(--gray);font-size:clamp(.84rem,1vw,1rem);
+  .plan .pname{font-size:var(--fs-title);font-weight:800;letter-spacing:-.4px}
+  .plan .pcycle{margin-top:8px;color:var(--gray);font-size:var(--fs-sub);
     min-height:2.4em;line-height:1.45}
   .plan .pprice{font-family:"Gowun Batang",serif;font-size:clamp(1.7rem,2.8vw,2.6rem);font-weight:700;
     color:var(--blue-deep);margin-top:clamp(14px,1.6vw,24px);letter-spacing:-1.5px;white-space:nowrap}
   .plan .psub{margin-top:auto;padding-top:clamp(12px,1.4vw,20px);border-top:1px dashed var(--line);
-    color:var(--gray);font-size:clamp(.78rem,.92vw,.92rem);line-height:1.65}
+    color:var(--gray);font-size:var(--fs-note);line-height:1.65}
   .plan .psub b{color:var(--ink);white-space:nowrap}
   .plan-common{margin-top:clamp(16px,1.8vw,26px);background:#fff;border-radius:clamp(18px,1.6vw,24px);
     padding:clamp(18px,2vw,30px) clamp(20px,2.2vw,34px);color:var(--ink)}
-  .plan-common .pc-t{font-size:clamp(.8rem,.95vw,.94rem);font-weight:800;color:var(--gray);margin-bottom:12px}
+  .plan-common .pc-t{font-size:var(--fs-sub);font-weight:800;color:var(--gray);margin-bottom:12px}
   .plan-common ul{list-style:none;margin:0;display:flex;flex-wrap:wrap;gap:10px clamp(18px,2.4vw,36px)}
-  .plan-common li{font-size:clamp(.9rem,1.05vw,1.05rem);font-weight:600}
+  .plan-common li{font-size:var(--fs-body);font-weight:600}
   .plan-common li::before{content:"✓";color:var(--ok);font-weight:800;margin-right:8px}
   .plan-common .cta-form input{height:clamp(54px,4vw,62px)}
   .plan-common .btn{height:clamp(54px,4vw,62px)}
@@ -658,9 +664,19 @@
     });
   }
 
-  // 사전예약 폼 제출 로직은 preorder-form.js 로 옮겼습니다 (개발팀 소유 파일).
-  // 이 파일에서는 얼리버드 순번 화면만 정의합니다 — 아래 renderQueue를
-  // preorder-form.js 가 완료 시점에 불러 씁니다.
+  // 사전예약 폼 — ① web3forms(회사 알림) + ② Apps Script(명단 저장 + 신청자 환영 메일 발송)
+  var WEB3FORMS_KEY = 'c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';   // 사이트 공통 web3forms 키 (cctv-ai.html과 동일)
+  var PREORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwQWRzHSKbU6bct2VyqDizr8-euR3kwKQlTIU8XkOHShNzd7AIyre_8RoKc7vUwVPCl/exec';   // Apps Script: 명단 저장 + 환영 메일 발송
+  function keyReady(){ return typeof WEB3FORMS_KEY === 'string' && WEB3FORMS_KEY.length > 10; }
+  function sendWelcome(email){
+    if (!PREORDER_ENDPOINT) return;
+    // Apps Script는 no-cors + text/plain으로 프리플라이트 없이 수신 (응답은 확인 불가 — 발송 실패해도 UX엔 영향 없음)
+    try {
+      fetch(PREORDER_ENDPOINT, { method:'POST', mode:'no-cors',
+        headers:{ 'Content-Type':'text/plain' },
+        body: JSON.stringify({ email: email, source: 'landing' }) });
+    } catch (e) {}
+  }
 
   // ── 얼리버드 순번 화면 ──
   // 개발팀 순번 API 연동이 끝나면 아래 한 줄만 true 로 바꾸면 켜집니다.
@@ -709,7 +725,37 @@
       document.body.removeChild(ta); ok();
     }
   }
+  document.querySelectorAll('.cta-form.preorder').forEach(function(f){
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var email = f.querySelector('input').value.trim();
+      if (!email) return;
+      function done(){ f.style.display='none';
+        var box = f.parentElement.querySelector('.cta-done');
+        if (EB_QUEUE_ENABLED) {
+          var sub = f.parentElement.querySelector('.cta-sub'); if (sub) sub.style.display='none';
+          renderQueue(box);
+        } else { box.style.display='block'; }
+      }
+      var subject = '[AI방글이 얼리버드] ' + email;
+      sendWelcome(email);
+      if (!keyReady()) {
+        location.href = 'mailto:kraft@krafte.net?subject=' + encodeURIComponent(subject) +
+          '&body=' + encodeURIComponent('AI방글이 얼리버드 대기명단을 신청합니다.\n이메일: ' + email);
+        done(); return;
+      }
+      var btn = f.querySelector('button'), orig = btn.textContent;
+      btn.disabled = true; btn.textContent = '신청 중…';
+      fetch('https://api.web3forms.com/submit', { method:'POST',
+        headers:{ 'Content-Type':'application/json', Accept:'application/json' },
+        body: JSON.stringify({ access_key: WEB3FORMS_KEY, botcheck:'', subject: subject, email: email,
+          message: 'AI방글이 얼리버드 대기명단 신청\n이메일: ' + email }) })
+        .then(function(r){ return r.json(); })
+        .then(function(res){ if (res.success) { done(); } else { throw 0; } })
+        .catch(function(){ btn.disabled=false; btn.textContent=orig;
+          location.href='mailto:kraft@krafte.net?subject='+encodeURIComponent(subject); done(); });
+    });
+  });
 </script>
-<script src="preorder-form.js"></script>
 </body>
 </html>
