@@ -322,6 +322,21 @@
   footer .fbiz b{color:var(--gray)}
   footer .fcopy{margin-top:14px;font-size:.76rem;color:#B6BCC7}
 
+  /* 3단계 섹션 — 우측 앱 화면 목업 (피그마 디자인 시스템 실화면) */
+  .steps-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(32px,4vw,72px);align-items:center}
+  .steps-visual{position:relative;height:clamp(460px,42vw,620px);display:flex;align-items:center;justify-content:center}
+  .steps-visual .ph{position:absolute;border-radius:clamp(22px,2vw,30px);display:block;
+    box-shadow:0 26px 60px rgba(21,42,102,.16);border:1px solid rgba(11,42,91,.08);background:#fff}
+  .steps-visual .back{width:clamp(190px,17vw,250px);transform:translate(-40%,-9%) rotate(-8deg);opacity:.96}
+  .steps-visual .front{width:clamp(215px,19vw,286px);transform:translate(26%,8%) rotate(5deg);
+    box-shadow:0 34px 74px rgba(21,42,102,.22)}
+  @media (max-width:900px){
+    .steps-grid{grid-template-columns:1fr;gap:36px}
+    .steps-visual{height:clamp(380px,90vw,460px);margin-top:8px}
+    .steps-visual .back{width:170px;transform:translate(-30%,-6%) rotate(-7deg)}
+    .steps-visual .front{width:196px;transform:translate(24%,6%) rotate(5deg)}
+  }
+
 </style>
 </head>
 <body>
@@ -394,7 +409,9 @@
 
 <!-- 가치 4단계 -->
 <section class="steps">
-  <div class="wrap">
+  <div class="wrap-wide">
+   <div class="steps-grid">
+    <div class="steps-col">
     <span class="eyebrow reveal">방글이가 하는 일</span>
     <h2 class="reveal">방글이는 이렇게<br>부모님을 챙깁니다</h2>
     <div class="step reveal">
@@ -417,6 +434,15 @@
       <div><h3>위급할 땐 SOS</h3>
       <p>부모님 화면의 SOS 버튼 하나로 <b>등록된 가족 모두</b>에게 연락이 갑니다.</p></div>
     </div>
+    </div>
+
+    <div class="steps-visual reveal" aria-hidden="false">
+      <img class="ph back" src="img/app-paired.png"
+           alt="부모님 폰에 연결이 완료된 화면 — 연결됐어요! 이제부터 매일 AI방글이가 전화드릴게요">
+      <img class="ph front" src="img/app-incoming-call.png"
+           alt="부모님 폰에 AI 방글이의 안부 전화가 걸려온 화면">
+    </div>
+   </div>
   </div>
 </section>
 
