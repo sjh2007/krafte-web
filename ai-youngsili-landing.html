@@ -152,6 +152,13 @@ h1,h2,h3{margin:0;font-family:var(--display);letter-spacing:-.035em;line-height:
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.18rem;color:var(--navy)}
 .brand .mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--green),#13b07f);
   display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px var(--green-soft)}
+.brand-wrap{display:flex;align-items:center;gap:12px;min-width:0}
+.home-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;
+  border:1.5px solid var(--line);background:#fff;color:var(--navy);font-weight:800;font-size:.92rem;
+  white-space:nowrap;transition:.2s}
+.home-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.home-ico{font-size:1.05rem;line-height:1}
+@media (max-width:640px){.brand-wrap{gap:8px}.brand{font-size:1rem}.home-btn{padding:7px 11px;font-size:.82rem}}
 .nav-links{display:flex;align-items:center;gap:30px;font-weight:700;color:var(--ink-2)}
 .nav-links a:hover{color:var(--navy)}
 .nav-cta{display:flex;align-items:center;gap:12px}
@@ -536,7 +543,12 @@ select option{color:#111}
 <!-- NAV -->
 <header class="nav">
   <div class="nav-in">
-    <a class="brand" href="#"><span class="mark">✚</span> AI 영실이</a>
+    <div class="brand-wrap">
+      <a class="home-btn" href="/index.html" aria-label="(주)크래프트 홈으로 이동">
+        <span class="home-ico" aria-hidden="true">⌂</span> (주)크래프트 홈
+      </a>
+      <a class="brand" href="#">AI 영실이</a>
+    </div>
     <nav class="nav-links">
       <a href="#how">작동 원리</a>
       <a href="#features">기능</a>
@@ -1098,7 +1110,7 @@ select option{color:#111}
   <div class="wrap">
     <div class="foot-top">
       <div class="foot-brand">
-        <div class="brand" style="color:#fff"><span class="mark">✚</span> AI 영실이</div>
+        <div class="brand" style="color:#fff">AI 영실이</div>
         <p>(주)크래프트 · The Greatest ICT Platform Partner. 매일의 안부로 어르신의 하루를 지킵니다.</p>
       </div>
       <div class="foot-cols">
