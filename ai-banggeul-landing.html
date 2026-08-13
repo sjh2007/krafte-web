@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -344,12 +344,38 @@
     .steps-visual .p4{transform:translate(46%,32%) rotate(8deg)}
   }
 
+  /* 히어로 팩트 칩 — '이게 무슨 서비스인지'를 3초 안에 */
+  .hero-facts{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:10px}
+  .hero-facts li{position:relative;padding-left:26px;font-size:var(--fs-sub);line-height:1.6}
+  .hero-facts li::before{content:"";position:absolute;left:0;top:.42em;width:14px;height:14px;border-radius:50%;
+    background:var(--blue);box-shadow:0 0 0 4px rgba(0,98,255,.14)}
+  .hero-facts b{display:block;color:var(--ink)}
+  .hero-facts span{display:block;margin-top:2px;color:var(--gray);font-size:var(--fs-note)}
+
+  /* 서비스 정의 */
+  .define{padding:clamp(64px,7vw,110px) 0;background:var(--paper)}
+  .define h2{margin-top:10px}
+  .define-lead{margin-top:18px;color:var(--gray);font-size:var(--fs-body);line-height:1.85;max-width:44em}
+  .define-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,1.8vw,24px);margin-top:clamp(28px,3vw,44px)}
+  .dcard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:clamp(22px,2.2vw,30px)}
+  .dtag{display:inline-block;font-size:var(--fs-note);font-weight:700;color:var(--blue);
+    background:rgba(0,98,255,.08);border-radius:999px;padding:5px 12px}
+  .dbig{margin-top:14px;font-size:var(--fs-title);font-weight:800;letter-spacing:-.4px}
+  .dsub{margin-top:10px;color:var(--gray);font-size:var(--fs-note);line-height:1.8}
+  .define-note{margin-top:clamp(20px,2.2vw,28px);color:var(--gray);font-size:var(--fs-note);line-height:1.8}
+
+  /* 신뢰 */
+  .trust{padding:clamp(64px,7vw,110px) 0}
+  .trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,1.8vw,24px);margin-top:clamp(28px,3vw,44px)}
+  .tcard{border:1px solid var(--line);border-radius:20px;padding:clamp(22px,2.2vw,30px);background:#fff}
+  .tbig{font-size:var(--fs-title);font-weight:800;letter-spacing:-.4px}
+  .tsub{margin-top:12px;color:var(--gray);font-size:var(--fs-note);line-height:1.85}
+  .tlink{display:inline-block;margin-top:14px;font-weight:700;color:var(--blue);font-size:var(--fs-note)}
+  @media (max-width:900px){
+    .define-grid,.trust-grid{grid-template-columns:1fr}
+  }
+
 </style>
-  <link rel="icon" href="/favicon-banggeul.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-banggeul-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-banggeul-16.png">
-  <link rel="apple-touch-icon" href="/apple-touch-icon-banggeul.png">
-  <link rel="manifest" href="/site-banggeul.webmanifest">
 </head>
 <body>
 
@@ -372,6 +398,11 @@
         <span class="serif">방글이가 대신 걸었어요.</span>
       </h1>
       <p class="lead">AI 방글이가 매일 부모님께 안부전화를 걸고,<br>결과를 당신에게 알려드립니다.</p>
+      <ul class="hero-facts">
+        <li><b>부모님은 받기만 하세요</b><span>가입도 조작도 없이, 쓰시던 폰 그대로</span></li>
+        <li><b>매일 같은 시간, 방글이가 먼저</b><span>대답을 알아듣고 이어서 대화합니다</span></li>
+        <li><b>통화가 끝나면 가족에게</b><span>오늘 어땠는지 한 줄 요약이 도착합니다</span></li>
+      </ul>
       <p class="eb-badge">선착 1,000가족 얼리버드 — 추석 전 우선 오픈</p>
       <div class="cta-box">
         <form class="cta-form preorder">
@@ -387,7 +418,7 @@
       <div class="call-head">
         <div class="call-avatar">방</div>
         <div>
-          <div class="who">어머니 (정순임)</div>
+          <div class="who">어머니</div>
           <div class="status">● 안부전화 연결됨</div>
         </div>
       </div>
@@ -402,6 +433,39 @@
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- 서비스 정의 -->
+<section class="define">
+  <div class="wrap reveal">
+    <span class="eyebrow">AI방글이는 이런 서비스입니다</span>
+    <h2 class="serif">부모님께는 <b>안부전화</b>,<br>자녀에게는 <b>매일의 확인</b>.</h2>
+    <p class="define-lead">떨어져 사는 부모님께 AI가 매일 전화를 걸어 안부를 여쭙고,
+       통화가 끝나면 그 결과를 가족에게 알려주는 <b>가족용 AI 안부전화</b>입니다.
+       부모님이 새로 배우실 것도, 매달 챙기실 것도 없습니다.</p>
+    <div class="define-grid">
+      <div class="dcard">
+        <span class="dtag">부모님이 하시는 일</span>
+        <p class="dbig">전화를 받는다</p>
+        <p class="dsub">앱 조작도, 가입도, 버튼 누르기도 없습니다.
+           연결은 자녀가 한 번만 해두면 그 뒤로는 걸려오는 전화를 받으시기만 하면 됩니다.</p>
+      </div>
+      <div class="dcard">
+        <span class="dtag">방글이가 하는 일</span>
+        <p class="dbig">매일 안부를 여쭙는다</p>
+        <p class="dsub">정해진 시간에 전화를 걸어 식사·수면·컨디션·기분을 대화로 여쭙고,
+           부모님 대답에 맞춰 이어서 이야기합니다.</p>
+      </div>
+      <div class="dcard">
+        <span class="dtag">가족이 받는 것</span>
+        <p class="dbig">오늘의 한 줄</p>
+        <p class="dsub">"오늘 어머님 통화 완료 · 정상" — 매일 도착합니다.
+           평소와 다른 이야기가 있으면 그 내용을 함께 알려드립니다.</p>
+      </div>
+    </div>
+    <p class="define-note">몰래 듣거나 위치를 추적하지 않습니다. 부모님이 아시는 정해진 시간의 안부전화이고,
+       가족에게는 통화 <b>요약</b>이 전달됩니다.</p>
   </div>
 </section>
 
@@ -429,7 +493,7 @@
     <div class="step reveal">
       <div class="no">1</div>
       <div><h3>1분이면 연결돼요</h3>
-      <p>부모님 폰에 앱을 깔고 <b>6자리 코드</b>만 입력하면 끝. 주말 부모님 댁에서 직접 해드려도 1분이면 충분합니다.</p></div>
+      <p><b>연결은 자녀가 해드립니다.</b> 부모님 폰에서 <b>6자리 코드</b>만 입력하면 끝 — 주말에 부모님 댁에서 1분이면 충분합니다. 그 뒤로 부모님이 하실 일은 없습니다.</p></div>
     </div>
     <div class="step reveal">
       <div class="no">2</div>
@@ -481,6 +545,34 @@
       </table>
     </div>
     <p class="footnote">※ 타 서비스 항목은 공개된 서비스 형태 기준의 일반 비교입니다.</p>
+  </div>
+</section>
+
+<!-- 신뢰 -->
+<section class="trust">
+  <div class="wrap reveal">
+    <span class="eyebrow">누가 만드나요</span>
+    <h2>안부전화를 처음<br>만드는 회사가 아닙니다</h2>
+    <div class="trust-grid">
+      <div class="tcard">
+        <p class="tbig">AI 영실이</p>
+        <p class="tsub">크래프트가 만든 <b>지자체·복지기관용 AI 안부전화</b>가 이미 매일 운영되고 있습니다.
+           혼자 계신 어르신께 전화를 걸고, 위험 신호를 담당자에게 연결하는 일을 해온 기술입니다.</p>
+        <a class="tlink" href="index.html#ai">AI 영실이 보기 →</a>
+      </div>
+      <div class="tcard">
+        <p class="tbig">방글이는 가정용</p>
+        <p class="tsub">같은 음성 AI 위에, 이번에는 <b>가족을 위해</b> 다시 만들었습니다.
+           담당자가 아니라 <b>자녀에게</b> 알림이 가고, 통화에 <b>가족의 한마디</b>를 담을 수 있습니다.</p>
+      </div>
+      <div class="tcard">
+        <p class="tbig">주식회사 크래프트</p>
+        <p class="tsub">대구광역시 동구 동대구로 465, 712호<br>
+           사업자등록번호 884-81-02216<br>
+           통신판매업신고 제2021-대구동구-1233호<br>
+           대표번호 1877-1979</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -599,6 +691,18 @@
       <details>
         <summary>형제끼리 나눠 낼 수 있나요?</summary>
         <p>결제는 가족 관리자 1명이 하지만, 보호자는 3명까지 무료라 형제들이 같은 알림을 함께 받습니다. 하루 550원을 삼남매가 나누면 한 사람당 하루 183원입니다.</p>
+      </details>
+      <details>
+        <summary>다른 안부전화 서비스보다 비싼 것 같은데요?</summary>
+        <p>더 저렴한 서비스도 있습니다. 방글이가 다른 점은 세 가지입니다. <b>통화 시간에 제한이 없고</b>, 부모님이 이야기를 이어가시면 끊지 않습니다. <b>가족 3명까지 같은 알림을 무료로</b> 받아 형제가 함께 볼 수 있습니다. 그리고 <b>내가 남긴 한마디를 통화에 담아</b> 방글이가 대신 전합니다. 매일 전화를 대신 걸어주는 값이 아니라, 가족이 함께 부모님을 챙기는 값으로 봐주시면 좋겠습니다.</p>
+      </details>
+      <details>
+        <summary>통화 내용을 녹음하나요? 부모님 사생활이 걱정됩니다.</summary>
+        <p>가족에게 전달되는 것은 <b>통화 요약</b>입니다. 대화 전체를 그대로 자녀에게 넘기지 않습니다. 부모님께는 방글이가 안부를 여쭙는 전화라는 것을 처음에 안내드리고, 정해진 시간에만 전화가 갑니다. 몰래 듣거나 위치를 추적하는 기능은 없습니다. 자세한 처리 내용은 <a href="privacy.html">개인정보처리방침</a>에 있습니다.</p>
+      </details>
+      <details>
+        <summary>부모님이 하실 일이 정말 없나요?</summary>
+        <p>네. 연결을 한 번 해드린 뒤에는 <b>걸려오는 전화를 받으시는 것</b>이 전부입니다. 앱을 여실 일도, 버튼을 누르실 일도, 무언가를 기억하실 일도 없습니다. 다만 위급할 때 쓰실 SOS 버튼은 한 번 알려드리시길 권합니다.</p>
       </details>
       <details>
         <summary>통화 시간에 제한이 있나요?</summary>
