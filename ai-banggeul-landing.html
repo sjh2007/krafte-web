@@ -24,13 +24,18 @@
     --paper:#F7FAFF;
     --warm:#F59E0B; --warm-bg:#FFF4E2;
     --ok:#16A34A; --ok-bg:#E8F7EC;
-    --r:18px;
+    --r-card:20px;   /* 카드·패널 */
+    --r-sm:12px;     /* 칩·입력·작은 블록 */
+    --sh-1:0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+    --sh-2:0 4px 8px rgba(16,24,40,.04), 0 12px 24px rgba(16,24,40,.07);
+    --sh-3:0 8px 16px rgba(16,24,40,.05), 0 24px 48px rgba(16,24,40,.09);
     /* 타이포 스케일 — 요금·얼리버드 카드를 기준으로 전 섹션 통일 */
-    --fs-title:clamp(1.05rem,1.5vw,1.45rem);   /* 카드·스텝·FAQ 제목 */
-    --fs-body:clamp(.95rem,1.1vw,1.06rem);     /* 설명글 본문 */
-    --fs-sub:clamp(.84rem,1vw,1rem);           /* 보조 설명 */
-    --fs-note:clamp(.74rem,.9vw,.88rem);       /* 각주·캡션 */
-    --fs-quote:clamp(1.15rem,1.7vw,1.55rem);   /* 인용문 */
+    --fs-title:clamp(1.05rem,1.72vw,1.7rem);   /* 카드·스텝·FAQ 제목 */
+    --fs-body:clamp(.95rem,1.22vw,1.17rem);    /* 설명글 본문 */
+    --fs-sub:clamp(.84rem,1.1vw,1.09rem);      /* 보조 설명 */
+    --fs-note:clamp(.74rem,.99vw,.98rem);      /* 각주·캡션 */
+    --fs-quote:clamp(1.15rem,1.95vw,1.85rem);  /* 인용문 */
+    --ls-head:-.022em;                         /* 헤딩 자간 — 한글 굵은 제목이 성겨 보이는 것 방지 */
     font-size:16px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -42,14 +47,17 @@
   .serif{font-family:"Gowun Batang","Pretendard Variable",serif}
   /* 컨테이너 2종 — 본문(가독 폭) / 와이드(카드·그리드) */
   /* 본문 섹션도 와이드 섹션과 같은 좌측 기준선을 쓰되, 글줄은 가독 폭으로 제한 */
-  .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
-  .wrap > *{max-width:840px}
-  .wrap > .compare, .wrap > table{max-width:960px}
-  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
-  section{padding:clamp(64px,6vw,104px) 0}
+  .wrap{width:min(92vw,1320px);margin:0 auto;padding:0 clamp(20px,2.4vw,44px)}
+  .wrap > *{max-width:min(72vw,940px)}
+  .wrap > .compare, .wrap > table{max-width:min(84vw,1120px)}
+  /* 글줄 폭 제한은 텍스트에만 — 그리드·표는 컨테이너를 다 쓴다 */
+  .wrap > [class*="-grid"], .wrap > .compare-scroll, .wrap > .plans{max-width:none}
+  .wrap-wide{width:min(94vw,1440px);margin:0 auto;padding:0 clamp(20px,2.4vw,44px)}
+  section{padding:clamp(68px,6.4vw,124px) 0}
   .eyebrow{display:inline-block;font-size:clamp(.8rem,.95vw,.92rem);font-weight:700;letter-spacing:.12em;color:var(--blue);margin-bottom:clamp(14px,1.2vw,18px)}
-  h2{font-size:clamp(1.6rem,2.4vw,2.2rem);line-height:1.32;font-weight:800;margin-bottom:clamp(12px,1.2vw,18px)}
-  .lead{color:var(--gray);font-size:clamp(1.02rem,1.15vw,1.2rem);line-height:1.62}
+  h1,h2,h3{letter-spacing:var(--ls-head)}
+  h2{font-size:clamp(1.6rem,2.72vw,2.62rem);line-height:1.3;font-weight:800;margin-bottom:clamp(12px,1.3vw,22px)}
+  .lead{color:var(--gray);font-size:clamp(1.02rem,1.32vw,1.34rem);line-height:1.62}
 
   header{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:50}
   .nav{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:1060px;margin:0 auto;padding:0 20px}
@@ -66,13 +74,13 @@
     .logo small{display:none}
   }
 
-  .hero{background:linear-gradient(180deg,var(--paper) 0%,#fff 100%);padding:64px 0 72px}
-  .hero h1{font-size:clamp(2rem,3.4vw,3.1rem);line-height:1.28;font-weight:800;margin-bottom:clamp(14px,1.4vw,20px)}
+  .hero{background:linear-gradient(180deg,var(--paper) 0%,#fff 100%);padding:clamp(64px,5vw,96px) 0 clamp(72px,5.4vw,104px)}
+  .hero h1{font-size:clamp(2rem,4.1vw,3.9rem);line-height:1.26;font-weight:800;margin-bottom:clamp(14px,1.5vw,24px)}
   .hero h1 .serif{display:block;font-size:clamp(2.15rem,3.7vw,3.4rem);color:var(--blue-deep)}
   .hero .lead{margin-bottom:28px}
   .call-card{
-    background:#fff;border:1px solid var(--line);border-radius:clamp(24px,2vw,30px);
-    box-shadow:0 18px 50px rgba(21,42,102,.10);
+    background:#fff;border:1px solid var(--line);border-radius:var(--r-card);
+    box-shadow:var(--sh-3);
     padding:clamp(22px,2vw,32px) clamp(18px,1.8vw,28px) clamp(18px,1.8vw,26px);margin:0 0 28px;
     transform-style:preserve-3d;will-change:transform;
     transition:transform .25s ease-out,box-shadow .25s ease-out;
@@ -89,7 +97,7 @@
   @keyframes bellring{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-12deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-5deg)}}
   .call-head .who{font-weight:700;font-size:.95rem}
   .call-head .status{font-size:.78rem;color:var(--ok);font-weight:600}
-  .bubble{max-width:88%;padding:clamp(12px,1.1vw,16px) clamp(15px,1.3vw,20px);border-radius:16px;font-size:var(--fs-body);line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+  .bubble{max-width:88%;padding:clamp(12px,1.1vw,16px) clamp(15px,1.3vw,20px);border-radius:var(--r-card);font-size:var(--fs-body);line-height:1.55;margin-bottom:10px;opacity:0;transform:translateY(10px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
   .bubble.show{opacity:1;transform:none}
   .bubble.banggle{background:var(--blue-bg);border-bottom-left-radius:4px}
   .bubble.mom{background:var(--warm-bg);border-bottom-right-radius:4px;margin-left:auto}
@@ -97,12 +105,12 @@
   .bubble.banggle .name{color:var(--blue)}
   .bubble.mom .name{color:var(--warm)}
   .notify{
-    display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:#fff;border-radius:14px;padding:13px 15px;margin-top:16px;
+    display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:#fff;border-radius:var(--r-sm);padding:13px 15px;margin-top:16px;
     opacity:0;transform:translateY(10px) scale(.94);
     transition:opacity .45s ease,transform .55s cubic-bezier(.34,1.56,.64,1);
   }
   .notify.show{opacity:1;transform:none}
-  .notify .bell{font-size:1.1rem}
+  .notify .bell{width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 4px rgba(0,98,255,.16);flex:none;margin-top:6px;font-size:1.1rem}
   .notify .t{font-size:.85rem;line-height:1.5}
   .notify .t b{color:#7FE2A0}
   .notify .app{font-size:.7rem;color:#A6ADBB;display:block;margin-bottom:2px}
@@ -110,11 +118,11 @@
   .cta-box{display:flex;flex-direction:column;gap:10px}
   .cta-form{display:flex;gap:8px}
   .cta-form input{
-    flex:1;min-width:0;height:54px;border:1.5px solid var(--line);border-radius:14px;padding:0 16px;font-size:.95rem;font-family:inherit;
+    flex:1;min-width:0;height:54px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:0 16px;font-size:.95rem;font-family:inherit;
   }
   .cta-form input:focus{outline:none;border-color:var(--blue)}
   .btn{
-    height:54px;border:none;border-radius:14px;background:var(--blue);color:#fff;
+    height:54px;border:none;border-radius:var(--r-sm);background:var(--blue);color:#fff;
     font-size:.98rem;font-weight:700;padding:0 22px;cursor:pointer;font-family:inherit;white-space:nowrap;
     transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s ease,background .18s ease;
   }
@@ -124,7 +132,7 @@
   .nav a.cta-mini:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,98,255,.25)}
   .btn:focus-visible,.cta-form input:focus-visible,a:focus-visible{outline:3px solid rgba(0,98,255,.4);outline-offset:2px}
   .cta-sub{font-size:var(--fs-note);color:var(--gray)}
-  .cta-done{display:none;background:var(--ok-bg);color:var(--ok);font-weight:700;border-radius:14px;padding:16px;text-align:center}
+  .cta-done{display:none;background:var(--ok-bg);color:var(--ok);font-weight:700;border-radius:var(--r-sm);padding:16px;text-align:center}
 
   .empathy{background:#fff}
   .empathy h2{font-weight:400}
@@ -137,10 +145,10 @@
   .steps{background:var(--paper)}
   .step{display:flex;gap:clamp(16px,1.6vw,24px);margin-top:clamp(30px,2.8vw,44px)}
   .step .no{
-    flex:none;width:clamp(44px,3.4vw,54px);height:clamp(44px,3.4vw,54px);border-radius:14px;background:#fff;border:1.5px solid var(--blue);
+    flex:none;width:clamp(44px,3.4vw,54px);height:clamp(44px,3.4vw,54px);border-radius:var(--r-sm);background:#fff;border:1.5px solid var(--blue);
     color:var(--blue);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:var(--fs-title);
   }
-  .step h3{font-size:var(--fs-title);font-weight:800;margin-bottom:6px;letter-spacing:-.4px}
+  .step h3{font-size:var(--fs-title);font-weight:800;margin-bottom:8px}
   .step p{color:var(--gray);font-size:var(--fs-body);line-height:1.62}
   .step p b{color:var(--ink)}
 
@@ -159,14 +167,14 @@
   .voice blockquote{
     font-size:var(--fs-quote);line-height:1.55;margin:clamp(22px,2.4vw,34px) 0;padding-left:clamp(18px,1.6vw,26px);border-left:3px solid var(--warm);
   }
-  .voice .becomes{background:#fff;border-radius:var(--r);padding:clamp(18px,1.8vw,28px);font-size:var(--fs-body);box-shadow:0 8px 24px rgba(120,80,0,.06)}
+  .voice .becomes{background:#fff;border-radius:var(--r-card);padding:clamp(18px,1.8vw,28px);font-size:var(--fs-body);box-shadow:0 8px 24px rgba(120,80,0,.06)}
   .voice .becomes .name{font-size:var(--fs-note);font-weight:800;color:var(--blue);display:block;margin-bottom:6px}
   .voice .after{margin-top:clamp(18px,1.8vw,26px);font-size:var(--fs-body);color:var(--gray)}
 
   .price{background:var(--ink);color:#fff}
   .price .eyebrow{color:#8FB8FF}
   .price h2{color:#fff}
-  .price-card{background:#fff;color:var(--ink);border-radius:24px;padding:28px 24px;margin-top:26px}
+  .price-card{background:#fff;color:var(--ink);border-radius:var(--r-card);padding:28px 24px;margin-top:26px}
   .price-card .day{font-family:"Gowun Batang",serif;font-size:1.9rem;font-weight:700;color:var(--blue-deep)}
   .price-card .month{color:var(--gray);font-size:.95rem;margin-bottom:18px}
   .free{list-style:none;margin:0 0 20px}
@@ -229,12 +237,11 @@
     .call-avatar::before,.call-avatar::after{display:none}
   }
   @media (min-width:720px){
-    .hero{padding:88px 0}
-    .hero h1{font-size:2.5rem}
-    .hero h1 .serif{font-size:2.7rem}
-    h2{font-size:1.85rem}
-    .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(40px,4.5vw,80px);align-items:center;max-width:1180px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
-    .call-card{padding:26px 22px 20px;margin:0}
+    /* 제목 크기는 :root 의 clamp 가 담당한다 — 여기서 고정값으로 덮지 말 것 */
+    .hero h1 .serif{font-size:1.08em}
+    .hero-grid{display:grid;grid-template-columns:1.06fr .94fr;gap:clamp(40px,4vw,88px);
+      align-items:center;width:min(94vw,1440px);margin:0 auto;padding:0 clamp(20px,2.4vw,44px)}
+    .call-card{padding:clamp(26px,2vw,34px) clamp(22px,1.8vw,30px) clamp(20px,1.6vw,26px);margin:0}
   }
   @media (max-width:719px){
     .hero-grid{max-width:780px;margin:0 auto;padding:0 clamp(20px,3vw,40px)}
@@ -245,7 +252,7 @@
   .earlybird{padding:64px 0;background:var(--paper);border-top:1px solid var(--line)}
   .eb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
     gap:clamp(14px,1.6vw,26px);margin-top:clamp(22px,2.6vw,36px)}
-  .eb-card{background:#fff;border:1px solid var(--line);border-radius:clamp(18px,1.6vw,24px);
+  .eb-card{background:#fff;border:1px solid var(--line);border-radius:var(--r-card);
     padding:clamp(22px,2.4vw,36px) clamp(18px,2vw,28px);text-align:center}
   .eb-tag{font-size:var(--fs-note) !important}
   .eb-num{font-size:clamp(2rem,2.8vw,2.7rem) !important}
@@ -261,17 +268,17 @@
   /* 가입 직후 순번 화면 */
   .cta-done.queued{background:transparent;color:inherit;font-weight:400;padding:0}
   .queue{text-align:left}
-  .queue .qcard{background:var(--blue-bg);border:1px solid #CFE2FF;border-radius:var(--r);padding:20px;text-align:center}
+  .queue .qcard{background:var(--blue-bg);border:1px solid #CFE2FF;border-radius:var(--r-card);padding:20px;text-align:center}
   .queue .qlabel{font-size:.8rem;color:var(--gray);font-weight:700}
   .queue .qnum{font-size:2.4rem;font-weight:800;color:var(--blue);letter-spacing:-1.5px;line-height:1.2}
   .queue .qnum small{font-size:1rem;font-weight:800;color:var(--ink)}
-  .queue .qprog{margin-top:14px;padding:12px 14px;background:#fff;border-radius:12px;
+  .queue .qprog{margin-top:14px;padding:12px 14px;background:#fff;border-radius:var(--r-sm);
     font-size:.88rem;font-weight:700;color:var(--ink);line-height:1.5}
   .queue .qprog b{color:var(--blue)}
   .queue .qbenefit{margin-top:12px;font-size:.86rem;color:var(--gray);line-height:1.55}
   .queue .qbenefit b{color:var(--ink)}
   .queue .qshare{display:flex;gap:8px;margin-top:14px}
-  .queue .qshare button{flex:1;border:0;border-radius:12px;padding:14px 10px;font-size:.9rem;
+  .queue .qshare button{flex:1;border:0;border-radius:var(--r-sm);padding:14px 10px;font-size:.9rem;
     font-weight:800;cursor:pointer;font-family:inherit}
   .queue .qkakao{background:#FEE500;color:#191600}
   .queue .qcopy{background:#fff;border:1px solid var(--line) !important;color:var(--ink)}
@@ -284,13 +291,13 @@
   /* 3단 요금제 (v1.1) — 화면 폭에 따라 카드가 함께 커지는 유동 스케일 */
   .plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
     gap:clamp(14px,1.6vw,26px);margin-top:clamp(26px,3vw,40px);align-items:stretch}
-  .plan{background:#fff;color:var(--ink);border-radius:clamp(20px,1.8vw,28px);
+  .plan{background:#fff;color:var(--ink);border-radius:var(--r-card);
     padding:clamp(24px,2.4vw,38px) clamp(20px,2vw,32px);display:flex;flex-direction:column;
     border:2px solid transparent;position:relative}
   .plan.best{border-color:var(--blue);box-shadow:0 16px 40px rgba(0,98,255,.22)}
   .plan .rec{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;
     font-size:clamp(.72rem,.85vw,.86rem);font-weight:800;padding:7px 16px;border-radius:999px;white-space:nowrap}
-  .plan .pname{font-size:var(--fs-title);font-weight:800;letter-spacing:-.4px}
+  .plan .pname{font-size:var(--fs-title);font-weight:800;letter-spacing:var(--ls-head)}
   .plan .pcycle{margin-top:8px;color:var(--gray);font-size:var(--fs-sub);
     min-height:2.4em;line-height:1.45}
   .plan .pprice{font-family:"Gowun Batang",serif;font-size:clamp(1.7rem,2.8vw,2.6rem);font-weight:700;
@@ -298,7 +305,7 @@
   .plan .psub{margin-top:auto;padding-top:clamp(12px,1.4vw,20px);border-top:1px dashed var(--line);
     color:var(--gray);font-size:var(--fs-note);line-height:1.65}
   .plan .psub b{color:var(--ink);white-space:nowrap}
-  .plan-common{margin-top:clamp(16px,1.8vw,26px);background:#fff;border-radius:clamp(18px,1.6vw,24px);
+  .plan-common{margin-top:clamp(16px,1.8vw,26px);background:#fff;border-radius:var(--r-card);
     padding:clamp(18px,2vw,30px) clamp(20px,2.2vw,34px);color:var(--ink)}
   .plan-common .pc-t{font-size:var(--fs-sub);font-weight:800;color:var(--gray);margin-bottom:12px}
   .plan-common ul{list-style:none;margin:0;display:flex;flex-wrap:wrap;gap:10px clamp(18px,2.4vw,36px)}
@@ -324,15 +331,15 @@
 
   /* 3단계 섹션 — 우측 앱 화면 목업 (피그마 디자인 시스템 실화면) */
   .steps-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(32px,4vw,72px);align-items:center}
-  .steps-visual{position:relative;height:clamp(560px,48vw,720px);display:flex;align-items:center;justify-content:center}
+  .steps-visual{position:relative;height:clamp(560px,46vw,720px);display:flex;align-items:center;justify-content:center}
   .steps-visual .ph{position:absolute;border-radius:clamp(18px,1.7vw,26px);display:block;
-    width:clamp(138px,12.2vw,186px);
-    box-shadow:0 22px 52px rgba(21,42,102,.16);border:1px solid rgba(11,42,91,.08);background:#fff}
+    width:clamp(138px,12.2vw,196px);
+    box-shadow:var(--sh-3);border:1px solid rgba(11,42,91,.08);background:#fff}
   .steps-visual .p1{transform:translate(-92%,-34%) rotate(-10deg);opacity:.97;z-index:1}
   .steps-visual .p2{transform:translate(30%,-40%) rotate(5deg);z-index:3;
-    box-shadow:0 30px 66px rgba(21,42,102,.22)}
+    box-shadow:var(--sh-3)}
   .steps-visual .p3{transform:translate(-58%,38%) rotate(-5deg);z-index:4;
-    box-shadow:0 30px 66px rgba(21,42,102,.22)}
+    box-shadow:var(--sh-3)}
   .steps-visual .p4{transform:translate(74%,32%) rotate(9deg);opacity:.97;z-index:2}
   @media (max-width:900px){
     .steps-grid{grid-template-columns:1fr;gap:36px}
@@ -357,10 +364,10 @@
   .define h2{margin-top:10px}
   .define-lead{margin-top:18px;color:var(--gray);font-size:var(--fs-body);line-height:1.85;max-width:44em}
   .define-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,1.8vw,24px);margin-top:clamp(28px,3vw,44px)}
-  .dcard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:clamp(22px,2.2vw,30px)}
+  .dcard{background:#fff;border:1px solid var(--line);border-radius:var(--r-card);padding:clamp(22px,2.2vw,30px)}
   .dtag{display:inline-block;font-size:var(--fs-note);font-weight:700;color:var(--blue);
     background:rgba(0,98,255,.08);border-radius:999px;padding:5px 12px}
-  .dbig{margin-top:14px;font-size:var(--fs-title);font-weight:800;letter-spacing:-.4px}
+  .dbig{margin-top:14px;font-size:var(--fs-title);font-weight:800;letter-spacing:var(--ls-head)}
   .dsub{margin-top:10px;color:var(--gray);font-size:var(--fs-note);line-height:1.8}
   .define-note{margin-top:clamp(20px,2.2vw,28px);color:var(--gray);font-size:var(--fs-note);line-height:1.8}
 
@@ -383,12 +390,12 @@
   .alert-kinds [data-k="snow"] .k{background:#5B6472}
   .alert-note{margin-top:clamp(20px,2.2vw,26px);color:var(--gray);font-size:var(--fs-note);line-height:1.8}
 
-  .wcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(20px,2.2vw,28px);
-    box-shadow:0 26px 60px rgba(21,42,102,.10)}
+  .wcard{background:#fff;border:1px solid var(--line);border-radius:var(--r-card);padding:clamp(20px,2.2vw,28px);
+    box-shadow:var(--sh-3)}
   .wtop{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px dashed var(--line)}
   .wbadge{font-weight:800;font-size:var(--fs-note);color:#fff;background:#E4572E;border-radius:999px;padding:6px 14px}
   .wloc{font-size:var(--fs-note);color:var(--gray)}
-  .wbub{margin-top:12px;border-radius:16px;padding:14px 16px;font-size:var(--fs-sub);line-height:1.7}
+  .wbub{margin-top:12px;border-radius:var(--r-card);padding:14px 16px;font-size:var(--fs-sub);line-height:1.7}
   .wbub .name{display:block;font-size:var(--fs-note);font-weight:800;margin-bottom:4px}
   .wbub.bg{background:var(--blue-bg);color:var(--ink)}
   .wbub.bg .name{color:var(--blue)}
@@ -398,6 +405,83 @@
     color:var(--gray);font-size:var(--fs-note);line-height:1.7}
   @media (max-width:900px){
     .alert-grid{grid-template-columns:1fr;gap:36px}
+  }
+
+  /* 히어로 스테이지 — 실제 통화 장면 3화면 (delight.ai 형식) */
+  .hero-grid:has(+ .stage-wrap){grid-template-columns:1.12fr .88fr;align-items:start}
+  .stage-wrap{width:min(94vw,1440px);margin:clamp(36px,3.6vw,64px) auto 0;padding:0 clamp(20px,2.4vw,44px)}
+  .stage{position:relative;border-radius:var(--r-card);overflow:hidden;
+    height:clamp(380px,33vw,540px);
+    background:
+      radial-gradient(120% 90% at 12% 18%, #DCEAFF 0%, rgba(220,234,255,0) 62%),
+      radial-gradient(90% 80% at 88% 24%, #FFE6C9 0%, rgba(255,230,201,0) 58%),
+      radial-gradient(110% 100% at 62% 96%, #CFE0FF 0%, rgba(207,224,255,0) 60%),
+      linear-gradient(155deg,#EAF2FF 0%,#F6F1FF 52%,#FFF3E6 100%)}
+  .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(100% 70% at 50% 0%, rgba(255,255,255,.5), transparent 60%)}
+  .scenes{position:absolute;inset:0}
+  .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    opacity:0;transform:scale(.985);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
+  .scene.on{opacity:1;transform:none;pointer-events:auto}
+  @media (min-width:901px){.scene{padding-left:min(34%,430px)}}
+  .scene .sph{max-height:78%;width:auto;border-radius:clamp(18px,1.6vw,26px);
+    box-shadow:var(--sh-3);border:1px solid rgba(11,42,91,.08);background:#fff}
+  .scene .call-card{position:static;width:min(88%,560px);margin:0;box-shadow:var(--sh-3)}
+  .scap{position:absolute;left:clamp(20px,2.2vw,34px);top:clamp(20px,2.2vw,34px);max-width:min(58%,420px)}
+  .scap b{display:block;font-size:var(--fs-title);font-weight:800;letter-spacing:var(--ls-head);color:var(--ink)}
+  .scap span{display:block;margin-top:6px;font-size:var(--fs-note);color:var(--gray)}
+
+  .thumbs{position:absolute;left:clamp(20px,2.2vw,34px);bottom:clamp(20px,2.2vw,34px);
+    display:flex;gap:10px}
+  .thumb{position:relative;width:clamp(64px,6.4vw,96px);aspect-ratio:4/3;padding:0;border:0;cursor:pointer;
+    border-radius:var(--r-sm);overflow:hidden;background:#fff;
+    box-shadow:var(--sh-1);outline:2px solid transparent;transition:outline-color .2s ease,transform .2s ease}
+  .thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;display:block;opacity:.95}
+  .thumb span{position:absolute;left:0;right:0;bottom:0;padding:4px 0 5px;
+    font-size:.68rem;font-weight:700;color:#fff;background:rgba(16,24,40,.55)}
+  .thumb:hover{transform:translateY(-2px)}
+  .thumb.on{outline-color:var(--blue)}
+  @media (max-width:900px){
+    .stage{height:clamp(340px,86vw,440px)}
+    .scap{position:static;margin:0;padding:0}
+    .scene{flex-direction:column;gap:14px;padding:clamp(18px,4vw,26px) clamp(18px,4vw,26px) 92px}
+    .scene .sph{max-height:62%}
+    .thumbs{left:50%;transform:translateX(-50%)}
+  }
+
+  /* 히어로 2열 — 좌 제목 / 우 설명·CTA (비주얼은 아래 스테이지) */
+  .hero-side{padding-top:clamp(6px,1vw,14px)}
+  .hero-side .cta-box{margin-top:clamp(18px,1.8vw,26px)}
+  @media (min-width:900px){
+    .hero-grid{grid-template-columns:1.14fr .86fr;align-items:start;gap:clamp(40px,4vw,88px)}
+  }
+  @media (max-width:899px){
+    .hero-side{padding-top:0}
+  }
+
+  /* 기상 특보 — 등장 애니메이션
+     기본 상태는 '보임'. .on 이 붙을 때만 backwards 로 시작 프레임을 적용한다.
+     관찰자가 실패해도 내용이 사라지지 않는다. */
+  @keyframes wbIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes wbadgePulse{0%,100%{box-shadow:0 0 0 0 rgba(228,87,46,.45)}60%{box-shadow:0 0 0 10px rgba(228,87,46,0)}}
+  @keyframes kindIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+
+  .alert-visual.on .wbub{animation:wbIn .52s cubic-bezier(.2,.7,.3,1) backwards}
+  .alert-visual.on .wbub:nth-of-type(1){animation-delay:.20s}
+  .alert-visual.on .wbub:nth-of-type(2){animation-delay:.85s}
+  .alert-visual.on .wbub:nth-of-type(3){animation-delay:1.45s}
+  .alert-visual.on .wfoot{animation:wbIn .5s ease 1.95s backwards}
+  .alert-visual.on .wbadge{animation:wbadgePulse 2.4s ease-out .1s 3}
+
+  .alert-col.on .alert-kinds li{animation:kindIn .44s ease backwards}
+  .alert-col.on .alert-kinds li:nth-child(1){animation-delay:.10s}
+  .alert-col.on .alert-kinds li:nth-child(2){animation-delay:.20s}
+  .alert-col.on .alert-kinds li:nth-child(3){animation-delay:.30s}
+  .alert-col.on .alert-kinds li:nth-child(4){animation-delay:.40s}
+
+  @media (prefers-reduced-motion:reduce){
+    .alert-visual.on .wbub,.alert-visual.on .wfoot,
+    .alert-visual.on .wbadge,.alert-col.on .alert-kinds li{animation:none !important}
   }
 
 </style>
@@ -422,6 +506,8 @@
         오늘도 부모님께<br>전화 못 하셨나요?
         <span class="serif">방글이가 대신 걸었어요.</span>
       </h1>
+    </div>
+    <div class="hero-side">
       <p class="lead">AI 방글이가 매일 부모님께 안부전화를 걸고,<br>결과를 당신에게 알려드립니다.</p>
       <ul class="hero-facts">
         <li><b>부모님은 받기만 하세요</b><span>가입도 조작도 없이, 쓰시던 폰 그대로</span></li>
@@ -435,27 +521,56 @@
           <input id="email-hero" type="email" required placeholder="이메일을 남겨주세요">
           <button class="btn" type="submit">얼리버드 대기명단 서기</button>
         </form>
-        <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요 😊</div>
+        <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요.</div>
         <p class="cta-sub">이번 추석, 부모님 폰에 가장 먼저 연결됩니다 · 결제카드 없이</p>
       </div>
     </div>
-    <div class="call-card" id="callDemo" aria-label="방글이 통화 예시">
-      <div class="call-head">
-        <div class="call-avatar">방</div>
-        <div>
-          <div class="who">어머니</div>
-          <div class="status">● 안부전화 연결됨</div>
+  </div>
+
+  <!-- 스테이지 — 실제 통화 장면 3화면 -->
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+      <div class="scenes">
+        <div class="scene on" data-scene="0">
+          <img class="sph" src="img/app-incoming-call.png"
+               alt="부모님 폰 화면 — AI 방글이의 안부 전화가 걸려온 모습">
+          <div class="scap"><b>전화가 걸려옵니다</b><span>정해진 시간, 방글이가 부모님께 먼저</span></div>
+        </div>
+        <div class="scene" data-scene="1">
+        <div class="call-card" id="callDemo" aria-label="방글이 통화 예시">
+          <div class="call-head">
+            <div class="call-avatar">방</div>
+            <div>
+              <div class="who">어머니</div>
+              <div class="status">● 안부전화 연결됨</div>
+            </div>
+          </div>
+          <div class="bubble banggle"><span class="name">방글이</span>어머니, 안녕하세요! 아드님이 보내서 안부 전화 드렸어요~ 저 방글이예요. 점심은 드셨어요?</div>
+          <div class="bubble mom"><span class="name">어머니</span>아이고 그려, 먹었지. 오늘은 무릎이 쪼끔 쑤시네…</div>
+          <div class="bubble banggle"><span class="name">방글이</span>무릎이 쑤시셨구나. 언제부터 그러셨어요?</div>
+          <div class="notify">
+            <span class="bell" aria-hidden="true"></span>
+            <div class="t">
+              <span class="app">AI방글이 · 방금</span>
+              오늘 어머님 통화 완료 · <b>정상</b><br>무릎 통증 언급이 있어 알려드려요
+            </div>
+          </div>
+        </div>
+          <div class="scap"><b>대화가 이어집니다</b><span>대답을 알아듣고 되물어봅니다</span></div>
+        </div>
+        <div class="scene" data-scene="2">
+          <img class="sph" src="img/app-sos.png"
+               alt="부모님 폰의 긴급 연락 화면 — 보호자와 119로 바로 연결되는 버튼">
+          <div class="scap"><b>위급할 땐 SOS</b><span>버튼 하나로 등록된 가족 모두에게</span></div>
         </div>
       </div>
-      <div class="bubble banggle"><span class="name">방글이</span>어머니, 안녕하세요! 아드님이 보내서 안부 전화 드렸어요~ 저 방글이예요. 점심은 드셨어요?</div>
-      <div class="bubble mom"><span class="name">어머니</span>아이고 그려, 먹었지. 오늘은 무릎이 쪼끔 쑤시네…</div>
-      <div class="bubble banggle"><span class="name">방글이</span>무릎이 쑤시셨구나. 언제부터 그러셨어요?</div>
-      <div class="notify">
-        <span class="bell">🔔</span>
-        <div class="t">
-          <span class="app">AI방글이 · 방금</span>
-          오늘 어머님 통화 완료 · <b>정상</b><br>무릎 통증 언급이 있어 알려드려요
-        </div>
+      <div class="thumbs" role="tablist" aria-label="통화 장면 보기">
+        <button class="thumb on" type="button" role="tab" aria-selected="true" data-go="0">
+          <img src="img/app-incoming-call.png" alt=""><span>수신</span></button>
+        <button class="thumb" type="button" role="tab" aria-selected="false" data-go="1">
+          <img src="img/mom-profile.png" alt=""><span>통화</span></button>
+        <button class="thumb" type="button" role="tab" aria-selected="false" data-go="2">
+          <img src="img/app-sos.png" alt=""><span>SOS</span></button>
       </div>
     </div>
   </div>
@@ -692,7 +807,7 @@
           <input id="email-price" type="email" required placeholder="이메일을 남겨주세요">
           <button class="btn" type="submit">얼리버드 대기명단 서기</button>
         </form>
-        <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요 😊</div>
+        <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요.</div>
         <p class="cta-sub">체험은 결제 정보 없이 · 언제든 버튼 하나로 해지</p>
       </div>
       <div class="paytypes">결제수단 <span>신용카드</span><span>카카오페이</span><span>네이버페이</span></div>
@@ -770,7 +885,7 @@
         <input id="email-final" type="email" required placeholder="이메일을 남겨주세요">
         <button class="btn" type="submit">얼리버드 대기명단 서기</button>
       </form>
-      <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요 😊</div>
+      <div class="cta-done">신청 완료! 출시 소식을 가장 먼저 보내드릴게요.</div>
       <p class="cta-sub">이메일만 남기면 끝 · 선착 1,000가족은 추석 전 우선 오픈</p>
     </div>
   </div>
@@ -919,5 +1034,27 @@
   }
 </script>
 <script src="preorder-form.js"></script>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage'); if(!stage) return;
+  var scenes=[].slice.call(stage.querySelectorAll('.scene'));
+  var thumbs=[].slice.call(stage.querySelectorAll('.thumb'));
+  var i=0, timer=null;
+  var reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function go(n){
+    i=(n+scenes.length)%scenes.length;
+    scenes.forEach(function(s,k){s.classList.toggle('on',k===i)});
+    thumbs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-selected',k===i)});
+  }
+  function play(){ if(reduce) return; stop(); timer=setInterval(function(){go(i+1)},4200); }
+  function stop(){ if(timer){clearInterval(timer); timer=null;} }
+  thumbs.forEach(function(b){ b.addEventListener('click',function(){go(+b.dataset.go); play();}); });
+  stage.addEventListener('mouseenter',stop);
+  stage.addEventListener('mouseleave',play);
+  document.addEventListener('visibilitychange',function(){document.hidden?stop():play()});
+  play();
+})();
+</script>
 </body>
 </html>
