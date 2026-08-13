@@ -364,15 +364,40 @@
   .dsub{margin-top:10px;color:var(--gray);font-size:var(--fs-note);line-height:1.8}
   .define-note{margin-top:clamp(20px,2.2vw,28px);color:var(--gray);font-size:var(--fs-note);line-height:1.8}
 
-  /* 신뢰 */
-  .trust{padding:clamp(64px,7vw,110px) 0}
-  .trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,1.8vw,24px);margin-top:clamp(28px,3vw,44px)}
-  .tcard{border:1px solid var(--line);border-radius:20px;padding:clamp(22px,2.2vw,30px);background:#fff}
-  .tbig{font-size:var(--fs-title);font-weight:800;letter-spacing:-.4px}
-  .tsub{margin-top:12px;color:var(--gray);font-size:var(--fs-note);line-height:1.85}
-  .tlink{display:inline-block;margin-top:14px;font-weight:700;color:var(--blue);font-size:var(--fs-note)}
   @media (max-width:900px){
-    .define-grid,.trust-grid{grid-template-columns:1fr}
+    .define-grid{grid-template-columns:1fr}
+  }
+
+  /* 기상 특보 */
+  .alert{padding:clamp(64px,7vw,110px) 0;background:var(--paper)}
+  .alert-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(32px,4vw,72px);align-items:center}
+  .alert h2{margin-top:10px}
+  .alert-lead{margin-top:16px;color:var(--gray);font-size:var(--fs-body);line-height:1.85;max-width:34em}
+  .alert-kinds{list-style:none;margin:clamp(22px,2.4vw,30px) 0 0;padding:0;display:grid;gap:10px}
+  .alert-kinds li{display:flex;align-items:center;gap:12px;font-size:var(--fs-sub);color:var(--gray)}
+  .alert-kinds .k{flex:none;min-width:58px;text-align:center;font-weight:800;font-size:var(--fs-note);
+    color:#fff;border-radius:999px;padding:6px 12px}
+  .alert-kinds [data-k="heat"] .k{background:#E4572E}
+  .alert-kinds [data-k="cold"] .k{background:#2E6BE4}
+  .alert-kinds [data-k="rain"] .k{background:#1F8A70}
+  .alert-kinds [data-k="snow"] .k{background:#5B6472}
+  .alert-note{margin-top:clamp(20px,2.2vw,26px);color:var(--gray);font-size:var(--fs-note);line-height:1.8}
+
+  .wcard{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(20px,2.2vw,28px);
+    box-shadow:0 26px 60px rgba(21,42,102,.10)}
+  .wtop{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px dashed var(--line)}
+  .wbadge{font-weight:800;font-size:var(--fs-note);color:#fff;background:#E4572E;border-radius:999px;padding:6px 14px}
+  .wloc{font-size:var(--fs-note);color:var(--gray)}
+  .wbub{margin-top:12px;border-radius:16px;padding:14px 16px;font-size:var(--fs-sub);line-height:1.7}
+  .wbub .name{display:block;font-size:var(--fs-note);font-weight:800;margin-bottom:4px}
+  .wbub.bg{background:var(--blue-bg);color:var(--ink)}
+  .wbub.bg .name{color:var(--blue)}
+  .wbub.mom{background:var(--warm-bg);color:var(--ink);margin-left:clamp(16px,3vw,44px)}
+  .wbub.mom .name{color:#B4770B}
+  .wfoot{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);
+    color:var(--gray);font-size:var(--fs-note);line-height:1.7}
+  @media (max-width:900px){
+    .alert-grid{grid-template-columns:1fr;gap:36px}
   }
 
 </style>
@@ -455,7 +480,8 @@
         <span class="dtag">방글이가 하는 일</span>
         <p class="dbig">매일 안부를 여쭙는다</p>
         <p class="dsub">정해진 시간에 전화를 걸어 식사·수면·컨디션·기분을 대화로 여쭙고,
-           부모님 대답에 맞춰 이어서 이야기합니다.</p>
+           부모님 대답에 맞춰 이어서 이야기합니다.
+           기상 특보가 있는 날은 그 내용까지 인사말에 담습니다.</p>
       </div>
       <div class="dcard">
         <span class="dtag">가족이 받는 것</span>
@@ -526,6 +552,41 @@
   </div>
 </section>
 
+<!-- 기상 특보 -->
+<section class="alert">
+  <div class="wrap-wide">
+   <div class="alert-grid">
+    <div class="alert-col reveal">
+      <span class="eyebrow">오늘의 날씨까지</span>
+      <h2>폭염경보가 뜬 날,<br><b>인사말부터 달라집니다</b></h2>
+      <p class="alert-lead">방글이는 전화를 걸기 전에 <b>기상청 특보</b>를 먼저 확인합니다.
+         부모님이 계신 지역에 특보가 있으면, 그날 <b>인사말에 담아</b> 알려드립니다.</p>
+      <p class="alert-lead">전화가 한 통 더 오는 것이 아닙니다.
+         <b>늘 받으시던 그 통화가, 오늘 날씨에 맞춰집니다.</b></p>
+      <ul class="alert-kinds">
+        <li data-k="heat"><span class="k">폭염</span>물 자주 드시고 한낮 외출은 피하시라고</li>
+        <li data-k="cold"><span class="k">한파</span>따뜻하게 입고 나가시라고</li>
+        <li data-k="rain"><span class="k">호우</span>비 많이 오니 조심히 다니시라고</li>
+        <li data-k="snow"><span class="k">대설</span>길이 미끄러우니 조심하시라고</li>
+      </ul>
+      <p class="alert-note">기상청이 발표한 특보를 <b>부모님이 계신 지역 기준</b>으로 확인합니다.
+         특보가 없는 날은 평소와 같은 안부 인사로 시작합니다.</p>
+    </div>
+
+    <div class="alert-visual reveal">
+      <div class="wcard">
+        <div class="wtop"><span class="wbadge">폭염경보</span><span class="wloc">부모님 지역 · 오늘</span></div>
+        <div class="wbub bg"><span class="name">방글이</span>어머니, 안녕하세요! 오늘 그쪽에 <b>폭염경보</b>가 내렸대요.
+          낮에는 되도록 밖에 나가지 마시고, 물 자주 드셔야 해요.</div>
+        <div class="wbub mom"><span class="name">어머니</span>아이고, 그렇게 덥대? 알았어. 오늘은 그냥 집에 있어야겠네.</div>
+        <div class="wbub bg"><span class="name">방글이</span>네, 그게 좋겠어요. 그런데 점심은 드셨어요?</div>
+        <p class="wfoot">특보 안내 뒤에는 <b>평소처럼</b> 안부 대화가 이어집니다.</p>
+      </div>
+    </div>
+   </div>
+  </div>
+</section>
+
 <!-- 비교 -->
 <section class="compare">
   <div class="wrap reveal">
@@ -540,6 +601,7 @@
           <tr><td>이상 징후 알림</td><td class="me">실시간 푸시</td><td>리포트</td><td class="x">복지담당자만</td></tr>
           <tr><td>응급 SOS</td><td class="me">있음</td><td class="x">없음</td><td class="x">없음</td></tr>
           <tr><td>내가 남긴 한마디</td><td class="me">통화에 삽입</td><td class="x">없음</td><td class="x">없음</td></tr>
+          <tr><td>기상 특보 안내</td><td class="me">통화에 자동 반영</td><td class="x">없음</td><td class="x">없음</td></tr>
           <tr><td>가족 함께 보기</td><td class="me">3명 무료</td><td>서비스별 상이</td><td class="x">없음</td></tr>
         </tbody>
       </table>
@@ -548,33 +610,6 @@
   </div>
 </section>
 
-<!-- 신뢰 -->
-<section class="trust">
-  <div class="wrap reveal">
-    <span class="eyebrow">누가 만드나요</span>
-    <h2>안부전화를 처음<br>만드는 회사가 아닙니다</h2>
-    <div class="trust-grid">
-      <div class="tcard">
-        <p class="tbig">AI 영실이</p>
-        <p class="tsub">크래프트가 만든 <b>지자체·복지기관용 AI 안부전화</b>가 이미 매일 운영되고 있습니다.
-           혼자 계신 어르신께 전화를 걸고, 위험 신호를 담당자에게 연결하는 일을 해온 기술입니다.</p>
-        <a class="tlink" href="index.html#ai">AI 영실이 보기 →</a>
-      </div>
-      <div class="tcard">
-        <p class="tbig">방글이는 가정용</p>
-        <p class="tsub">같은 음성 AI 위에, 이번에는 <b>가족을 위해</b> 다시 만들었습니다.
-           담당자가 아니라 <b>자녀에게</b> 알림이 가고, 통화에 <b>가족의 한마디</b>를 담을 수 있습니다.</p>
-      </div>
-      <div class="tcard">
-        <p class="tbig">주식회사 크래프트</p>
-        <p class="tsub">대구광역시 동구 동대구로 465, 712호<br>
-           사업자등록번호 884-81-02216<br>
-           통신판매업신고 제2021-대구동구-1233호<br>
-           대표번호 1877-1979</p>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- 안부멘트 -->
 <section class="voice">
@@ -703,6 +738,10 @@
       <details>
         <summary>부모님이 하실 일이 정말 없나요?</summary>
         <p>네. 연결을 한 번 해드린 뒤에는 <b>걸려오는 전화를 받으시는 것</b>이 전부입니다. 앱을 여실 일도, 버튼을 누르실 일도, 무언가를 기억하실 일도 없습니다. 다만 위급할 때 쓰실 SOS 버튼은 한 번 알려드리시길 권합니다.</p>
+      </details>
+      <details>
+        <summary>특보가 뜨면 전화가 더 오나요?</summary>
+        <p>아니요. <b>전화 횟수는 그대로</b>입니다. 늘 받으시던 그 통화의 인사말에 오늘 특보 내용이 담기는 방식이라, 부모님 입장에서는 평소와 똑같은 한 통의 안부전화입니다. 요금이 더 붙지도 않습니다.</p>
       </details>
       <details>
         <summary>통화 시간에 제한이 있나요?</summary>
