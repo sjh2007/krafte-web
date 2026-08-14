@@ -423,7 +423,7 @@
   .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     opacity:0;transform:scale(.985);transition:opacity .5s ease,transform .5s ease;pointer-events:none}
   .scene.on{opacity:1;transform:none;pointer-events:auto}
-  @media (min-width:901px){.scene{padding-left:min(34%,430px)}}
+  
   .scene .sph{height:86%;width:auto;border-radius:clamp(20px,1.8vw,30px);
     box-shadow:var(--sh-3);border:1px solid rgba(11,42,91,.08);background:#fff}
   .scene .call-card{position:static;width:min(92%,640px);margin:0;box-shadow:var(--sh-3)}
@@ -471,9 +471,9 @@
   @keyframes kindIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
 
   .alert-visual.on .wbub{animation:wbIn .52s cubic-bezier(.2,.7,.3,1) backwards}
-  .alert-visual.on .wbub:nth-of-type(1){animation-delay:.20s}
-  .alert-visual.on .wbub:nth-of-type(2){animation-delay:.85s}
-  .alert-visual.on .wbub:nth-of-type(3){animation-delay:1.45s}
+  .alert-visual.on .wbub{animation-delay:.20s}
+  .alert-visual.on .wbub ~ .wbub{animation-delay:.85s}
+  .alert-visual.on .wbub ~ .wbub ~ .wbub{animation-delay:1.45s}
   .alert-visual.on .wfoot{animation:wbIn .5s ease 1.95s backwards}
   .alert-visual.on .wbadge{animation:wbadgePulse 2.4s ease-out .1s 3}
 
@@ -486,6 +486,67 @@
   @media (prefers-reduced-motion:reduce){
     .alert-visual.on .wbub,.alert-visual.on .wfoot,
     .alert-visual.on .wbadge,.alert-col.on .alert-kinds li{animation:none !important}
+  }
+
+  /* 스테이지 2단 — 좌: 캡션+썸네일 / 우: 화면 */
+  .stage{display:grid;grid-template-columns:minmax(240px,31%) 1fr;align-items:center;
+    gap:clamp(20px,2.4vw,40px);padding:clamp(24px,2.6vw,44px)}
+  .stage-side{display:flex;flex-direction:column;gap:clamp(22px,2.6vw,38px);z-index:2}
+  .caps{position:relative;display:grid}
+  .cap{grid-area:1/1;opacity:0;transform:translateY(8px);
+    transition:opacity .45s ease,transform .45s ease;pointer-events:none}
+  .cap.on{opacity:1;transform:none}
+  .cap b{display:block;font-size:var(--fs-title);font-weight:800;letter-spacing:var(--ls-head);color:var(--ink)}
+  .cap span{display:block;margin-top:8px;font-size:var(--fs-note);color:var(--gray);line-height:1.7}
+  .scenes{position:relative;height:100%;min-height:clamp(320px,30vw,520px)}
+  .thumbs{position:static;display:flex;gap:clamp(10px,1vw,14px)}
+
+  /* 화면 오버레이 공통 */
+  .sph-wrap{position:relative;display:block;height:88%;line-height:0}
+  .sph-wrap .sph{height:100%;width:auto}
+
+  /* 수신 — 캐릭터 원에 펄스 링 + 기기 흔들림 */
+  @keyframes ringPulse{0%{transform:scale(1);opacity:.55}70%{transform:scale(1.85);opacity:0}100%{opacity:0}}
+  @keyframes phoneRing{0%,72%,100%{transform:rotate(0)}76%{transform:rotate(-1.4deg)}
+    80%{transform:rotate(1.4deg)}84%{transform:rotate(-1deg)}88%{transform:rotate(.7deg)}}
+  .ring-host .ring{position:absolute;left:24.7%;top:19.1%;width:50%;aspect-ratio:1;
+    border-radius:50%;border:2.5px solid var(--blue);opacity:0;pointer-events:none}
+  .scene.on .ring-host .ring{animation:ringPulse 2.1s ease-out infinite}
+  .scene.on .ring-host .r2{animation-delay:.7s}
+  .scene.on .ring-host{animation:phoneRing 2.1s ease-in-out infinite}
+
+  /* SOS — 연락처 3개 순차 점등 */
+  @keyframes sosOn{0%{opacity:0;transform:scale(.98)}18%{opacity:1;transform:none}
+    62%{opacity:1}100%{opacity:0}}
+  .sos-host .sosbar{position:absolute;left:5.5%;width:89%;height:11.6%;border-radius:10px;
+    opacity:0;pointer-events:none;
+    box-shadow:0 0 0 2.5px var(--blue), 0 8px 20px rgba(0,98,255,.28)}
+  .sos-host .s1{top:20.4%}
+  .sos-host .s2{top:33.9%;box-shadow:0 0 0 2.5px #16A34A, 0 8px 20px rgba(22,163,74,.28)}
+  .sos-host .s3{top:47.1%}
+  .scene.on .sos-host .sosbar{animation:sosOn 3.6s ease-in-out infinite}
+  .scene.on .sos-host .s2{animation-delay:.5s}
+  .scene.on .sos-host .s3{animation-delay:1s}
+
+  /* 통화 — 말풍선 순차 등장 */
+  @keyframes bubIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .scene.on .call-card .bubble{animation:bubIn .5s cubic-bezier(.2,.7,.3,1) both}
+  .scene.on .call-card .bubble{animation-delay:.15s}
+  .scene.on .call-card .bubble ~ .bubble{animation-delay:.85s}
+  .scene.on .call-card .bubble ~ .bubble ~ .bubble{animation-delay:1.55s}
+  .scene.on .call-card .notify{animation:bubIn .5s ease 2.2s both}
+
+  @media (max-width:900px){
+    .stage{grid-template-columns:1fr;align-items:start;gap:18px}
+    .stage-side{order:2;gap:16px}
+    .scenes{order:1;min-height:0;height:auto}
+    .thumbs{justify-content:center}
+    .caps{text-align:center}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .scene.on .ring-host,.scene.on .ring-host .ring,
+    .scene.on .sos-host .sosbar,.scene.on .call-card .bubble,
+    .scene.on .call-card .notify{animation:none !important}
   }
 
 </style>
@@ -534,12 +595,30 @@
   <!-- 스테이지 — 실제 통화 장면 3화면 -->
   <div class="stage-wrap">
     <div class="stage" id="stage">
+      <div class="stage-side">
+        <div class="caps">
+          <div class="cap on"><b>전화가 걸려옵니다</b><span>정해진 시간, 방글이가 부모님께 먼저</span></div>
+          <div class="cap"><b>대화가 이어집니다</b><span>대답을 알아듣고 되물어봅니다</span></div>
+          <div class="cap"><b>위급할 땐 SOS</b><span>버튼 하나로 등록된 가족 모두에게</span></div>
+        </div>
+        <div class="thumbs" role="tablist" aria-label="통화 장면 보기">
+          <button class="thumb on" type="button" role="tab" aria-selected="true" data-go="0">
+            <img src="img/app-incoming-call.png" alt=""><span>수신</span></button>
+          <button class="thumb" type="button" role="tab" aria-selected="false" data-go="1">
+            <img src="img/mom-profile.png" alt=""><span>통화</span></button>
+          <button class="thumb" type="button" role="tab" aria-selected="false" data-go="2">
+            <img src="img/app-sos.png" alt=""><span>SOS</span></button>
+        </div>
+      </div>
       <div class="scenes">
         <div class="scene on" data-scene="0">
-          <img class="sph" src="img/app-incoming-call.png"
-               alt="부모님 폰 화면 — AI 방글이의 안부 전화가 걸려온 모습">
-          <div class="scap"><b>전화가 걸려옵니다</b><span>정해진 시간, 방글이가 부모님께 먼저</span></div>
-        </div>
+          <div class="sph-wrap ring-host">
+            <img class="sph" src="img/app-incoming-call.png"
+                 alt="부모님 폰 화면 — AI 방글이의 안부 전화가 걸려온 모습">
+            <span class="ring r1" aria-hidden="true"></span>
+            <span class="ring r2" aria-hidden="true"></span>
+          </div>
+                  </div>
         <div class="scene" data-scene="1">
         <div class="call-card" id="callDemo" aria-label="방글이 통화 예시">
           <div class="call-head">
@@ -560,21 +639,16 @@
             </div>
           </div>
         </div>
-          <div class="scap"><b>대화가 이어집니다</b><span>대답을 알아듣고 되물어봅니다</span></div>
-        </div>
+                  </div>
         <div class="scene" data-scene="2">
-          <img class="sph" src="img/app-sos.png"
-               alt="부모님 폰의 긴급 연락 화면 — 보호자와 119로 바로 연결되는 버튼">
-          <div class="scap"><b>위급할 땐 SOS</b><span>버튼 하나로 등록된 가족 모두에게</span></div>
-        </div>
-      </div>
-      <div class="thumbs" role="tablist" aria-label="통화 장면 보기">
-        <button class="thumb on" type="button" role="tab" aria-selected="true" data-go="0">
-          <img src="img/app-incoming-call.png" alt=""><span>수신</span></button>
-        <button class="thumb" type="button" role="tab" aria-selected="false" data-go="1">
-          <img src="img/mom-profile.png" alt=""><span>통화</span></button>
-        <button class="thumb" type="button" role="tab" aria-selected="false" data-go="2">
-          <img src="img/app-sos.png" alt=""><span>SOS</span></button>
+          <div class="sph-wrap sos-host">
+            <img class="sph" src="img/app-sos.png"
+                 alt="부모님 폰의 긴급 연락 화면 — 보호자와 119로 바로 연결되는 버튼">
+            <span class="sosbar s1" aria-hidden="true"></span>
+            <span class="sosbar s2" aria-hidden="true"></span>
+            <span class="sosbar s3" aria-hidden="true"></span>
+          </div>
+                  </div>
       </div>
     </div>
   </div>
@@ -1044,11 +1118,13 @@
   var stage=document.getElementById('stage'); if(!stage) return;
   var scenes=[].slice.call(stage.querySelectorAll('.scene'));
   var thumbs=[].slice.call(stage.querySelectorAll('.thumb'));
+  var caps=[].slice.call(stage.querySelectorAll('.cap'));
   var i=0, timer=null;
   var reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
   function go(n){
     i=(n+scenes.length)%scenes.length;
     scenes.forEach(function(s,k){s.classList.toggle('on',k===i)});
+    caps.forEach(function(c,k){c.classList.toggle('on',k===i)});
     thumbs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-selected',k===i)});
   }
   function play(){ if(reduce) return; stop(); timer=setInterval(function(){go(i+1)},4200); }
