@@ -433,24 +433,23 @@
 
   .thumbs{position:absolute;left:clamp(20px,2.4vw,38px);bottom:clamp(20px,2.4vw,38px);
     display:flex;gap:clamp(10px,1vw,14px)}
-  .thumb{position:relative;width:clamp(84px,8vw,124px);aspect-ratio:3/4;padding:0;border:0;cursor:pointer;
+  .thumb{position:relative;width:clamp(100px,9.8vw,152px);aspect-ratio:3/4;padding:0;border:0;cursor:pointer;
     border-radius:var(--r-sm);overflow:hidden;background:#fff;
     box-shadow:var(--sh-2);outline:2.5px solid transparent;outline-offset:2px;
     transition:outline-color .2s ease,transform .2s ease}
   .thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;display:block;opacity:.95}
-  .thumb span{position:absolute;left:0;right:0;bottom:0;padding:7px 0 8px;
-    font-size:.8rem;font-weight:800;letter-spacing:-.01em;color:#fff;
+  .thumb span{position:absolute;left:0;right:0;bottom:0;padding:9px 0 10px;
+    font-size:.92rem;font-weight:800;letter-spacing:-.01em;color:#fff;
     background:linear-gradient(180deg,rgba(16,24,40,0),rgba(16,24,40,.72) 42%)}
   .thumb:hover{transform:translateY(-3px)}
   .thumb.on{outline-color:var(--blue)}
   @media (max-width:900px){
-    .stage{height:clamp(430px,110vw,560px)}
+    .stage{height:auto}
     .scap{position:static;margin:0;padding:0}
-    .scene{flex-direction:column;gap:14px;padding:clamp(18px,4vw,26px) clamp(18px,4vw,26px) 118px}
-    .scene .sph{height:auto;max-height:68%}
-    .thumb{width:min(18vw,74px)}
-    .thumb span{font-size:.7rem;padding:5px 0 6px}
-    .thumbs{left:50%;transform:translateX(-50%)}
+    .scene{position:relative;inset:auto;padding:0;display:none}
+    .scene.on{display:flex}
+    .scene .call-card{width:100%}
+
   }
 
   /* 히어로 2열 — 좌 제목 / 우 설명·CTA (비주얼은 아래 스테이지) */
@@ -489,15 +488,17 @@
   }
 
   /* 스테이지 2단 — 좌: 캡션+썸네일 / 우: 화면 */
-  .stage{display:grid;grid-template-columns:minmax(240px,31%) 1fr;align-items:center;
-    gap:clamp(20px,2.4vw,40px);padding:clamp(24px,2.6vw,44px)}
+  .stage{display:grid;grid-template-columns:minmax(300px,40%) 1fr;align-items:center;
+    gap:clamp(24px,2.8vw,52px);padding:clamp(26px,3vw,52px)}
   .stage-side{display:flex;flex-direction:column;gap:clamp(22px,2.6vw,38px);z-index:2}
   .caps{position:relative;display:grid}
   .cap{grid-area:1/1;opacity:0;transform:translateY(8px);
     transition:opacity .45s ease,transform .45s ease;pointer-events:none}
   .cap.on{opacity:1;transform:none}
-  .cap b{display:block;font-size:var(--fs-title);font-weight:800;letter-spacing:var(--ls-head);color:var(--ink)}
-  .cap span{display:block;margin-top:8px;font-size:var(--fs-note);color:var(--gray);line-height:1.7}
+  .cap b{display:block;font-size:clamp(1.35rem,2.15vw,2.1rem);font-weight:800;
+    letter-spacing:var(--ls-head);line-height:1.3;color:var(--ink)}
+  .cap span{display:block;margin-top:clamp(10px,1.1vw,16px);font-size:var(--fs-sub);
+    color:var(--gray);line-height:1.8;max-width:30em}
   .scenes{position:relative;height:100%;min-height:clamp(320px,30vw,520px)}
   .thumbs{position:static;display:flex;gap:clamp(10px,1vw,14px)}
 
@@ -537,11 +538,16 @@
   .scene.on .call-card .notify{animation:bubIn .5s ease 2.2s both}
 
   @media (max-width:900px){
-    .stage{grid-template-columns:1fr;align-items:start;gap:18px}
-    .stage-side{order:2;gap:16px}
-    .scenes{order:1;min-height:0;height:auto}
-    .thumbs{justify-content:center}
+    .stage{grid-template-columns:1fr;align-items:start;gap:clamp(18px,4vw,26px)}
+    .stage-side{order:2;gap:clamp(16px,3.5vw,24px)}
+    .scenes{order:1;min-height:0;height:auto;display:flex;justify-content:center}
+    .sph-wrap{height:auto}
+    .sph-wrap .sph{height:auto;width:auto;max-height:min(62vw,340px)}
+    .thumbs{justify-content:center;gap:8px;left:auto;transform:none}
+    .thumb{width:min(21vw,86px)}
+    .thumb span{font-size:.78rem;padding:6px 0 7px}
     .caps{text-align:center}
+    .cap span{margin-left:auto;margin-right:auto}
   }
   @media (prefers-reduced-motion:reduce){
     .scene.on .ring-host,.scene.on .ring-host .ring,
@@ -597,9 +603,9 @@
     <div class="stage" id="stage">
       <div class="stage-side">
         <div class="caps">
-          <div class="cap on"><b>전화가 걸려옵니다</b><span>정해진 시간, 방글이가 부모님께 먼저</span></div>
-          <div class="cap"><b>대화가 이어집니다</b><span>대답을 알아듣고 되물어봅니다</span></div>
-          <div class="cap"><b>위급할 땐 SOS</b><span>버튼 하나로 등록된 가족 모두에게</span></div>
+          <div class="cap on"><b>전화가 걸려옵니다</b><span>정해진 시간에 방글이가 부모님께 먼저 겁니다. 부모님은 받기만 하시면 됩니다 — 앱을 여실 일도, 버튼을 누르실 일도 없습니다.</span></div>
+          <div class="cap"><b>대화가 이어집니다</b><span>정해진 질문을 읽어주는 것이 아니라, 부모님 대답을 알아듣고 되물어봅니다. 식사·수면·컨디션을 대화로 여쭙고, 이야기를 이어가시면 끊지 않습니다.</span></div>
+          <div class="cap"><b>위급할 땐 SOS</b><span>버튼 하나로 등록된 가족 모두에게 연락이 갑니다. 119도 같은 화면에서 바로 연결되고, 자녀에게는 즉시 알림이 갑니다.</span></div>
         </div>
         <div class="thumbs" role="tablist" aria-label="통화 장면 보기">
           <button class="thumb on" type="button" role="tab" aria-selected="true" data-go="0">
