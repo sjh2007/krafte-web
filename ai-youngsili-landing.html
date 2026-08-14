@@ -1156,7 +1156,7 @@ select option{color:#111}
   /* 전국 독거노인 수 — 공공데이터(보건복지부) 라이브 연동 준비
      ▼ 본인 Vercel 서버리스 프록시 경로로 교체하면 자동 갱신됩니다 (예: '/api/dokgeo').
        비워두면 위 하드코딩 값(2024년 기준)을 사용합니다. CORS/키 보안 때문에 브라우저 직접 호출은 불가. */
-  var STAT_PROXY='https://youngsili-dashboard.vercel.app/api/dokgeo';
+  var STAT_PROXY='https://youngsili-dashboard.krafte.net/api/dokgeo';
   if(STAT_PROXY){
     fetch(STAT_PROXY).then(function(r){return r.json();}).then(function(d){
       var v=parseInt(d.all||d.count||d.value,10),el=document.getElementById('statDokgeo');
