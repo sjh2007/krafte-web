@@ -24,6 +24,30 @@
     --paper:#F7FAFF;
     --warm:#F59E0B; --warm-bg:#FFF4E2;
     --ok:#16A34A; --ok-bg:#E8F7EC;
+
+    /* 확장 팔레트 — 인라인 hex 금지, 전부 여기서 정의한다 */
+    --dim:#9AA1AD;            /* 다크 배경 보조 텍스트 */
+    --dim-2:#A6ADBB;          /* 다크 배경 보조 텍스트 (밝은 쪽) */
+    --dim-3:#B6BCC7;          /* 다크 배경 카피라이트 */
+    --line-mute:#C1C7D2;      /* 비교표 해당 없음 표시 */
+    --ok-bright:#7FE2A0;      /* 다크 배경 위 정상 표시 */
+    --blue-soft:#8FB8FF;      /* 다크 배경 위 아이브로우 */
+    --blue-line:#CFE2FF;      /* 연한 파랑 테두리 */
+    --warm-ink:#B45309;       /* 얼리버드 배지 글자 */
+    --warm-ink-2:#B4770B;     /* 어머니 말풍선 이름 */
+    --kakao:#FEE500;          /* 카카오 브랜드 */
+    --kakao-ink:#191600;      /* 카카오 브랜드 글자 */
+    --wx-heat:#E4572E;        /* 특보 · 폭염 */
+    --wx-cold:#2E6BE4;        /* 특보 · 한파 */
+    --wx-rain:#1F8A70;        /* 특보 · 호우 */
+    --wx-snow:#5B6472;        /* 특보 · 대설 */
+    --sos-ok:#16A34A;         /* SOS · 119 */
+    --stage-1:#DCEAFF;        /* 스테이지 배경 */
+    --stage-2:#FFE6C9;        /* 스테이지 배경 */
+    --stage-3:#CFE0FF;        /* 스테이지 배경 */
+    --stage-4:#EAF2FF;        /* 스테이지 배경 */
+    --stage-5:#F6F1FF;        /* 스테이지 배경 */
+    --stage-6:#FFF3E6;        /* 스테이지 배경 */
     --r-card:20px;   /* 카드·패널 */
     --r-sm:12px;     /* 칩·입력·작은 블록 */
     --sh-1:0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
@@ -112,8 +136,8 @@
   .notify.show{opacity:1;transform:none}
   .notify .bell{width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 4px rgba(0,98,255,.16);flex:none;margin-top:6px;font-size:1.1rem}
   .notify .t{font-size:.85rem;line-height:1.5}
-  .notify .t b{color:#7FE2A0}
-  .notify .app{font-size:.7rem;color:#A6ADBB;display:block;margin-bottom:2px}
+  .notify .t b{color:var(--ok-bright)}
+  .notify .app{font-size:.7rem;color:var(--dim-2);display:block;margin-bottom:2px}
 
   .cta-box{display:flex;flex-direction:column;gap:10px}
   .cta-form{display:flex;gap:8px}
@@ -158,9 +182,9 @@
   .compare thead th{font-size:var(--fs-note);color:var(--gray);font-weight:700}
   .compare thead th.me{color:var(--blue);font-weight:800}
   .compare td.me{background:var(--blue-bg);font-weight:700;color:var(--blue-deep)}
-  .compare .x{color:#C1C7D2}
+  .compare .x{color:var(--line-mute)}
   .compare-scroll{overflow-x:auto}
-  .footnote{font-size:var(--fs-note);color:#9AA1AD;margin-top:clamp(10px,1.2vw,16px)}
+  .footnote{font-size:var(--fs-note);color:var(--dim);margin-top:clamp(10px,1.2vw,16px)}
 
   .voice{background:var(--warm-bg)}
   .voice .eyebrow{color:var(--warm)}
@@ -172,7 +196,7 @@
   .voice .after{margin-top:clamp(18px,1.8vw,26px);font-size:var(--fs-body);color:var(--gray)}
 
   .price{background:var(--ink);color:#fff}
-  .price .eyebrow{color:#8FB8FF}
+  .price .eyebrow{color:var(--blue-soft)}
   .price h2{color:#fff}
   .price-card{background:#fff;color:var(--ink);border-radius:var(--r-card);padding:28px 24px;margin-top:26px}
   .price-card .day{font-family:"Gowun Batang",serif;font-size:1.9rem;font-weight:700;color:var(--blue-deep)}
@@ -180,7 +204,7 @@
   .free{list-style:none;margin:0 0 20px}
   .free li{padding:8px 0;font-size:.95rem}
   .free li::before{content:"✓";color:var(--ok);font-weight:800;margin-right:10px}
-  .price-note{font-size:var(--fs-sub);color:#A6ADBB;margin-top:clamp(14px,1.6vw,22px)}
+  .price-note{font-size:var(--fs-sub);color:var(--dim-2);margin-top:clamp(14px,1.6vw,22px)}
   .paytypes{margin-top:clamp(16px,1.8vw,24px);padding-top:clamp(14px,1.6vw,20px);border-top:1px dashed var(--line);font-size:var(--fs-note);color:var(--gray)}
   .paytypes span{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 14px;margin-left:6px;font-weight:700;color:var(--ink);font-size:var(--fs-note)}
 
@@ -194,8 +218,8 @@
   .final h2{font-weight:400}
   .final .serif b{font-weight:700;color:var(--blue-deep)}
   .final .lead{margin-bottom:26px}
-  footer{padding:36px 0 48px;border-top:1px solid var(--line);color:#9AA1AD;font-size:.78rem;text-align:center}
-  footer a{color:#9AA1AD}
+  footer{padding:36px 0 48px;border-top:1px solid var(--line);color:var(--dim);font-size:.78rem;text-align:center}
+  footer a{color:var(--dim)}
 
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
   .reveal.in{opacity:1;transform:none}
@@ -248,7 +272,7 @@
   }
   /* ── 얼리버드 개편 (2026-08-10) ───────────────────────────── */
   .eb-badge{display:inline-block;margin:14px 0 4px;padding:8px 14px;border-radius:999px;
-    background:var(--warm-bg);color:#B45309;font-size:.82rem;font-weight:800;letter-spacing:-.2px}
+    background:var(--warm-bg);color:var(--warm-ink);font-size:.82rem;font-weight:800;letter-spacing:-.2px}
   .earlybird{padding:64px 0;background:var(--paper);border-top:1px solid var(--line)}
   .eb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
     gap:clamp(14px,1.6vw,26px);margin-top:clamp(22px,2.6vw,36px)}
@@ -264,11 +288,11 @@
   .eb-num{font-size:2rem;font-weight:800;letter-spacing:-1px;color:var(--ink)}
   .eb-card.hot .eb-num{color:var(--blue)}
   .eb-card p{margin-top:8px;font-size:.86rem;color:var(--gray);line-height:1.5}
-  .eb-note{margin-top:16px;font-size:.74rem;color:#9AA1AD;line-height:1.6}
+  .eb-note{margin-top:16px;font-size:.74rem;color:var(--dim);line-height:1.6}
   /* 가입 직후 순번 화면 */
   .cta-done.queued{background:transparent;color:inherit;font-weight:400;padding:0}
   .queue{text-align:left}
-  .queue .qcard{background:var(--blue-bg);border:1px solid #CFE2FF;border-radius:var(--r-card);padding:20px;text-align:center}
+  .queue .qcard{background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:var(--r-card);padding:20px;text-align:center}
   .queue .qlabel{font-size:.8rem;color:var(--gray);font-weight:700}
   .queue .qnum{font-size:2.4rem;font-weight:800;color:var(--blue);letter-spacing:-1.5px;line-height:1.2}
   .queue .qnum small{font-size:1rem;font-weight:800;color:var(--ink)}
@@ -280,9 +304,9 @@
   .queue .qshare{display:flex;gap:8px;margin-top:14px}
   .queue .qshare button{flex:1;border:0;border-radius:var(--r-sm);padding:14px 10px;font-size:.9rem;
     font-weight:800;cursor:pointer;font-family:inherit}
-  .queue .qkakao{background:#FEE500;color:#191600}
+  .queue .qkakao{background:var(--kakao);color:var(--kakao-ink)}
   .queue .qcopy{background:#fff;border:1px solid var(--line) !important;color:var(--ink)}
-  .queue .qfoot{margin-top:10px;font-size:.72rem;color:#9AA1AD;line-height:1.55}
+  .queue .qfoot{margin-top:10px;font-size:.72rem;color:var(--dim);line-height:1.55}
   @media (max-width:900px){
     .eb-grid{grid-template-columns:1fr}
     .queue .qnum{font-size:2rem}
@@ -325,9 +349,9 @@
   footer .fpolicy{margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center}
   footer .fpolicy a{color:var(--ink);font-weight:700;font-size:.85rem;text-decoration:none}
   footer .fpolicy a:hover{color:var(--blue)}
-  footer .fbiz{line-height:1.95;font-size:.8rem;color:#9AA1AD}
+  footer .fbiz{line-height:1.95;font-size:.8rem;color:var(--dim)}
   footer .fbiz b{color:var(--gray)}
-  footer .fcopy{margin-top:14px;font-size:.76rem;color:#B6BCC7}
+  footer .fcopy{margin-top:14px;font-size:.76rem;color:var(--dim-3)}
 
   /* 3단계 섹션 — 우측 앱 화면 목업 (피그마 디자인 시스템 실화면) */
   .steps-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(32px,4vw,72px);align-items:center}
@@ -387,17 +411,17 @@
     font-size:var(--fs-body);line-height:1.6;color:var(--gray)}
   .alert-kinds .k{flex:none;min-width:clamp(64px,5.2vw,80px);text-align:center;font-weight:800;
     font-size:var(--fs-sub);color:#fff;border-radius:999px;padding:clamp(7px,.8vw,10px) clamp(12px,1.2vw,16px)}
-  .alert-kinds [data-k="heat"] .k{background:#E4572E}
-  .alert-kinds [data-k="cold"] .k{background:#2E6BE4}
-  .alert-kinds [data-k="rain"] .k{background:#1F8A70}
-  .alert-kinds [data-k="snow"] .k{background:#5B6472}
+  .alert-kinds [data-k="heat"] .k{background:var(--wx-heat)}
+  .alert-kinds [data-k="cold"] .k{background:var(--wx-cold)}
+  .alert-kinds [data-k="rain"] .k{background:var(--wx-rain)}
+  .alert-kinds [data-k="snow"] .k{background:var(--wx-snow)}
   .alert-note{margin-top:clamp(26px,2.8vw,36px);color:var(--gray);font-size:var(--fs-sub);line-height:1.8}
 
   .wcard{background:#fff;border:1px solid var(--line);border-radius:var(--r-card);
     padding:clamp(24px,2.6vw,38px);box-shadow:var(--sh-3)}
   .wtop{display:flex;align-items:center;gap:12px;padding-bottom:clamp(16px,1.6vw,22px);
     border-bottom:1px dashed var(--line)}
-  .wbadge{font-weight:800;font-size:var(--fs-sub);color:#fff;background:#E4572E;border-radius:999px;
+  .wbadge{font-weight:800;font-size:var(--fs-sub);color:#fff;background:var(--wx-heat);border-radius:999px;
     padding:clamp(7px,.8vw,10px) clamp(14px,1.4vw,18px)}
   .wloc{font-size:var(--fs-sub);color:var(--gray)}
   .wbub{margin-top:clamp(14px,1.4vw,20px);border-radius:var(--r-card);
@@ -406,7 +430,7 @@
   .wbub.bg{background:var(--blue-bg);color:var(--ink)}
   .wbub.bg .name{color:var(--blue)}
   .wbub.mom{background:var(--warm-bg);color:var(--ink);margin-left:clamp(16px,3vw,44px)}
-  .wbub.mom .name{color:#B4770B}
+  .wbub.mom .name{color:var(--warm-ink-2)}
   .wfoot{margin-top:clamp(18px,1.8vw,26px);padding-top:clamp(16px,1.6vw,22px);
     border-top:1px dashed var(--line);color:var(--gray);font-size:var(--fs-sub);line-height:1.7}
   @media (max-width:900px){
@@ -419,10 +443,10 @@
   .stage{position:relative;border-radius:var(--r-card);overflow:hidden;
     height:clamp(430px,40vw,680px);
     background:
-      radial-gradient(120% 90% at 12% 18%, #DCEAFF 0%, rgba(220,234,255,0) 62%),
-      radial-gradient(90% 80% at 88% 24%, #FFE6C9 0%, rgba(255,230,201,0) 58%),
-      radial-gradient(110% 100% at 62% 96%, #CFE0FF 0%, rgba(207,224,255,0) 60%),
-      linear-gradient(155deg,#EAF2FF 0%,#F6F1FF 52%,#FFF3E6 100%)}
+      radial-gradient(120% 90% at 12% 18%, var(--stage-1) 0%, rgba(220,234,255,0) 62%),
+      radial-gradient(90% 80% at 88% 24%, var(--stage-2) 0%, rgba(255,230,201,0) 58%),
+      radial-gradient(110% 100% at 62% 96%, var(--stage-3) 0%, rgba(207,224,255,0) 60%),
+      linear-gradient(155deg,var(--stage-4) 0%,var(--stage-5) 52%,var(--stage-6) 100%)}
   .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(100% 70% at 50% 0%, rgba(255,255,255,.5), transparent 60%)}
   .scenes{position:absolute;inset:0}
@@ -529,7 +553,7 @@
     opacity:0;pointer-events:none;
     box-shadow:0 0 0 2.5px var(--blue), 0 8px 20px rgba(0,98,255,.28)}
   .sos-host .s1{top:20.4%}
-  .sos-host .s2{top:33.9%;box-shadow:0 0 0 2.5px #16A34A, 0 8px 20px rgba(22,163,74,.28)}
+  .sos-host .s2{top:33.9%;box-shadow:0 0 0 2.5px var(--sos-ok), 0 8px 20px rgba(22,163,74,.28)}
   .sos-host .s3{top:47.1%}
   .scene.on .sos-host .sosbar{animation:sosOn 3.6s ease-in-out infinite}
   .scene.on .sos-host .s2{animation-delay:.5s}
@@ -669,7 +693,6 @@
 <!-- 서비스 정의 -->
 <section class="define">
   <div class="wrap reveal">
-    <span class="eyebrow">AI방글이는 이런 서비스입니다</span>
     <h2 class="serif">부모님께는 <b>안부전화</b>,<br>자녀에게는 <b>매일의 확인</b>.</h2>
     <p class="define-lead">떨어져 사는 부모님께 AI가 매일 전화를 걸어 안부를 여쭙고,
        통화가 끝나면 그 결과를 가족에게 알려주는 <b>가족용 AI 안부전화</b>입니다.
@@ -703,7 +726,6 @@
 <!-- 문제 공감 -->
 <section class="empathy">
   <div class="wrap reveal">
-    <span class="eyebrow">우리 모두의 이야기</span>
     <h2 class="serif">마음은 매일인데,<br><b>전화는 일주일에 한 번.</b></h2>
     <ul class="pain">
       <li>퇴근하면 이미 부모님 주무실 시간이라서</li>
@@ -762,7 +784,6 @@
   <div class="wrap-wide">
    <div class="alert-grid">
     <div class="alert-col reveal">
-      <span class="eyebrow">오늘의 날씨까지</span>
       <h2>폭염경보가 뜬 날,<br><b>인사말부터 달라집니다</b></h2>
       <p class="alert-lead">방글이는 전화를 걸기 전에 <b>기상청 특보</b>를 먼저 확인합니다.
          부모님이 계신 지역에 특보가 있으면, 그날 <b>인사말에 담아</b> 알려드립니다.</p>
@@ -795,7 +816,6 @@
 <!-- 비교 -->
 <section class="compare">
   <div class="wrap reveal">
-    <span class="eyebrow">무엇이 다른가요</span>
     <h2>그냥 안부전화<br>서비스가 아닙니다</h2>
     <div class="compare-scroll">
       <table>
@@ -819,7 +839,6 @@
 <!-- 안부멘트 -->
 <section class="voice">
   <div class="wrap reveal">
-    <span class="eyebrow">나의 목소리</span>
     <h2 class="serif">내가 남긴 한마디가<br>통화에 담깁니다</h2>
     <blockquote class="serif">"엄마, 오늘 무릎은 어때?"</blockquote>
     <p style="margin-bottom:14px;color:var(--gray);font-size:.95rem">평소 하던 말투로 한마디만 녹음하세요.<br>방글이가 자연스러운 존댓말로 바꿔 여쭤봅니다.</p>
@@ -834,7 +853,6 @@
 <!-- 얼리버드 혜택 -->
 <section class="earlybird" id="earlybird">
   <div class="wrap-wide reveal">
-    <span class="eyebrow">얼리버드</span>
     <h2 class="serif">일찍 온 가족이<br>더 받아요</h2>
     <div class="eb-grid">
       <div class="eb-card">
@@ -860,7 +878,6 @@
 <!-- 가격 -->
 <section class="price" id="price">
   <div class="wrap-wide reveal">
-    <span class="eyebrow">이용 요금</span>
     <h2 class="serif">하루 300원이 안 되는<br>매일의 안부</h2>
     <div class="plans">
       <div class="plan">
@@ -909,7 +926,6 @@
 <!-- FAQ -->
 <section class="faq">
   <div class="wrap reveal">
-    <span class="eyebrow">자주 묻는 질문</span>
     <h2>망설여지는 것들,<br>먼저 답해드릴게요</h2>
     <div style="margin-top:18px">
       <details>
