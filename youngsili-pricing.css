@@ -1,0 +1,27 @@
+/* Existing Youngsili brand tokens and plan components are reused. */
+#metered-pricing{background:var(--bg);scroll-margin-top:90px;padding-bottom:48px}
+#metered-pricing + #pricing{padding-top:64px}
+#metered-pricing .sec-head{max-width:850px;margin-bottom:38px}
+#metered-pricing h2{text-wrap:balance}
+.metered-tax{text-align:center;font-size:14px;color:var(--ink-2);margin:18px 0 0}
+.metered-trial{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:28px 30px;border:1px solid #cedcf7;border-left:5px solid var(--blue);border-radius:22px;background:#fff;margin-bottom:28px}
+.metered-trial-label{font-size:14px;font-weight:800;color:var(--blue);margin:0 0 12px}
+.metered-trial h3{font-size:24px;color:var(--navy);line-height:1.5}
+.metered-trial-cost{display:inline-block;font-size:16px;font-weight:600;margin-left:12px;color:var(--ink-2)}
+.metered-trial-cost strong{font-size:24px;color:var(--navy);font-variant-numeric:tabular-nums}
+.metered-trial-detail{font-size:14px;color:var(--ink-2);margin:8px 0 0}
+.metered-trial .btn{flex-shrink:0;font-size:15px}
+#metered-pricing .plans{grid-template-columns:repeat(3,minmax(0,1fr))}
+#metered-pricing .plan{padding:28px 24px}
+#metered-pricing .plan-name{margin:0;font-size:16px;line-height:1.5}
+#metered-pricing .plan-price{margin-top:18px;font-size:32px;font-variant-numeric:tabular-nums}
+#metered-pricing .plan-sub{color:var(--ink-2);font-size:14px;margin-top:7px}
+.metered-invoice{font-size:14px;color:var(--ink-2);margin:14px 0 0}
+.metered-usage{border-top:1px dashed var(--line);margin-top:22px;padding-top:20px;color:var(--blue);font-size:15px}
+.metered-usage strong{display:block;font-size:20px;margin-top:5px;font-variant-numeric:tabular-nums}
+#metered-pricing .plan-feats{margin:24px 0 30px;gap:14px}
+#metered-pricing .plan-feats li{font-size:14px;line-height:1.6}
+#metered-pricing .plans-note{color:var(--ink-2);font-size:14px;line-height:1.7;margin:24px auto 0;max-width:760px}
+#metered-pricing a:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
+@media(max-width:760px){#metered-pricing .plans{grid-template-columns:1fr}.metered-trial{align-items:stretch;flex-direction:column;padding:24px;gap:20px}.metered-trial .btn{justify-content:center}.metered-trial-cost{display:block;margin:8px 0 0}.metered-trial h3{font-size:22px}#metered-pricing .plan{padding:26px 24px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#metered-pricing .plan,#metered-pricing .btn{transition:none;transform:none}}
