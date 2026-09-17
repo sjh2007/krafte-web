@@ -10,6 +10,8 @@
   var state = { status: null, checkout: null };
   var checkoutSeq = 0; // 요금제·결제수단을 빠르게 바꿀 때 오래된 /checkout 응답을 무시하기 위한 순번
   var googleInitTries = 0;
+  var CONSENT_LABEL_DEFAULT = '위 내용을 확인했고, 매월 자동결제에 동의합니다.';
+  var CONSENT_LABEL_CANCEL_PENDING = '위 내용을 확인했고, 해지를 취소하면 이 결제수단으로 자동결제되는 것에 동의합니다.';
 
   function $(id) { return document.getElementById(id); }
   function show(view) {
@@ -50,13 +52,15 @@
       auth.signOut();
       show('login');
       banner(C.errorMessage(code));
-      return;
+      return true; // 로그인 화면으로 보냈다 — 호출한 쪽은 이어서 서버 상태를 다시 묻지 않는다
     }
     // 불러오는 중 화면에서 실패하면 배너만으로는 안 보인다 — 다시 시도할 수 있는 안내 화면을 보여준다.
     if (!$('view-loading').hidden) {
-      return message('잠시 문제가 생겼어요', C.errorMessage(code), { label: '다시 시도', onclick: load });
+      message('잠시 문제가 생겼어요', C.errorMessage(code), { label: '다시 시도', onclick: load });
+      return false;
     }
     banner(C.errorMessage(code));
+    return false;
   }
 
   // ── 안내 화면 ──
@@ -145,6 +149,8 @@
       if (seq !== checkoutSeq) return; // 그 사이 더 최신 요청이 있었다 — 이 응답은 버린다
       if (r.status !== 200) throw r;
       state.checkout = Object.assign({}, r.data, { method: method });
+      // 해지 예약 중 결제수단만 바꾸는 경우(chargeAt 없음)는 동의 문구도 달라진다.
+      text($('reg-consent-label'), r.data.chargeAt ? CONSENT_LABEL_DEFAULT : CONSENT_LABEL_CANCEL_PENDING);
       C.noticeLines({ planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, now: new Date() })
         .forEach(function (line) { list.appendChild(li(line)); });
       updateSubmit();
@@ -155,7 +161,11 @@
       fail(e);
     });
   }
-  function updateSubmit() { $('reg-submit').disabled = !($('reg-consent').checked && state.checkout); }
+  // 결제 준비값(checkout)이 없으면 동의 체크 자체를 막는다 — 무엇에 동의하는지 정해지기 전에는 누를 수 없게.
+  function updateSubmit() {
+    $('reg-consent').disabled = !state.checkout;
+    $('reg-submit').disabled = !($('reg-consent').checked && state.checkout);
+  }
 
   function onPlanChange() {
     var plan = selectedValue('regPlan');
@@ -172,7 +182,17 @@
       if (r.status !== 200) throw r;
       state.status = r.data;
       return refreshCheckout();
-    }).catch(function (e) { planChoices($('reg-plans'), 'regPlan', state.status.plan); fail(e); });
+    }).catch(function (e) {
+      var loggedOut = fail(e);
+      if (loggedOut) return; // 로그인 화면으로 이동했다 — 여기서 더 상태를 묻지 않는다
+      // 요금제 변경 자체는 서버에 이미 반영됐을 수도 있다 — 화면을 서버의 실제 상태로 다시 맞춘다.
+      return auth.api('/family/billing/status').then(function (r2) {
+        if (r2.status !== 200) throw r2;
+        state.status = r2.data;
+        planChoices($('reg-plans'), 'regPlan', state.status.plan);
+        return refreshCheckout();
+      }).catch(fail);
+    });
   }
 
   function onRegister() {
@@ -203,14 +223,20 @@
         // 결제창을 닫았거나 실패했다 — 다시 시도하려면 새 issueId가 필요하다(같은 값은 재사용할 수 없다).
         sessionStorage.removeItem(PENDING_KEY);
         busy($('reg-submit'), false);
-        return refreshCheckout().then(function () { banner(resp.message || C.errorMessage('payment_window_failed')); });
+        return refreshCheckout().then(function () {
+          // refreshCheckout 자체가 실패했으면(state.checkout이 여전히 null) 그 실패가 이미 로그인 이동·다시 시도
+          // 화면·배너로 안내를 끝냈다 — 결제창 실패 배너로 덮어쓰지 않는다.
+          if (state.checkout) banner(resp.message || C.errorMessage('payment_window_failed'));
+        });
       }
       busy($('reg-submit'), false);
       return submitBillingKey(resp.billingKey);
     }).catch(function (e) {
       sessionStorage.removeItem(PENDING_KEY);
       busy($('reg-submit'), false);
-      return refreshCheckout().then(function () { fail(e); });
+      return refreshCheckout().then(function () {
+        if (state.checkout) fail(e);
+      });
     });
   }
 
