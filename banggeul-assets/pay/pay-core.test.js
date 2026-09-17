@@ -14,9 +14,9 @@ test('KST 날짜 — UTC로 전날이어도 한국 날짜', () => {
   assert.equal(C.kstDayOfMonth('2026-10-24T15:30:00.000Z'), 25);
 });
 
-test('필수 고지 4종 — 체험 중(오늘 결제 없음)', () => {
+test('필수 고지 — trial_end(체험 중 최초 등록, 오늘 결제 없음)', () => {
   const lines = C.noticeLines({
-    planName: '스탠다드', amount: 8900,
+    planName: '스탠다드', amount: 8900, chargeKind: 'trial_end',
     chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z'),
   });
   assert.equal(lines.length, 4);
@@ -28,18 +28,52 @@ test('필수 고지 4종 — 체험 중(오늘 결제 없음)', () => {
   assert.match(lines[3], /결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불/);
 });
 
-test('필수 고지 — 바로 결제(체험 끝남)면 "바로 첫 결제", 29일 이후 결제일은 말일 안내', () => {
+test('필수 고지 — trial_end, 29일 이후 결제일은 말일 안내', () => {
   const lines = C.noticeLines({
-    planName: '플러스', amount: 14900,
-    chargeAt: '2026-10-31T01:01:00.000Z', now: new Date('2026-10-31T01:00:00.000Z'),
+    planName: '플러스', amount: 14900, chargeKind: 'trial_end',
+    chargeAt: '2026-10-31T01:01:00.000Z', now: new Date('2026-09-26T03:00:00.000Z'),
   });
-  assert.equal(lines[1], '등록하면 바로 첫 결제가 진행돼요.');
+  assert.equal(lines[1], '오늘은 결제되지 않아요. 10월 31일까지 무료로 이용하실 수 있어요.');
   assert.equal(lines[2], '10월 31일부터 매월 31일에 14,900원이 자동결제돼요. 그 날짜가 없는 달은 마지막 날에 결제돼요.');
+  assert.match(lines[3], /첫 결제 전에 해지하면 청구되지 않아요/);
+});
+
+test('필수 고지 — renewal(이미 결제한 기간 안에서 결제수단만 변경)', () => {
+  const lines = C.noticeLines({
+    planName: '스탠다드', amount: 8900, chargeKind: 'renewal',
+    chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z'),
+  });
+  assert.equal(lines[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
+  assert.equal(lines[1], '이미 결제한 이용 기간이 10월 25일까지예요. 오늘은 결제되지 않아요.');
+  assert.equal(lines[2], '10월 25일에 8,900원이 결제되고, 이후 매월 25일에 자동결제돼요.');
+  assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
+  assert.match(lines[3], /언제든 이 페이지에서 해지할 수 있어요/);
+});
+
+test('필수 고지 — overdue(밀린 결제를 바로 처리하고 다음 정기결제 안내)', () => {
+  const lines = C.noticeLines({
+    planName: '스탠다드', amount: 8900, chargeKind: 'overdue',
+    chargeAt: '2026-09-26T03:00:00.000Z', nextChargeAt: '2026-10-25T03:00:00.000Z', nextAmount: 8900,
+    now: new Date('2026-09-26T03:00:00.000Z'),
+  });
+  assert.equal(lines[1], '결제되지 않은 8,900원이 등록 후 바로 결제돼요.');
+  assert.equal(lines[2], '다음 결제는 10월 25일에 8,900원이고, 이후 매월 25일에 자동결제돼요.');
   assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
 });
 
-test('필수 고지 — 결제수단만 변경(해지 예약 중, chargeAt null)', () => {
-  const lines = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeAt: null, now: new Date('2026-09-26T03:00:00.000Z') });
+test('필수 고지 — immediate(체험이 이미 끝난 뒤 신규 등록, 바로 첫 결제)', () => {
+  const lines = C.noticeLines({
+    planName: '플러스', amount: 14900, chargeKind: 'immediate',
+    chargeAt: '2026-09-26T03:00:00.000Z', nextChargeAt: '2026-10-26T03:00:00.000Z', nextAmount: 14900,
+    now: new Date('2026-09-26T03:00:00.000Z'),
+  });
+  assert.equal(lines[1], '등록하면 바로 첫 결제(14,900원)가 진행돼요.');
+  assert.equal(lines[2], '다음 결제는 10월 26일에 14,900원이고, 이후 매월 26일에 자동결제돼요.');
+  assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
+});
+
+test('필수 고지 — none(결제수단만 변경, 해지 예약 중)', () => {
+  const lines = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'none', chargeAt: null, now: new Date('2026-09-26T03:00:00.000Z') });
   assert.equal(lines.length, 4);
   assert.equal(lines[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
   assert.equal(lines[1], '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.');
@@ -50,7 +84,7 @@ test('필수 고지 — 결제수단만 변경(해지 예약 중, chargeAt null)
 });
 
 test('고지 문구에 금칙어가 없다', () => {
-  const all = C.noticeLines({ planName: '라이트', amount: 5900, chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z') }).join(' ');
+  const all = C.noticeLines({ planName: '라이트', amount: 5900, chargeKind: 'trial_end', chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z') }).join(' ');
   assert.doesNotMatch(all, /위험|감지|부가세 별도/);
 });
 
@@ -86,6 +120,10 @@ test('errorMessage — 서버 오류 코드별 문구, 모르는 코드는 기�
 test('errorMessage — unauthorized는 session_expired와 같은 문구(다시 로그인)', () => {
   assert.equal(C.errorMessage('unauthorized'), '다시 로그인해 주세요.');
   assert.equal(C.errorMessage('unauthorized'), C.errorMessage('session_expired'));
+});
+
+test('errorMessage — account_link_required(다른 방법으로 가입된 계정)', () => {
+  assert.equal(C.errorMessage('account_link_required'), '이 이메일은 다른 방법으로 가입돼 있어요. 가입하신 방법(이메일 등)으로 로그인해 주세요.');
 });
 
 test('paymentStatusLabel', () => {

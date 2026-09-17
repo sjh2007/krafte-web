@@ -57,6 +57,11 @@ test('카카오·네이버 — 서버 코드 교환 → 커스텀 토큰 로그�
   assert.equal(auth.getSession().idToken, 'id3');
 });
 
+test('idToken 없이 200 응답(다른 방법으로 가입된 계정) → account_link_required', async () => {
+  const { auth } = setup([reply(200, { needConfirmation: true })]);
+  await assert.rejects(auth.signInWithGoogleIdToken('google-jwt'), (e) => e instanceof PayAuthError && e.code === 'account_link_required');
+});
+
 test('서버 코드 교환 오류 코드를 그대로 PayAuthError로', async () => {
   const { auth } = setup([reply(503, { error: 'web_login_not_configured' })]);
   await assert.rejects(auth.signInWithWebCode({ provider: 'naver', code: 'c', state: 'naver.s', redirectUri: 'u' }), (e) => e.code === 'web_login_not_configured');

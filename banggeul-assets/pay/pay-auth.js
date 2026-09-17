@@ -53,6 +53,8 @@
     function firebaseSignIn(method, body) {
       return postJson(IDENTITY + method + '?key=' + config.firebaseApiKey, body).then(function (r) {
         if (!r.res.ok) throw PayAuthError(firebaseErrorCode(r.data));
+        // 200이어도 idToken이 없을 수 있다(예: needConfirmation — 이 이메일이 이미 다른 방법으로 가입돼 있음).
+        if (!r.data.idToken) throw PayAuthError('account_link_required');
         writeSession(r.data.idToken, r.data.refreshToken, r.data.expiresIn);
       });
     }

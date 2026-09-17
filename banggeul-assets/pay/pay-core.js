@@ -34,12 +34,14 @@
   }
 
   // 대장 §8-4 구독 필수 표기 4종: 가격 · 무료 기간 · 자동결제 시점 · 해지 방법.
+  // 문구는 서버가 정한 chargeKind로만 정한다(시간차 어림짐작 안 함): none · trial_end · renewal · overdue · immediate.
   function noticeLines(opts) {
     var price = formatWon(opts.amount);
     var line1 = opts.planName + ' 요금제 · 월 ' + price + ' (부가세 포함)';
+    var kind = opts.chargeKind;
 
-    // chargeAt이 없으면 해지 예약 중에 결제수단만 바꾸는 경우다 — 다음 결제 자체가 없다.
-    if (opts.chargeAt === null || opts.chargeAt === undefined) {
+    // chargeKind가 'none'이거나(구버전 호출 호환) chargeAt이 없으면 해지 예약 중에 결제수단만 바꾸는 경우다.
+    if (kind === 'none' || (!kind && (opts.chargeAt === null || opts.chargeAt === undefined))) {
       return [
         line1,
         '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.',
@@ -49,20 +51,39 @@
       ];
     }
 
-    var chargeMs = new Date(opts.chargeAt).getTime();
-    var nowMs = opts.now.getTime();
-    // 서버는 즉시 결제를 "지금+1분"으로 예약한다 — 2분 안이면 바로 결제로 본다.
-    var freeUntilCharge = chargeMs - nowMs > 2 * 60 * 1000;
     var date = formatKstDate(opts.chargeAt);
     var day = kstDayOfMonth(opts.chargeAt);
+    var nextDate = opts.nextChargeAt ? formatKstDate(opts.nextChargeAt) : null;
+    var nextDay = opts.nextChargeAt ? kstDayOfMonth(opts.nextChargeAt) : null;
+    var nextPrice = formatWon(opts.nextAmount);
 
-    var line2 = freeUntilCharge
-      ? '오늘은 결제되지 않아요. ' + date + '까지 무료로 이용하실 수 있어요.'
-      : '등록하면 바로 첫 결제가 진행돼요.';
-    var line3 = date + '부터 매월 ' + day + '일에 ' + price + '이 자동결제돼요.' +
-      (day >= 29 ? ' 그 날짜가 없는 달은 마지막 날에 결제돼요.' : '');
+    var line2, line3, firstChargeClause;
+
+    if (kind === 'renewal') {
+      // 이미 결제된 이용 기간 안에서 결제수단만 바꾸는 경우 — 오늘은 결제되지 않는다.
+      line2 = '이미 결제한 이용 기간이 ' + date + '까지예요. 오늘은 결제되지 않아요.';
+      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.';
+      firstChargeClause = '';
+    } else if (kind === 'overdue') {
+      // 밀린 결제가 있다 — 등록하는 순간 밀린 금액부터 처리하고, 이후 정기 결제로 돌아간다.
+      line2 = '결제되지 않은 ' + price + '이 등록 후 바로 결제돼요.';
+      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.';
+      firstChargeClause = '';
+    } else if (kind === 'immediate') {
+      // 체험이 이미 끝난 뒤의 신규(또는 재)등록 — 등록하는 순간 바로 첫 결제가 일어난다.
+      line2 = '등록하면 바로 첫 결제(' + price + ')가 진행돼요.';
+      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.';
+      firstChargeClause = '';
+    } else {
+      // 'trial_end' — 체험 중 최초 등록. 결제는 체험이 끝나는 날부터 시작된다.
+      line2 = '오늘은 결제되지 않아요. ' + date + '까지 무료로 이용하실 수 있어요.';
+      line3 = date + '부터 매월 ' + day + '일에 ' + price + '이 자동결제돼요.' +
+        (day >= 29 ? ' 그 날짜가 없는 달은 마지막 날에 결제돼요.' : '');
+      firstChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
+    }
+
     var line4 = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ' +
-      (freeUntilCharge ? '첫 결제 전에 해지하면 청구되지 않아요. ' : '') +
+      firstChargeClause +
       '결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불을 요청하실 수 있어요(고객센터 ' + CS_PHONE + ').';
     return [line1, line2, line3, line4];
   }
@@ -102,6 +123,7 @@
     invalid_login: '이메일 또는 비밀번호가 맞지 않아요.',
     locked: '로그인 시도가 많았어요. 잠시 후 다시 시도해 주세요.',
     invalid_social_token: '로그인에 실패했어요. 다시 시도해 주세요.',
+    account_link_required: '이 이메일은 다른 방법으로 가입돼 있어요. 가입하신 방법(이메일 등)으로 로그인해 주세요.',
     web_login_not_configured: '이 로그인 방법을 준비하고 있어요. 다른 방법으로 로그인해 주세요.',
     session_expired: '다시 로그인해 주세요.',
     unauthorized: '다시 로그인해 주세요.',
