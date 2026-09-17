@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>구독 결제·관리 — AI방글이</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="favicon-banggeul.ico" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260917" />
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="ai-banggeul-landing.html">AI방글이</a>
+  <button type="button" id="logout" class="link" hidden>로그아웃</button>
+</header>
+
+<main class="wrap">
+  <p id="banner" class="banner" role="alert" hidden></p>
+
+  <section id="view-loading" class="view"><p class="muted">불러오는 중…</p></section>
+
+  <section id="view-login" class="view" hidden>
+    <h1>구독 결제·관리</h1>
+    <p class="lead">방글이 앱에서 쓰시는 계정으로 로그인해 주세요.</p>
+    <div class="social">
+      <button type="button" class="btn naver" id="login-naver">네이버로 로그인</button>
+      <button type="button" class="btn kakao" id="login-kakao">카카오로 로그인</button>
+      <div id="login-google" class="google-slot"></div>
+    </div>
+    <details class="email-login">
+      <summary>이메일로 로그인</summary>
+      <form id="email-form">
+        <label>이메일<input type="email" id="email" autocomplete="username" required /></label>
+        <label>비밀번호<input type="password" id="password" autocomplete="current-password" required /></label>
+        <button type="submit" class="btn primary">로그인</button>
+      </form>
+    </details>
+    <p class="muted small">아직 가입하지 않으셨다면 <a id="play-link-login" href="#">방글이 앱</a>에서 가입 후 30일 무료 체험을 시작하세요.</p>
+  </section>
+
+  <section id="view-register" class="view" hidden>
+    <h1>결제수단 등록</h1>
+    <div class="card">
+      <h2>요금제</h2>
+      <p class="muted small" id="reg-elders"></p>
+      <div id="reg-plans" class="choices"></div>
+    </div>
+    <div class="card">
+      <h2>결제수단</h2>
+      <div class="choices" id="reg-methods">
+        <label class="choice"><input type="radio" name="method" value="CARD" checked /> 카드</label>
+        <label class="choice"><input type="radio" name="method" value="KAKAOPAY" /> 카카오페이</label>
+        <label class="choice"><input type="radio" name="method" value="NAVERPAY" /> 네이버페이</label>
+      </div>
+    </div>
+    <div class="card notice" aria-live="polite">
+      <h2>꼭 확인해 주세요</h2>
+      <ul id="reg-notice"></ul>
+      <label class="consent"><input type="checkbox" id="reg-consent" /> 위 내용을 확인했고, 매월 자동결제에 동의합니다.</label>
+      <p class="small"><a href="terms.html" target="_blank" rel="noopener">이용약관</a> · <a href="refund.html" target="_blank" rel="noopener">환불정책</a> · <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
+      <button type="button" class="btn primary block" id="reg-submit" disabled>결제수단 등록하기</button>
+    </div>
+  </section>
+
+  <section id="view-done" class="view" hidden>
+    <h1>결제수단 등록이 끝났어요</h1>
+    <div class="card"><ul id="done-lines"></ul></div>
+    <a class="btn primary block" id="done-app" href="#">방글이 앱으로 돌아가기</a>
+    <button type="button" class="btn block" id="done-manage">구독 관리 보기</button>
+  </section>
+
+  <section id="view-manage" class="view" hidden>
+    <h1>구독 관리</h1>
+    <div class="card">
+      <p class="status" id="mg-status"></p>
+      <dl class="facts" id="mg-facts"></dl>
+      <div class="actions">
+        <button type="button" class="btn" id="mg-method">결제수단 변경</button>
+        <button type="button" class="btn" id="mg-resume" hidden>해지 취소</button>
+        <button type="button" class="btn danger" id="mg-cancel" hidden>구독 해지</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>요금제 변경</h2>
+      <p class="muted small">바꾼 요금제는 다음 결제일부터 적용돼요(무료 체험 중에는 바로 적용).</p>
+      <div id="mg-plans" class="choices"></div>
+      <button type="button" class="btn" id="mg-plan-submit">요금제 변경</button>
+    </div>
+    <div class="card">
+      <h2>결제 내역</h2>
+      <table class="history"><thead><tr><th>날짜</th><th>금액</th><th>상태</th></tr></thead><tbody id="mg-history"></tbody></table>
+      <p class="muted small" id="mg-history-empty" hidden>아직 결제 내역이 없어요.</p>
+    </div>
+  </section>
+
+  <section id="view-message" class="view" hidden>
+    <h1 id="msg-title"></h1>
+    <p id="msg-body"></p>
+    <a class="btn primary block" id="msg-action" href="#" hidden></a>
+  </section>
+</main>
+
+<footer class="foot">
+  고객센터 1877-1979(평일 10~18시) · kraft@krafte.net<br />
+  <a href="terms.html">이용약관</a> · <a href="refund.html">환불정책</a> · <a href="privacy.html">개인정보처리방침</a>
+</footer>
+
+<dialog id="confirm-dialog">
+  <p id="confirm-text"></p>
+  <div class="actions">
+    <button type="button" class="btn" id="confirm-no">돌아가기</button>
+    <button type="button" class="btn danger" id="confirm-yes">확인</button>
+  </div>
+</dialog>
+
+<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="banggeul-assets/pay/pay-config.js?v=20260917"></script>
+<script src="banggeul-assets/pay/pay-core.js?v=20260917"></script>
+<script src="banggeul-assets/pay/pay-auth.js?v=20260917"></script>
+<script src="banggeul-assets/pay/pay-app.js?v=20260917"></script>
+</body>
+</html>
