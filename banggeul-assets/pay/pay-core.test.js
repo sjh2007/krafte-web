@@ -69,6 +69,17 @@ test('필수 고지 — overdue(밀린 결제를 바로 처리하고 다음 정�
   assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
 });
 
+test('필수 고지 — overdue인데 다음 결제부터 요금제가 오르면, 1번째 줄은 지금(밀린) 요금제 가격', () => {
+  const lines = C.noticeLines({
+    planName: '라이트', amount: 8900, monthlyAmount: 8900, chargeKind: 'overdue',
+    chargeAt: '2026-09-26T03:00:00.000Z', nextChargeAt: '2026-10-25T03:00:00.000Z', nextAmount: 14900,
+    now: new Date('2026-09-26T03:00:00.000Z'),
+  });
+  assert.equal(lines[0], '라이트 요금제 · 월 8,900원 (부가세 포함)');
+  assert.equal(lines[1], '결제되지 않은 8,900원이 등록 후 바로 결제돼요.');
+  assert.equal(lines[2], '다음 결제는 10월 25일에 14,900원이고, 이후 매월 25일에 자동결제돼요.');
+});
+
 test('필수 고지 — immediate(체험이 이미 끝난 뒤 신규 등록, 바로 첫 결제)', () => {
   const lines = C.noticeLines({
     planName: '플러스', amount: 14900, chargeKind: 'immediate',

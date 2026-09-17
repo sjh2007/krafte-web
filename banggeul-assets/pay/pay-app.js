@@ -161,9 +161,13 @@
       state.checkout = Object.assign({}, r.data, { method: method });
       // 해지 예약 중 결제수단만 바꾸는 경우(chargeKind: 'none')는 동의 문구도 달라진다.
       text($('reg-consent-label'), r.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
+      // 1번째 줄의 월 가격은 이 결제가 속한 요금제(r.data.plan) 기준이다 — 밀린 결제 중 요금제를 바꿨다면
+      // state.status.amount(가족의 현재 요금제 가격)와 다를 수 있다. amounts 맵에 없으면(구버전 호환) 그 값을 쓴다.
+      var monthlyAmount = state.status.amounts[r.data.plan];
+      if (monthlyAmount === null || monthlyAmount === undefined) monthlyAmount = state.status.amount;
       C.noticeLines({
         planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
-        nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: state.status.amount, now: new Date(),
+        nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount, now: new Date(),
       }).forEach(function (line) { list.appendChild(li(line)); });
       updateSubmit();
     }).catch(function (e) {
@@ -221,25 +225,25 @@
     var co = state.checkout;
     if (!co || !$('reg-consent').checked) return banner(C.errorMessage('consent_required'));
     // 결제 준비값을 받아온 그 결제수단으로 등록한다 — 그 사이 라디오를 다시 바꿨을 가능성을 배제한다.
+    // method·동의 버전은 여기서 지역 변수로 붙잡아 둔다 — PC 경로는 이 값을 그대로 쓰고 PENDING을 다시 읽지 않는다
+    // (그 사이 PENDING이 지워지거나 바뀌어도 이미 열린 결제창의 결과는 안전하게 등록으로 이어진다).
     var method = co.method;
+    var consentVersion = C.BILLING_CONSENT_VERSION;
     busy($('reg-submit'), true);
-    // 모바일은 결제창이 페이지를 떠났다 돌아온다 — 고른 수단과 동의를 잠시 보관한다.
-    sessionStorage.setItem(PENDING_KEY, JSON.stringify({ method: method, consentVersion: C.BILLING_CONSENT_VERSION }));
+    // 모바일은 결제창이 페이지를 떠났다 돌아온다(새로고침으로 지역 변수가 사라진다) — 그때 쓸 값만 여기 보관한다.
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify({ method: method, consentVersion: consentVersion }));
     if (!window.PortOne) {
       // SDK가 아직 로드되지 않았거나 차단됐다 — 새 창을 열지 않고 바로 안내한다.
       sessionStorage.removeItem(PENDING_KEY);
       busy($('reg-submit'), false);
       return banner(C.errorMessage('payment_window_failed'));
     }
-    // 결제창이 응답 없이 오래 걸리면(멎었거나 뒷단이 조용히 막힌 경우) 이 시도는 포기한 것으로 본다 —
-    // PENDING을 지우고, 버튼을 풀고, 재시도할 때 쓸 새 issueId를 미리 받아 둔다.
+    // 카드 입력 등으로 결제창을 오래 열어 둘 수 있다 — 버튼만 다시 눌리게 풀어줄 뿐, PENDING도 checkout도
+    // 건드리지 않는다. 원래 결제창 Promise가 나중에 실제로 끝나면 그 결과로 그대로 이어서 처리한다.
     var settled = false;
     var stuckTimer = setTimeout(function () {
-      if (settled) return;
-      sessionStorage.removeItem(PENDING_KEY);
-      busy($('reg-submit'), false);
-      refreshCheckout();
-    }, 60000);
+      if (!settled) busy($('reg-submit'), false);
+    }, 5 * 60 * 1000);
     window.PortOne.requestIssueBillingKey({
       storeId: co.storeId,
       channelKey: co.channelKey,
@@ -251,7 +255,7 @@
     }).then(function (resp) {
       settled = true;
       clearTimeout(stuckTimer);
-      if (!resp) return; // 모바일 리다이렉트 — 복귀 후 처리
+      if (!resp) return; // 모바일 리다이렉트 — 복귀 후 처리(그때는 PENDING을 읽는다)
       if (resp.code || !resp.billingKey) {
         // 결제창을 닫았거나 실패했다 — 다시 시도하려면 새 issueId가 필요하다(같은 값은 재사용할 수 없다).
         // 포트원이 준 메시지는 화면에 그대로 옮기지 않는다(코드만 콘솔에 남긴다).
@@ -265,7 +269,8 @@
         });
       }
       busy($('reg-submit'), false);
-      return submitBillingKey(resp.billingKey);
+      // PENDING을 다시 읽지 않고 클릭 시점에 붙잡아 둔 값을 그대로 쓴다.
+      return submitBillingKey(resp.billingKey, { method: method, consentVersion: consentVersion });
     }).catch(function (e) {
       settled = true;
       clearTimeout(stuckTimer);
@@ -277,8 +282,10 @@
     });
   }
 
-  function submitBillingKey(billingKey) {
-    var pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) || 'null');
+  // captured가 있으면(PC 경로 — onRegister가 클릭 시점 값을 직접 넘긴다) PENDING을 읽지 않는다.
+  // 모바일 복귀(handleReturns)만 PENDING에 의존한다 — 새로고침으로 지역 변수가 사라지기 때문이다.
+  function submitBillingKey(billingKey, captured) {
+    var pending = captured || JSON.parse(sessionStorage.getItem(PENDING_KEY) || 'null');
     sessionStorage.removeItem(PENDING_KEY);
     if (!pending) return load().then(function () { banner(C.errorMessage('payment_window_failed')); });
     banner(''); // 이전 시도의 오류 배너가 성공 화면에 남지 않도록 지운다.
