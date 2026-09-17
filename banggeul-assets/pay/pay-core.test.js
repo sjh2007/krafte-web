@@ -38,6 +38,17 @@ test('필수 고지 — 바로 결제(체험 끝남)면 "바로 첫 결제", 29�
   assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
 });
 
+test('필수 고지 — 결제수단만 변경(해지 예약 중, chargeAt null)', () => {
+  const lines = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeAt: null, now: new Date('2026-09-26T03:00:00.000Z') });
+  assert.equal(lines.length, 4);
+  assert.equal(lines[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
+  assert.equal(lines[1], '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.');
+  assert.equal(lines[2], '해지를 취소하면 다음 결제일부터 이 결제수단으로 자동결제돼요.');
+  assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
+  assert.match(lines[3], /언제든 이 페이지에서 해지할 수 있어요/);
+  assert.match(lines[3], /결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불/);
+});
+
 test('고지 문구에 금칙어가 없다', () => {
   const all = C.noticeLines({ planName: '라이트', amount: 5900, chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z') }).join(' ');
   assert.doesNotMatch(all, /위험|감지|부가세 별도/);
@@ -70,6 +81,11 @@ test('errorMessage — 서버 오류 코드별 문구, 모르는 코드는 기�
   assert.equal(C.errorMessage('owner_only'), '결제는 대표 보호자만 할 수 있어요.');
   assert.equal(C.errorMessage('phone_extra_price_undecided'), '전화 방식 부모님을 추가한 요금은 아직 준비 중이에요. 고객센터(1877-1979)로 문의해 주세요.');
   assert.equal(C.errorMessage('???'), '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터(1877-1979)로 연락해 주세요.');
+});
+
+test('errorMessage — unauthorized는 session_expired와 같은 문구(다시 로그인)', () => {
+  assert.equal(C.errorMessage('unauthorized'), '다시 로그인해 주세요.');
+  assert.equal(C.errorMessage('unauthorized'), C.errorMessage('session_expired'));
 });
 
 test('paymentStatusLabel', () => {

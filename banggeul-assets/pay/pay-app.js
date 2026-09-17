@@ -8,6 +8,8 @@
   var PENDING_KEY = 'banggeulPayPending';
   var VIEWS = ['loading', 'login', 'register', 'done', 'manage', 'message'];
   var state = { status: null, checkout: null };
+  var checkoutSeq = 0; // 요금제·결제수단을 빠르게 바꿀 때 오래된 /checkout 응답을 무시하기 위한 순번
+  var googleInitTries = 0;
 
   function $(id) { return document.getElementById(id); }
   function show(view) {
@@ -42,7 +44,18 @@
   }
   function fail(err) {
     var code = (err && err.code) || (err && err.data && err.data.error) || 'unknown';
-    if (code === 'session_expired') { auth.signOut(); show('login'); }
+    // HTTP 401은 서버가 어떤 오류 코드를 실어 보내든 세션 만료와 같이 취급한다.
+    if ((err && err.status === 401) || code === 'unauthorized') code = 'session_expired';
+    if (code === 'session_expired') {
+      auth.signOut();
+      show('login');
+      banner(C.errorMessage(code));
+      return;
+    }
+    // 불러오는 중 화면에서 실패하면 배너만으로는 안 보인다 — 다시 시도할 수 있는 안내 화면을 보여준다.
+    if (!$('view-loading').hidden) {
+      return message('잠시 문제가 생겼어요', C.errorMessage(code), { label: '다시 시도', onclick: load });
+    }
     banner(C.errorMessage(code));
   }
 
@@ -52,7 +65,16 @@
     text($('msg-body'), body);
     var a = $('msg-action');
     a.hidden = !action;
-    if (action) { a.textContent = action.label; a.href = action.href; }
+    a.onclick = null;
+    if (action) {
+      a.textContent = action.label;
+      if (action.onclick) {
+        a.href = '#';
+        a.onclick = function (ev) { ev.preventDefault(); action.onclick(); };
+      } else {
+        a.href = action.href;
+      }
+    }
     show('message');
   }
 
@@ -97,12 +119,14 @@
     return el ? el.value : null;
   }
 
-  function renderRegister() {
+  function renderRegister(fromManage) {
     var s = state.status;
     text($('reg-elders'), '부모님 ' + s.elderCount + '분 기준 금액이에요(부가세 포함).');
     planChoices($('reg-plans'), 'regPlan', s.plan);
     $('reg-consent').checked = false;
     $('reg-submit').disabled = true;
+    $('reg-submit').setAttribute('aria-busy', 'false');
+    $('reg-back-manage').hidden = !fromManage;
     show('register');
     return refreshCheckout();
   }
@@ -112,19 +136,35 @@
     var method = selectedValue('method');
     var list = $('reg-notice');
     list.innerHTML = '';
+    // 새 요청을 시작하는 순간 이전 결제 준비값·동의는 무효로 만든다(다른 수단·요금제의 값으로 등록되는 것을 막는다).
+    state.checkout = null;
+    $('reg-consent').checked = false;
+    updateSubmit();
+    var seq = ++checkoutSeq;
     return auth.api('/family/billing/checkout', { method: 'POST', body: { method: method } }).then(function (r) {
-      if (r.status !== 200) { state.checkout = null; throw r; }
-      state.checkout = r.data;
+      if (seq !== checkoutSeq) return; // 그 사이 더 최신 요청이 있었다 — 이 응답은 버린다
+      if (r.status !== 200) throw r;
+      state.checkout = Object.assign({}, r.data, { method: method });
       C.noticeLines({ planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, now: new Date() })
         .forEach(function (line) { list.appendChild(li(line)); });
       updateSubmit();
-    }).catch(fail);
+    }).catch(function (e) {
+      if (seq !== checkoutSeq) return;
+      state.checkout = null;
+      updateSubmit();
+      fail(e);
+    });
   }
   function updateSubmit() { $('reg-submit').disabled = !($('reg-consent').checked && state.checkout); }
 
   function onPlanChange() {
     var plan = selectedValue('regPlan');
     if (!plan || plan === state.status.plan) return;
+    // 새 요금제 반영이 끝나기 전까지는 이전 요금제 기준 결제 준비값으로 등록할 수 없게 막는다.
+    state.checkout = null;
+    $('reg-consent').checked = false;
+    updateSubmit();
+    checkoutSeq++; // 진행 중이던 refreshCheckout 응답이 있었다면 무효화한다
     auth.api('/family/billing/plan', { method: 'POST', body: { plan: plan } }).then(function (r) {
       if (r.status !== 200) throw r;
       return auth.api('/family/billing/status');
@@ -137,11 +177,18 @@
 
   function onRegister() {
     var co = state.checkout;
-    var method = selectedValue('method');
     if (!co || !$('reg-consent').checked) return banner(C.errorMessage('consent_required'));
+    // 결제 준비값을 받아온 그 결제수단으로 등록한다 — 그 사이 라디오를 다시 바꿨을 가능성을 배제한다.
+    var method = co.method;
     busy($('reg-submit'), true);
     // 모바일은 결제창이 페이지를 떠났다 돌아온다 — 고른 수단과 동의를 잠시 보관한다.
     sessionStorage.setItem(PENDING_KEY, JSON.stringify({ method: method, consentVersion: C.BILLING_CONSENT_VERSION }));
+    if (!window.PortOne) {
+      // SDK가 아직 로드되지 않았거나 차단됐다 — 새 창을 열지 않고 바로 안내한다.
+      sessionStorage.removeItem(PENDING_KEY);
+      busy($('reg-submit'), false);
+      return banner(C.errorMessage('payment_window_failed'));
+    }
     window.PortOne.requestIssueBillingKey({
       storeId: co.storeId,
       channelKey: co.channelKey,
@@ -152,15 +199,25 @@
       redirectUrl: CFG.redirectUri + '?pgReturn=1',
     }).then(function (resp) {
       if (!resp) return; // 모바일 리다이렉트 — 복귀 후 처리
-      if (resp.code || !resp.billingKey) { busy($('reg-submit'), false); return banner(resp.message || C.errorMessage('payment_window_failed')); }
+      if (resp.code || !resp.billingKey) {
+        // 결제창을 닫았거나 실패했다 — 다시 시도하려면 새 issueId가 필요하다(같은 값은 재사용할 수 없다).
+        sessionStorage.removeItem(PENDING_KEY);
+        busy($('reg-submit'), false);
+        return refreshCheckout().then(function () { banner(resp.message || C.errorMessage('payment_window_failed')); });
+      }
+      busy($('reg-submit'), false);
       return submitBillingKey(resp.billingKey);
-    }).catch(function (e) { busy($('reg-submit'), false); fail(e); });
+    }).catch(function (e) {
+      sessionStorage.removeItem(PENDING_KEY);
+      busy($('reg-submit'), false);
+      return refreshCheckout().then(function () { fail(e); });
+    });
   }
 
   function submitBillingKey(billingKey) {
     var pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) || 'null');
     sessionStorage.removeItem(PENDING_KEY);
-    if (!pending) return banner(C.errorMessage('payment_window_failed'));
+    if (!pending) return load().then(function () { banner(C.errorMessage('payment_window_failed')); });
     banner(''); // 이전 시도의 오류 배너가 성공 화면에 남지 않도록 지운다.
     show('loading');
     return auth.api('/family/billing/billing-key', {
@@ -207,8 +264,10 @@
     fact(dl, '다음 결제일', b.nextPaymentAt ? C.formatKstDate(b.nextPaymentAt) : '');
     fact(dl, '이용 기간', b.cancelAtPeriodEnd ? C.formatKstDate(b.currentPeriodEnd || sub.trialEndsAt) + '까지 이용 후 해지돼요' : '');
     fact(dl, '결제 확인', b.graceEndsAt ? '결제가 되지 않았어요. ' + C.formatKstDate(b.graceEndsAt) + '까지 결제수단을 확인해 주세요.' : '');
+    var periodEnd = b.currentPeriodEnd || sub.trialEndsAt;
+    var periodEnded = !!periodEnd && new Date(periodEnd).getTime() <= Date.now();
     $('mg-cancel').hidden = !b.nextPaymentAt;
-    $('mg-resume').hidden = !b.cancelAtPeriodEnd;
+    $('mg-resume').hidden = !b.cancelAtPeriodEnd || periodEnded;
     planChoices($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan);
 
     var body = $('mg-history');
@@ -275,7 +334,11 @@
   }
 
   function initGoogle() {
-    if (!window.google || !window.google.accounts) return setTimeout(initGoogle, 300);
+    if (!window.google || !window.google.accounts) {
+      googleInitTries++;
+      if (googleInitTries > 20) { $('login-google').hidden = true; return; } // 약 6초 — SDK가 안 뜨면 포기하고 숨긴다
+      return setTimeout(initGoogle, 300);
+    }
     window.google.accounts.id.initialize({
       client_id: CFG.googleWebClientId,
       callback: function (resp) {
@@ -301,7 +364,8 @@
     Array.prototype.forEach.call(document.querySelectorAll('input[name="method"]'), function (el) { el.onchange = refreshCheckout; });
     $('reg-plans').onchange = onPlanChange;
     $('done-manage').onclick = function () { load(); };
-    $('mg-method').onclick = renderRegister;
+    $('mg-method').onclick = function () { renderRegister(true); };
+    $('reg-back-manage').onclick = renderManage;
     $('mg-cancel').onclick = onCancel;
     $('mg-resume').onclick = function () { postAndReload('/family/billing/resume', undefined, '해지를 취소했어요. 다음 결제일에 자동결제돼요.'); };
     $('mg-plan-submit').onclick = function () {
