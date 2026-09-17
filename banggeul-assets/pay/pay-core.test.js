@@ -50,6 +50,14 @@ test('필수 고지 — renewal(이미 결제한 기간 안에서 결제수단�
   assert.match(lines[3], /언제든 이 페이지에서 해지할 수 있어요/);
 });
 
+test('필수 고지 — renewal, 29일 이후 결제일은 말일 안내', () => {
+  const lines = C.noticeLines({
+    planName: '스탠다드', amount: 8900, chargeKind: 'renewal',
+    chargeAt: '2026-10-31T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z'),
+  });
+  assert.equal(lines[2], '10월 31일에 8,900원이 결제되고, 이후 매월 31일에 자동결제돼요. 그 날짜가 없는 달은 마지막 날에 결제돼요.');
+});
+
 test('필수 고지 — overdue(밀린 결제를 바로 처리하고 다음 정기결제 안내)', () => {
   const lines = C.noticeLines({
     planName: '스탠다드', amount: 8900, chargeKind: 'overdue',
@@ -72,8 +80,8 @@ test('필수 고지 — immediate(체험이 이미 끝난 뒤 신규 등록, 바
   assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
 });
 
-test('필수 고지 — none(결제수단만 변경, 해지 예약 중)', () => {
-  const lines = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'none', chargeAt: null, now: new Date('2026-09-26T03:00:00.000Z') });
+test('필수 고지 — none(결제수단만 변경, 해지 예약 중) — 이번 청구는 없어도 요금제 월 가격은 보여준다', () => {
+  const lines = C.noticeLines({ planName: '스탠다드', amount: null, monthlyAmount: 8900, chargeKind: 'none', chargeAt: null, now: new Date('2026-09-26T03:00:00.000Z') });
   assert.equal(lines.length, 4);
   assert.equal(lines[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
   assert.equal(lines[1], '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.');
@@ -81,6 +89,16 @@ test('필수 고지 — none(결제수단만 변경, 해지 예약 중)', () => 
   assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
   assert.match(lines[3], /언제든 이 페이지에서 해지할 수 있어요/);
   assert.match(lines[3], /결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불/);
+});
+
+test('필수 고지 — 알 수 없는/누락된 chargeKind는 중립 문구만', () => {
+  const known = C.noticeLines({ planName: '스탠다드', amount: 8900, monthlyAmount: 8900, chargeKind: 'weird_new_kind', chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z') });
+  assert.equal(known[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
+  assert.equal(known[1], '결제 예정 정보를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.');
+  assert.equal(known.length, 2);
+
+  const missing = C.noticeLines({ planName: '스탠다드', amount: 8900, monthlyAmount: 8900, chargeAt: '2026-10-25T03:00:00.000Z', now: new Date('2026-09-26T03:00:00.000Z') });
+  assert.equal(missing[1], '결제 예정 정보를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.');
 });
 
 test('고지 문구에 금칙어가 없다', () => {

@@ -13,6 +13,7 @@
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
   var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
   var OAUTH_PROVIDERS = { kakao: true, naver: true };
+  var CHARGE_KINDS = { none: true, trial_end: true, renewal: true, overdue: true, immediate: true };
 
   function formatWon(n) {
     if (n === null || n === undefined || isNaN(Number(n))) return '-';
@@ -36,8 +37,10 @@
   // 대장 §8-4 구독 필수 표기 4종: 가격 · 무료 기간 · 자동결제 시점 · 해지 방법.
   // 문구는 서버가 정한 chargeKind로만 정한다(시간차 어림짐작 안 함): none · trial_end · renewal · overdue · immediate.
   function noticeLines(opts) {
-    var price = formatWon(opts.amount);
-    var line1 = opts.planName + ' 요금제 · 월 ' + price + ' (부가세 포함)';
+    // 1번째 줄은 "이번 청구액"이 아니라 요금제의 월 정액을 보여준다 — chargeKind가 'none'이면 이번 청구(amount)는
+    // 없어도(null) 요금제 자체의 월 가격(monthlyAmount)은 있다. monthlyAmount가 없으면 구버전 호출 호환으로 amount를 쓴다.
+    var line1Price = formatWon((opts.monthlyAmount !== null && opts.monthlyAmount !== undefined) ? opts.monthlyAmount : opts.amount);
+    var line1 = opts.planName + ' 요금제 · 월 ' + line1Price + ' (부가세 포함)';
     var kind = opts.chargeKind;
 
     // chargeKind가 'none'이거나(구버전 호출 호환) chargeAt이 없으면 해지 예약 중에 결제수단만 바꾸는 경우다.
@@ -51,34 +54,41 @@
       ];
     }
 
+    if (!CHARGE_KINDS[kind]) {
+      // 서버가 결제 성격을 못 정했거나 모르는 값을 보냈다 — 잘못된 안내를 하느니 새로고침을 권한다.
+      // 등록 버튼 자체를 막는 건 pay-app 쪽(updateSubmit)의 몫이다.
+      return [line1, '결제 예정 정보를 확인하지 못했어요. 새로고침 후 다시 확인해 주세요.'];
+    }
+
+    var price = formatWon(opts.amount);
     var date = formatKstDate(opts.chargeAt);
     var day = kstDayOfMonth(opts.chargeAt);
     var nextDate = opts.nextChargeAt ? formatKstDate(opts.nextChargeAt) : null;
     var nextDay = opts.nextChargeAt ? kstDayOfMonth(opts.nextChargeAt) : null;
     var nextPrice = formatWon(opts.nextAmount);
+    var monthEnd = ' 그 날짜가 없는 달은 마지막 날에 결제돼요.';
 
     var line2, line3, firstChargeClause;
 
     if (kind === 'renewal') {
       // 이미 결제된 이용 기간 안에서 결제수단만 바꾸는 경우 — 오늘은 결제되지 않는다.
       line2 = '이미 결제한 이용 기간이 ' + date + '까지예요. 오늘은 결제되지 않아요.';
-      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.';
+      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
       firstChargeClause = '';
     } else if (kind === 'overdue') {
       // 밀린 결제가 있다 — 등록하는 순간 밀린 금액부터 처리하고, 이후 정기 결제로 돌아간다.
       line2 = '결제되지 않은 ' + price + '이 등록 후 바로 결제돼요.';
-      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.';
+      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.' + (nextDay >= 29 ? monthEnd : '');
       firstChargeClause = '';
     } else if (kind === 'immediate') {
       // 체험이 이미 끝난 뒤의 신규(또는 재)등록 — 등록하는 순간 바로 첫 결제가 일어난다.
       line2 = '등록하면 바로 첫 결제(' + price + ')가 진행돼요.';
-      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.';
+      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.' + (nextDay >= 29 ? monthEnd : '');
       firstChargeClause = '';
     } else {
       // 'trial_end' — 체험 중 최초 등록. 결제는 체험이 끝나는 날부터 시작된다.
       line2 = '오늘은 결제되지 않아요. ' + date + '까지 무료로 이용하실 수 있어요.';
-      line3 = date + '부터 매월 ' + day + '일에 ' + price + '이 자동결제돼요.' +
-        (day >= 29 ? ' 그 날짜가 없는 달은 마지막 날에 결제돼요.' : '');
+      line3 = date + '부터 매월 ' + day + '일에 ' + price + '이 자동결제돼요.' + (day >= 29 ? monthEnd : '');
       firstChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
     }
 
@@ -177,7 +187,7 @@
   }
 
   return {
-    BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS,
+    BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,
     errorMessage: errorMessage, paymentStatusLabel: paymentStatusLabel,

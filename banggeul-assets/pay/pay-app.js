@@ -38,9 +38,17 @@
     return new Promise(function (resolve) {
       var d = $('confirm-dialog');
       $('confirm-text').textContent = message;
-      function done(v) { $('confirm-yes').onclick = null; $('confirm-no').onclick = null; d.close(); resolve(v); }
+      function cleanup() {
+        $('confirm-yes').onclick = null;
+        $('confirm-no').onclick = null;
+        d.removeEventListener('cancel', onCancel);
+      }
+      function done(v) { cleanup(); d.close(); resolve(v); }
+      // Esc — 대화상자는 브라우저가 기본 동작으로 이미 닫는다. 취소로 본다.
+      function onCancel() { cleanup(); resolve(false); }
       $('confirm-yes').onclick = function () { done(true); };
       $('confirm-no').onclick = function () { done(false); };
+      d.addEventListener('cancel', onCancel);
       d.showModal();
     });
   }
@@ -155,7 +163,7 @@
       text($('reg-consent-label'), r.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
       C.noticeLines({
         planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
-        nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, now: new Date(),
+        nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: state.status.amount, now: new Date(),
       }).forEach(function (line) { list.appendChild(li(line)); });
       updateSubmit();
     }).catch(function (e) {
@@ -165,10 +173,12 @@
       fail(e);
     });
   }
-  // 결제 준비값(checkout)이 없으면 동의 체크 자체를 막는다 — 무엇에 동의하는지 정해지기 전에는 누를 수 없게.
+  // 결제 준비값(checkout)이 없거나, 있어도 결제 성격(chargeKind)을 서버가 알 수 없는 값으로 줬으면 동의·등록을 막는다 —
+  // 무엇에 동의하는지 정해지기 전에는 누를 수 없게 한다.
   function updateSubmit() {
-    $('reg-consent').disabled = !state.checkout;
-    $('reg-submit').disabled = !($('reg-consent').checked && state.checkout);
+    var ready = !!state.checkout && !!C.CHARGE_KINDS[state.checkout.chargeKind];
+    $('reg-consent').disabled = !ready;
+    $('reg-submit').disabled = !($('reg-consent').checked && ready);
   }
 
   function onPlanChange() {
@@ -221,11 +231,14 @@
       busy($('reg-submit'), false);
       return banner(C.errorMessage('payment_window_failed'));
     }
-    // 결제창이 응답 없이 오래 걸리면(멎었거나 뒷단이 조용히 막힌 경우) 버튼만 다시 눌리게 풀어준다 —
-    // PENDING은 그대로 둔다(나중에 결제창이 실제로 끝나면 그 응답으로 이어서 처리한다).
+    // 결제창이 응답 없이 오래 걸리면(멎었거나 뒷단이 조용히 막힌 경우) 이 시도는 포기한 것으로 본다 —
+    // PENDING을 지우고, 버튼을 풀고, 재시도할 때 쓸 새 issueId를 미리 받아 둔다.
     var settled = false;
     var stuckTimer = setTimeout(function () {
-      if (!settled) busy($('reg-submit'), false);
+      if (settled) return;
+      sessionStorage.removeItem(PENDING_KEY);
+      busy($('reg-submit'), false);
+      refreshCheckout();
     }, 60000);
     window.PortOne.requestIssueBillingKey({
       storeId: co.storeId,
@@ -438,13 +451,19 @@
       var name = C.PLAN_NAMES[plan];
       var amount = C.formatWon(state.status.amounts[plan]);
       var msg;
-      if (sub.status === 'trial') {
+      if (b.cancelAtPeriodEnd) {
+        // 해지 예약 중이면 상태(트라이얼·활성·연체)와 무관하게 더 이상 결제가 없다 — 요금만 바뀐다.
+        msg = name + '으로 바뀌어요. 해지 예약 중이라 결제되지 않아요.';
+      } else if (sub.status === 'trial') {
         msg = '지금 바로 ' + name + '으로 바뀌어요. 체험이 끝나면 월 ' + amount + '이 결제돼요.';
       } else if (sub.status === 'past_due') {
-        msg = name + ' 요금은 다음 결제부터 적용되고, 결제되지 않은 금액은 기존 요금으로 곧 다시 결제돼요.';
+        msg = b.nextPaymentAt
+          ? name + ' 요금은 다음 결제부터 적용되고, 결제되지 않은 금액은 기존 요금으로 곧 다시 결제돼요.'
+          : name + ' 요금은 다음 결제부터 적용돼요. 결제수단을 다시 등록하면 결제가 진행돼요.';
       } else {
-        var date = b.nextPaymentAt ? C.formatKstDate(b.nextPaymentAt) : '다음 결제일';
-        msg = '다음 결제일(' + date + ')부터 ' + name + ' 월 ' + amount + '으로 바뀌어요.';
+        msg = b.nextPaymentAt
+          ? '다음 결제일(' + C.formatKstDate(b.nextPaymentAt) + ')부터 ' + name + ' 월 ' + amount + '으로 바뀌어요.'
+          : '다음 결제부터 ' + name + ' 월 ' + amount + '으로 바뀌어요.';
       }
       confirmDialog(msg).then(function (yes) {
         if (yes) postAndReload('/family/billing/plan', { plan: plan }, '요금제를 바꿨어요.');
