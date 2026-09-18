@@ -193,7 +193,8 @@
       if (monthlyAmount === null || monthlyAmount === undefined) monthlyAmount = state.status.amount;
       C.noticeLines({
         planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
-        nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount, now: new Date(),
+        nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount,
+        firstCharge: r.data.firstCharge, now: new Date(),
       }).forEach(function (line) { list.appendChild(li(line)); });
       // A-1 — 누르면 무엇이 일어나는지(금액)를 버튼에 적는다. 필수 고지 4종 바로 아래 버튼이다.
       text($('reg-submit'), C.submitLabel({ chargeKind: r.data.chargeKind, amount: r.data.amount, monthlyAmount: monthlyAmount }));
@@ -386,7 +387,6 @@
     var body = $('mg-history');
     body.innerHTML = '';
     var rows = (s.payments || []).filter(function (p) { return p.status !== 'revoked'; });
-    var now = new Date();
     rows.forEach(function (p) {
       var tr = document.createElement('tr');
       tr.appendChild(text(document.createElement('td'), C.formatKstDate(p.paidAt || p.dueAt)));
@@ -396,7 +396,7 @@
       var refundLabel = C.refundRequestLabel(p);
       if (refundLabel) {
         text(action, refundLabel); // 처리된 요청(closed)도 다시 요청 버튼을 띄우지 않는다
-      } else if (C.canRequestRefund(p, now)) {
+      } else if (C.canRequestRefund(p)) {
         var btn = text(document.createElement('button'), '환불 요청');
         btn.type = 'button';
         btn.className = 'btn';
@@ -443,6 +443,9 @@
     $('cs-pause-limit').hidden = offer.kind !== 'limit';
     text($('cs-pause-limit'), offer.kind === 'limit' ? offer.text : '');
     text($('cs-keep'), C.cancelKeepText(s.subscription, new Date()));
+    var refundText = C.cancelRefundText(s.subscription, s.payments);
+    text($('cs-refund'), refundText);
+    $('cs-refund').hidden = !refundText;
     renderReasons();
     busy($('cs-cancel-btn'), false);
     track('cancel_view');
@@ -504,7 +507,7 @@
         if (r.status !== 200) throw r;
         d.close();
         track('refund_request');
-        return load().then(function () { banner('환불 요청을 보냈어요. 확인 후 고객센터(' + CFG.csPhone + ')에서 연락드려요.', true); });
+        return load().then(function () { banner('환불 요청을 보냈어요. 확인 후 고객센터(' + C.CS_PHONE + ')에서 연락드려요.', true); });
       }).catch(function (e) {
         busy($('rf-yes'), false);
         d.close();

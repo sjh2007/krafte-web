@@ -25,7 +25,7 @@ test('필수 고지 — trial_end(체험 중 최초 등록, 오늘 결제 없음
   assert.equal(lines[2], '10월 25일부터 매월 25일에 8,900원이 자동결제돼요.');
   assert.match(lines[3], /언제든 이 페이지에서 해지할 수 있어요/);
   assert.match(lines[3], /첫 결제 전에 해지하면 청구되지 않아요/);
-  assert.match(lines[3], /결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불/);
+  assert.doesNotMatch(lines[3], /안부전화 이용 기록/);
 });
 
 test('필수 고지 — trial_end, 29일 이후 결제일은 말일 안내', () => {
@@ -99,7 +99,7 @@ test('필수 고지 — none(결제수단만 변경, 해지 예약 중) — 이�
   assert.equal(lines[2], '해지를 취소하면 다음 결제일부터 이 결제수단으로 자동결제돼요.');
   assert.doesNotMatch(lines[3], /첫 결제 전에 해지하면/);
   assert.match(lines[3], /언제든 이 페이지에서 해지할 수 있어요/);
-  assert.match(lines[3], /결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불/);
+  assert.equal(lines[3], '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. 매월 결제된 요금은 환불되지 않아요(고객센터 1877-1979).');
 });
 
 test('필수 고지 — 알 수 없는/누락된 chargeKind는 중립 문구만', () => {
@@ -262,15 +262,63 @@ test('CANCEL_REASONS — 서버 화이트리스트와 같은 5개', () => {
   C.CANCEL_REASONS.forEach((r) => assert.ok(r.label));
 });
 
-test('canRequestRefund — paid · 결제 후 7일 안 · 요청 없음', () => {
-  const now = new Date('2026-10-08T00:00:00.000Z');
-  const p = { paymentId: 'p1', status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: null };
-  assert.equal(C.canRequestRefund(p, now), true);
-  assert.equal(C.canRequestRefund(Object.assign({}, p, { paidAt: '2026-09-30T23:00:00.000Z' }), now), false); // 7일 지남
-  assert.equal(C.canRequestRefund(Object.assign({}, p, { status: 'failed' }), now), false);
-  assert.equal(C.canRequestRefund(Object.assign({}, p, { refundRequest: 'open' }), now), false);
-  assert.equal(C.canRequestRefund(Object.assign({}, p, { paidAt: null }), now), false);
-  assert.equal(C.canRequestRefund(Object.assign({}, p, { refundRequest: undefined }), now), true);
+test('canRequestRefund — 서버의 withdrawalEligible === true이고 요청 없음일 때만(웹에서 7일 계산 안 함)', () => {
+  const p = { paymentId: 'p1', status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: null, withdrawalEligible: true };
+  assert.equal(C.canRequestRefund(p), true);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { refundRequest: undefined })), true);
+  // 결제 시각이 오래돼도 서버가 대상이라 하면 버튼(웹은 날짜를 보지 않는다)
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { paidAt: '2020-01-01T00:00:00.000Z' }), new Date('2026-10-08T00:00:00.000Z')), true);
+  // 결제 직후라도 서버가 대상이 아니라 하면(매월 자동결제 건) 버튼 없음
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { withdrawalEligible: false }), new Date('2026-10-02T01:00:00.000Z')), false);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { withdrawalEligible: undefined })), false);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { withdrawalEligible: 'true' })), false);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { refundRequest: 'open' })), false);
+  assert.equal(C.canRequestRefund(null), false);
+});
+
+test('필수 고지 4번째 줄 — firstCharge true/false 환불 기준', () => {
+  const tail = '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요. 그 뒤 매월 결제된 요금은 환불되지 않아요(고객센터 1877-1979).';
+  const head = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ';
+  const trial = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'trial_end', chargeAt: '2026-10-25T03:00:00.000Z', firstCharge: true });
+  assert.equal(trial[3], head + '첫 결제 전에 해지하면 청구되지 않아요. ' + tail);
+  const imm = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'immediate', chargeAt: '2026-09-26T03:00:00.000Z',
+    nextChargeAt: '2026-10-26T03:00:00.000Z', nextAmount: 8900, firstCharge: true });
+  assert.equal(imm[3], head + tail);
+  const overdueFirst = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'overdue', chargeAt: '2026-09-26T03:00:00.000Z',
+    nextChargeAt: '2026-10-26T03:00:00.000Z', nextAmount: 8900, firstCharge: true });
+  assert.equal(overdueFirst[3], head + tail); // 첫 결제가 실패해 재시도로 결제되는 경우도 첫 결제
+  const monthly = head + '매월 결제된 요금은 환불되지 않아요(고객센터 1877-1979).';
+  ['renewal', 'overdue', 'pause_end'].forEach((kind) => {
+    const l = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: kind, chargeAt: '2026-10-25T03:00:00.000Z',
+      nextChargeAt: '2026-11-25T03:00:00.000Z', nextAmount: 8900, firstCharge: false });
+    assert.equal(l[3], monthly, kind);
+  });
+  // firstCharge가 없으면(서버 구버전) 첫 결제 환불을 약속하지 않는다
+  assert.equal(C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'immediate', chargeAt: '2026-09-26T03:00:00.000Z',
+    nextChargeAt: '2026-10-26T03:00:00.000Z', nextAmount: 8900 })[3], monthly);
+  // none(해지 예약 중 카드만 변경)은 firstCharge와 무관하게 false 문구
+  assert.equal(C.noticeLines({ planName: '스탠다드', amount: null, monthlyAmount: 8900, chargeKind: 'none', chargeAt: null, firstCharge: true })[3], monthly);
+});
+
+test('BILLING_CONSENT_VERSION — 환불 기준 변경(2026-09-18)', () => {
+  assert.equal(C.BILLING_CONSENT_VERSION, '2026-09-18');
+});
+
+test('cancelRefundText — 해지 화면 환불 안내', () => {
+  const noRefund = '이미 결제된 이번 달 요금은 환불되지 않아요.';
+  const eligible = "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요 — 결제 내역의 '환불 요청'을 이용해 주세요.";
+  const active = { status: 'active', billing: { currentPeriodEnd: '2026-10-25T03:00:00.000Z' } };
+  assert.equal(C.cancelRefundText(active, [{ status: 'paid', withdrawalEligible: false, refundRequest: null }]), noRefund);
+  assert.equal(C.cancelRefundText(active, []), noRefund);
+  assert.equal(C.cancelRefundText(active, undefined), noRefund);
+  assert.equal(C.cancelRefundText(active, [{ status: 'paid', withdrawalEligible: false }, { status: 'paid', withdrawalEligible: true, refundRequest: null }]), eligible);
+  // 이미 환불을 요청했으면 요청 안내를 다시 하지 않는다
+  assert.equal(C.cancelRefundText(active, [{ status: 'paid', withdrawalEligible: true, refundRequest: 'open' }]), '');
+  // 결제된 이번 달 요금이 없는 상태(체험 중 · 밀린 결제 · 쉬는 중)에는 안내하지 않는다
+  assert.equal(C.cancelRefundText({ status: 'trial', billing: {} }, []), '');
+  assert.equal(C.cancelRefundText({ status: 'past_due', billing: {} }, []), '');
+  assert.equal(C.cancelRefundText({ status: 'active', pause: { state: 'active' }, billing: {} }, []), '');
+  assert.equal(C.cancelRefundText({ status: 'active', billing: { pause: { state: 'active' } } }, []), '');
 });
 
 test('errorMessage — 쉬어가기·해지 이유·환불 요청 오류 코드', () => {
@@ -363,6 +411,5 @@ test('refundRequestLabel — 환불 요청 처리 결과 표시', () => {
   assert.equal(C.refundRequestLabel({}), null);
   assert.equal(C.refundRequestLabel(null), null);
   // 처리된 요청은 다시 요청 버튼을 띄우지 않는다
-  const now = new Date('2026-10-03T00:00:00.000Z');
-  assert.equal(C.canRequestRefund({ status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: 'closed', refundResolution: 'rejected' }, now), false);
+  assert.equal(C.canRequestRefund({ status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: 'closed', refundResolution: 'rejected', withdrawalEligible: true }), false);
 });

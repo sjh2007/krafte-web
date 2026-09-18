@@ -8,7 +8,7 @@
   'use strict';
 
   var KST_MS = 9 * 60 * 60 * 1000;
-  var BILLING_CONSENT_VERSION = '2026-09-17';
+  var BILLING_CONSENT_VERSION = '2026-09-18';
   var CS_PHONE = '1877-1979';
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
   var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
@@ -27,7 +27,6 @@
     'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done', 'refund_request'];
   // 탭(세션)당 한 번만 세는 이벤트 — 로그인·결제창 복귀로 페이지가 다시 열려도 방문 한 번으로 센다.
   var ONCE_PER_TAB_EVENTS = ['pay_view', 'login_view', 'consent_checked'];
-  var REFUND_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
   function formatWon(n) {
     if (n === null || n === undefined || isNaN(Number(n))) return '-';
@@ -48,6 +47,9 @@
     return kstParts(iso).day;
   }
 
+  var CANCEL_ANYTIME = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ';
+  var MONTHLY_NO_REFUND = '매월 결제된 요금은 환불되지 않아요(고객센터 ' + CS_PHONE + ').';
+
   // 대장 §8-4 구독 필수 표기 4종: 가격 · 무료 기간 · 자동결제 시점 · 해지 방법.
   // 문구는 서버가 정한 chargeKind로만 정한다(시간차 어림짐작 안 함): none · trial_end · renewal · overdue · immediate.
   function noticeLines(opts) {
@@ -63,8 +65,7 @@
         line1,
         '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.',
         '해지를 취소하면 다음 결제일부터 이 결제수단으로 자동결제돼요.',
-        '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ' +
-          '결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불을 요청하실 수 있어요(고객센터 ' + CS_PHONE + ').',
+        CANCEL_ANYTIME + MONTHLY_NO_REFUND,
       ];
     }
 
@@ -111,9 +112,12 @@
       firstChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
     }
 
-    var line4 = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ' +
-      firstChargeClause +
-      '결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불을 요청하실 수 있어요(고객센터 ' + CS_PHONE + ').';
+    // 환불 기준(대표 9/18) — 청약철회는 첫 결제만(7일 안 전액), 매월 자동결제 건은 환불하지 않는다.
+    // 이번 결제가 첫 결제인지는 서버(firstCharge)만 안다 — true가 아니면 첫 결제 환불을 약속하지 않는다.
+    // 첫 결제 전 해지 무청구 문구(trial_end만)는 사실이므로 firstCharge 값과 무관하게 둔다.
+    var line4 = opts.firstCharge === true
+      ? CANCEL_ANYTIME + firstChargeClause + '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요. 그 뒤 ' + MONTHLY_NO_REFUND
+      : CANCEL_ANYTIME + firstChargeClause + MONTHLY_NO_REFUND;
     return [line1, line2, line3, line4];
   }
 
@@ -175,12 +179,25 @@
     return '해지하면 더 이상 결제되지 않아요.' + pauseNote + reports;
   }
 
-  // 결제 내역의 환불 요청 버튼 — 결제 완료이고 결제 후 7일 안이며 아직 요청하지 않은 결제만.
-  function canRequestRefund(p, now) {
-    if (!p || p.status !== 'paid' || !p.paidAt || p.refundRequest) return false;
-    var nowMs = (now ? new Date(now) : new Date()).getTime();
-    var paidMs = new Date(p.paidAt).getTime();
-    return !isNaN(paidMs) && nowMs - paidMs < REFUND_WINDOW_MS;
+  // 결제 내역의 환불 요청 버튼 — 서버가 청약철회 대상(첫 결제 후 7일 안)이라고 한 결제이고 아직 요청하지 않았을 때만.
+  // 7일 계산·첫 결제 여부는 서버(withdrawalEligible)가 정한다 — 웹에서 날짜로 어림짐작하지 않는다.
+  function canRequestRefund(p) {
+    return !!p && p.withdrawalEligible === true && !p.refundRequest;
+  }
+
+  // 해지 화면의 환불 안내 한 줄. 첫 결제 7일 안이면 환불 요청 안내, 아니면 이번 달 요금 환불 없음.
+  // 결제된 이번 달 요금이 없는 상태(체험 중 · 밀린 결제 · 쉬는 중)나 이미 환불을 요청한 경우는 빈 문자열(숨김).
+  function cancelRefundText(sub, payments) {
+    sub = sub || {};
+    var list = payments || [];
+    var eligible = list.filter(function (p) { return p && p.withdrawalEligible === true; });
+    if (eligible.some(function (p) { return !p.refundRequest; })) {
+      return "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요 — 결제 내역의 '환불 요청'을 이용해 주세요.";
+    }
+    if (eligible.length) return '';
+    var pause = sub.pause || (sub.billing && sub.billing.pause);
+    if (sub.status !== 'active' || (pause && pause.state === 'active')) return '';
+    return '이미 결제된 이번 달 요금은 환불되지 않아요.';
   }
 
   // 결제 내역 행의 환불 요청 상태 표시. 요청이 없으면 null(그때만 canRequestRefund로 버튼을 판단한다).
@@ -322,6 +339,6 @@
     CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
     isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
-    cancelKeepText: cancelKeepText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
+    cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };
 });

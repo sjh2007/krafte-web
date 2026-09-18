@@ -134,6 +134,7 @@
   </div>
   <p class="muted small" id="cs-pause-limit" hidden></p>
   <p id="cs-keep"></p>
+  <p id="cs-refund" hidden></p>
   <fieldset class="reasons">
     <legend>해지 이유(선택)</legend>
     <div class="choices" id="cs-reasons"></div>
@@ -148,7 +149,7 @@
 
 <dialog id="refund-dialog" aria-labelledby="rf-title">
   <h2 id="rf-title">환불 요청</h2>
-  <p>결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불돼요. 요청을 보내 주시면 확인 후 고객센터(<span class="cs-phone"></span>)에서 연락드려요.</p>
+  <p>첫 결제 후 7일 안에는 전액 환불해 드려요. 요청을 보내 주시면 확인 후 고객센터(<span class="cs-phone"></span>)에서 연락드려요.</p>
   <textarea id="rf-reason" maxlength="300" rows="3" placeholder="환불 사유(선택, 300자 이내)" aria-label="환불 사유"></textarea>
   <div class="actions even">
     <button type="button" class="btn" id="rf-no">돌아가기</button>
