@@ -1,5 +1,6 @@
 /* banggeul-assets/pay/pay.css — 랜딩과 같은 토큰 */
 :root{--blue:#0062FF;--blue-deep:#0044B4;--blue-bg:#EDF5FF;--ink:#151A23;--gray:#6B7280;--line:#E7EAF0;--bg:#F7F9FC;--danger:#D92D20;
+  --app-bg:var(--blue-bg);--app-ink:var(--blue-deep);--app-line:#C9DDFF;--phone-bg:#FFF6E6;--phone-ink:#8A4B00;--phone-line:#F5D9A8;
   --font:"Pretendard Variable","Pretendard",-apple-system,system-ui,sans-serif}
 *{box-sizing:border-box}
 body{margin:0;font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1.6;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
@@ -62,7 +63,14 @@ textarea{display:block;width:100%;margin-top:8px;padding:10px 12px;border:1px so
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 dialog{max-height:calc(100% - 40px);overflow:auto}
 /* 요금제 카드(9/18 2차) — 부모님별 방식·포함 내용·금액. 360px에서도 줄바꿈으로 읽히게 한다. */
-.family-modes{margin:0 0 2px;font-weight:600;font-size:.92rem;overflow-wrap:anywhere}
+.family-modes{margin:0 0 4px}
+.family-modes-label{margin:0 0 6px;font-weight:700;font-size:.92rem}
+.mode-chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.mode-chip{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid;font-size:.9rem;font-weight:600;overflow-wrap:anywhere;max-width:100%}
+.mode-chip.mode-app{background:var(--app-bg);color:var(--app-ink);border-color:var(--app-line)}
+.mode-chip.mode-phone{background:var(--phone-bg);color:var(--phone-ink);border-color:var(--phone-line)}
+.plan-summary{margin:0;font-size:1rem;color:var(--ink);overflow-wrap:anywhere}
+.plan-summary strong,.plan-lines strong{font-weight:800;color:var(--ink)}
 .plan-card{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
 .plan-head{display:flex;align-items:center;gap:10px;min-height:28px;cursor:pointer}
 .plan-head input{width:18px;height:18px;accent-color:var(--blue)}
