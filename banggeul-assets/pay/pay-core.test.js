@@ -570,3 +570,14 @@ test('readOnlyCompositionLines — 준비 중(amount_error · phone_extra_price_
   assert.equal(C.readOnlyCompositionLines(Object.assign({}, s, { planDetails: { lite: { amount: null, error: 'x', lines: [] } } })), null);
   assert.equal(C.readOnlyCompositionLines(null), null);
 });
+
+test('normalizePayer — KG이니시스 필수 결제자 정보(이름·휴대폰·이메일)를 다듬어 SDK customer 형식으로', () => {
+  assert.deepEqual(C.normalizePayer({ name: ' 신보호 ', phone: '010-1234-5678', email: ' p@x.com ' }),
+    { ok: true, value: { fullName: '신보호', phoneNumber: '01012345678', email: 'p@x.com' } });
+  assert.equal(C.normalizePayer({ name: '', phone: '01012345678', email: 'p@x.com' }).error, 'payer_name');
+  assert.equal(C.normalizePayer({ name: '신', phone: '0212345678', email: 'p@x.com' }).error, 'payer_phone');
+  assert.equal(C.normalizePayer({ name: '신', phone: '010123', email: 'p@x.com' }).error, 'payer_phone');
+  assert.equal(C.normalizePayer({ name: '신', phone: '01012345678', email: 'px.com' }).error, 'payer_email');
+  assert.equal(C.normalizePayer(null).error, 'payer_name');
+  ['payer_name', 'payer_phone', 'payer_email'].forEach((code) => assert.notEqual(C.errorMessage(code), C.errorMessage('없는코드')));
+});

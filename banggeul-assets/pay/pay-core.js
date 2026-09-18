@@ -347,6 +347,9 @@
   var PAUSE_UNAVAILABLE = '지금은 쉬어가기를 신청할 수 없어요.';
   var ERROR_MESSAGES = {
     consent_required: '자동결제 동의에 체크해 주세요.',
+    payer_name: '결제하시는 분 이름을 적어 주세요.',
+    payer_phone: '휴대폰 번호를 확인해 주세요(예: 010-1234-5678).',
+    payer_email: '이메일 주소를 확인해 주세요.',
     owner_only: '결제는 대표 보호자만 할 수 있어요.',
     no_family: '방글이 앱에서 먼저 가입해 주세요.',
     billing_disabled: '결제 기능을 준비하고 있어요. 조금만 기다려 주세요.',
@@ -436,7 +439,21 @@
     return { billingKey: q.get('billingKey'), code: q.get('code'), message: q.get('message') };
   }
 
+  // 결제자 정보 — KG이니시스가 빌링키 발급에 이름·휴대폰·이메일을 필수로 요구한다(9/18 실연동에서 INVALID_REQUEST).
+  // 입력값을 다듬어 포트원 SDK customer 형식으로 돌려준다. 틀리면 { ok:false, error: 오류 코드 }.
+  function normalizePayer(input) {
+    var i = input || {};
+    var name = String(i.name || '').trim();
+    var phone = String(i.phone || '').replace(/[\s-]/g, '');
+    var email = String(i.email || '').trim();
+    if (!name || name.length > 30) return { ok: false, error: 'payer_name' };
+    if (!/^01[016789]\d{7,8}$/.test(phone)) return { ok: false, error: 'payer_phone' };
+    if (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'payer_email' };
+    return { ok: true, value: { fullName: name, phoneNumber: phone, email: email } };
+  }
+
   return {
+    normalizePayer: normalizePayer,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,

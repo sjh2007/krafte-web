@@ -276,6 +276,7 @@
       if (seq !== checkoutSeq) return; // 그 사이 더 최신 요청이 있었다 — 이 응답은 버린다
       if (r.status !== 200) throw r;
       state.checkout = Object.assign({}, r.data, { method: method });
+      prefillPayer(r.data.customer);
       // 해지 예약 중 결제수단만 바꾸는 경우(chargeKind: 'none')는 동의 문구도 달라진다.
       text($('reg-consent-label'), r.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
       // 1번째 줄의 월 가격은 이 결제가 속한 요금제(r.data.plan) 기준이다 — 밀린 결제 중 요금제를 바꿨다면
@@ -298,6 +299,15 @@
       fail(e);
     });
   }
+  // 서버가 준 결제자 정보(지난 등록값·로그인 이메일)로 빈 칸만 채운다 — 이미 입력한 값은 덮지 않는다.
+  function prefillPayer(c) {
+    if (!c) return;
+    [['payer-name', c.fullName], ['payer-phone', c.phoneNumber], ['payer-email', c.email]].forEach(function (p) {
+      var input = $(p[0]);
+      if (input && !input.value && p[1]) input.value = p[1];
+    });
+  }
+
   // 결제 준비값(checkout)이 없거나, 있어도 결제 성격(chargeKind)을 서버가 알 수 없는 값으로 줬으면 동의·등록을 막는다 —
   // 무엇에 동의하는지 정해지기 전에는 누를 수 없게 한다.
   function updateSubmit() {
@@ -350,6 +360,13 @@
     // (그 사이 PENDING이 지워지거나 바뀌어도 이미 열린 결제창의 결과는 안전하게 등록으로 이어진다).
     var method = co.method;
     var consentVersion = C.BILLING_CONSENT_VERSION;
+    var payer = C.normalizePayer({ name: $('payer-name').value, phone: $('payer-phone').value, email: $('payer-email').value });
+    if (!payer.ok) {
+      banner(C.errorMessage(payer.error));
+      var bad = { payer_name: 'payer-name', payer_phone: 'payer-phone', payer_email: 'payer-email' }[payer.error];
+      if ($(bad)) $(bad).focus();
+      return;
+    }
     busy($('reg-submit'), true);
     // 모바일은 결제창이 페이지를 떠났다 돌아온다(새로고침으로 지역 변수가 사라진다) — 그때 쓸 값만 여기 보관한다.
     sessionStorage.setItem(PENDING_KEY, JSON.stringify({ method: method, consentVersion: consentVersion }));
@@ -372,7 +389,10 @@
       billingKeyMethod: co.billingKeyMethod,
       issueId: co.issueId,
       issueName: co.issueName,
-      customer: { customerId: co.customer.customerId },
+      customer: {
+        customerId: co.customer.customerId,
+        fullName: payer.value.fullName, phoneNumber: payer.value.phoneNumber, email: payer.value.email,
+      },
       redirectUrl: CFG.redirectUri + '?pgReturn=1',
     }).then(function (resp) {
       settled = true;
@@ -671,6 +691,7 @@
   function bind() {
     $('login-naver').onclick = function () { startOAuth('naver'); };
     $('login-kakao').onclick = function () { startOAuth('kakao'); };
+    $('payer-form').onsubmit = function (ev) { ev.preventDefault(); }; // 엔터로 페이지가 새로고침되지 않게
     $('email-form').onsubmit = function (ev) {
       ev.preventDefault();
       show('loading');
