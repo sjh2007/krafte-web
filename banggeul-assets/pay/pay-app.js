@@ -393,8 +393,9 @@
       tr.appendChild(text(document.createElement('td'), C.formatWon(p.amount)));
       tr.appendChild(text(document.createElement('td'), C.paymentStatusLabel(p.status)));
       var action = document.createElement('td');
-      if (p.refundRequest) {
-        text(action, '환불 요청됨');
+      var refundLabel = C.refundRequestLabel(p);
+      if (refundLabel) {
+        text(action, refundLabel); // 처리된 요청(closed)도 다시 요청 버튼을 띄우지 않는다
       } else if (C.canRequestRefund(p, now)) {
         var btn = text(document.createElement('button'), '환불 요청');
         btn.type = 'button';

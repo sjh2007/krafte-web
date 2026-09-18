@@ -183,6 +183,15 @@
     return !isNaN(paidMs) && nowMs - paidMs < REFUND_WINDOW_MS;
   }
 
+  // 결제 내역 행의 환불 요청 상태 표시. 요청이 없으면 null(그때만 canRequestRefund로 버튼을 판단한다).
+  function refundRequestLabel(p) {
+    if (!p || !p.refundRequest) return null;
+    if (p.refundRequest === 'open') return '환불 요청됨';
+    if (p.refundResolution === 'refunded') return '환불 처리됨';
+    if (p.refundResolution === 'rejected') return '환불 요청 반려 · 고객센터(' + CS_PHONE + ') 문의';
+    return '환불 요청 처리됨';
+  }
+
   // 결제 흐름 측정 요청 — 화이트리스트에 없는 이름은 보내지 않는다(null).
   function payEventRequest(apiBase, name) {
     if (PAY_EVENTS.indexOf(name) < 0) return null;
@@ -311,7 +320,7 @@
     kakaoAuthorizeUrl: kakaoAuthorizeUrl, naverAuthorizeUrl: naverAuthorizeUrl,
     parsePortoneReturn: parsePortoneReturn,
     CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
-    isReturnLoad: isReturnLoad,
+    isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
     cancelKeepText: cancelKeepText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };

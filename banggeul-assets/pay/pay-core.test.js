@@ -352,3 +352,17 @@ test('ONCE_PER_TAB_EVENTS · isReturnLoad — 방문당 1회 측정', () => {
 test('CS_PHONE 노출', () => {
   assert.equal(C.CS_PHONE, '1877-1979');
 });
+
+test('refundRequestLabel — 환불 요청 처리 결과 표시', () => {
+  assert.equal(C.refundRequestLabel({ refundRequest: 'open', refundResolution: null }), '환불 요청됨');
+  assert.equal(C.refundRequestLabel({ refundRequest: 'closed', refundResolution: 'refunded' }), '환불 처리됨');
+  assert.equal(C.refundRequestLabel({ refundRequest: 'closed', refundResolution: 'rejected' }), '환불 요청 반려 · 고객센터(1877-1979) 문의');
+  assert.equal(C.refundRequestLabel({ refundRequest: 'closed', refundResolution: null }), '환불 요청 처리됨');
+  assert.equal(C.refundRequestLabel({ refundRequest: 'closed' }), '환불 요청 처리됨');
+  assert.equal(C.refundRequestLabel({ refundRequest: null }), null);
+  assert.equal(C.refundRequestLabel({}), null);
+  assert.equal(C.refundRequestLabel(null), null);
+  // 처리된 요청은 다시 요청 버튼을 띄우지 않는다
+  const now = new Date('2026-10-03T00:00:00.000Z');
+  assert.equal(C.canRequestRefund({ status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: 'closed', refundResolution: 'rejected' }, now), false);
+});
