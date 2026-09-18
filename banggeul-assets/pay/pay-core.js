@@ -8,7 +8,7 @@
   'use strict';
 
   var KST_MS = 9 * 60 * 60 * 1000;
-  var BILLING_CONSENT_VERSION = '2026-09-18b'; // 4번째 줄 청약철회 (가족당 1회) 문구 반영
+  var BILLING_CONSENT_VERSION = '2026-09-18c'; // 청약철회 문구 삭제, 대표 9/18
   var CS_PHONE = '1877-1979';
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
   var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
@@ -24,7 +24,7 @@
   ];
   // 결제 흐름 측정 — 서버 화이트리스트(PAY_EVENTS)와 같다. 이벤트 이름만 보낸다(개인 정보 없음).
   var PAY_EVENTS = ['pay_view', 'login_view', 'login_success', 'register_view', 'consent_checked', 'pg_open',
-    'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done', 'refund_request'];
+    'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done'];
   // 탭(세션)당 한 번만 세는 이벤트 — 로그인·결제창 복귀로 페이지가 다시 열려도 방문 한 번으로 센다.
   var ONCE_PER_TAB_EVENTS = ['pay_view', 'login_view', 'consent_checked'];
 
@@ -47,8 +47,27 @@
     return kstParts(iso).day;
   }
 
+  // 환불 기준(대표 9/18) — 고객 요청 환불(청약철회)은 두지 않는다. 첫 결제를 포함해 결제된 요금은 환불하지 않고,
+  // 서비스 장애 등 회사 사정은 고객센터로 안내한다.
   var CANCEL_ANYTIME = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ';
-  var MONTHLY_NO_REFUND = '매월 결제된 요금은 환불되지 않아요(고객센터 ' + CS_PHONE + ').';
+  var NO_REFUND = '결제된 요금은 환불되지 않아요. 서비스 장애 등 회사 사정이 있을 때는 고객센터(' + CS_PHONE + ')로 연락해 주세요.';
+  var MONTH_END = ' 그 날짜가 없는 달은 말일에 결제돼요.';
+  var EVERY_MONTH = '이후에도 한 달마다 같은 날 자동결제돼요.';
+
+  // 가족의 결제 기준일(1~31, KST) — 서버 billingDay가 우선이고, 없으면(옛 서버) 주어진 결제 예정일의 날짜로 대신한다.
+  function billingDayOf(billingDay, fallbackIso) {
+    var d = Number(billingDay);
+    if (billingDay !== null && billingDay !== undefined && billingDay !== '' && d >= 1 && d <= 31 && Math.floor(d) === d) return d;
+    return fallbackIso ? kstDayOfMonth(fallbackIso) : null;
+  }
+  function monthEndClause(day) { return day >= 29 ? MONTH_END : ''; }
+
+  // 결제수단 등록 완료 화면의 결제 안내 한 줄 — 회사 전체의 정해진 날짜처럼 읽히지 않게 "한 달마다 같은 날"로 쓴다.
+  function doneChargeLine(o) {
+    if (!o || !o.chargeAt) return null;
+    return formatKstDate(o.chargeAt) + '에 ' + formatWon(o.amount) + '이 결제되고, ' + EVERY_MONTH +
+      monthEndClause(billingDayOf(o.billingDay, o.chargeAt));
+  }
 
   // 대장 §8-4 구독 필수 표기 4종: 가격 · 무료 기간 · 자동결제 시점 · 해지 방법.
   // 문구는 서버가 정한 chargeKind로만 정한다(시간차 어림짐작 안 함): none · trial_end · renewal · overdue · immediate.
@@ -66,7 +85,7 @@
         line1,
         '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.',
         '해지를 취소하면 다음 결제일부터 이 결제수단으로 자동결제돼요.',
-        CANCEL_ANYTIME + MONTHLY_NO_REFUND,
+        CANCEL_ANYTIME + NO_REFUND,
       ];
     }
 
@@ -78,47 +97,41 @@
 
     var price = formatWon(opts.amount);
     var date = formatKstDate(opts.chargeAt);
-    var day = kstDayOfMonth(opts.chargeAt);
     var nextDate = opts.nextChargeAt ? formatKstDate(opts.nextChargeAt) : null;
-    var nextDay = opts.nextChargeAt ? kstDayOfMonth(opts.nextChargeAt) : null;
     var nextPrice = formatWon(opts.nextAmount);
-    var monthEnd = ' 그 날짜가 없는 달은 마지막 날에 결제돼요.';
+    // 결제일은 가족마다 다르다(첫 결제일 기준). 기준일은 서버 billingDay, 없으면 결제 예정일에서 읽는다.
+    var day = billingDayOf(opts.billingDay, (kind === 'overdue' || kind === 'immediate') ? opts.nextChargeAt : opts.chargeAt);
+    var monthEnd = monthEndClause(day);
 
-    var line2, line3, firstChargeClause;
+    var line2, line3;
+    // 4번째 줄 가운데 — 결제 전에 해지하면 어떻게 되는지.
+    var beforeChargeClause = '다음 결제일 전에 해지하면 다음 결제는 되지 않아요. ';
 
     if (kind === 'pause_end') {
       // 쉬어가기 중(또는 예정)에 결제수단만 바꾸는 경우 — 쉬어가기가 끝나는 날 결제가 다시 시작된다.
       line2 = '쉬어가기가 ' + date + '에 끝나요. 오늘은 결제되지 않아요.';
-      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = date + '에 ' + price + '이 결제되고, ' + EVERY_MONTH + monthEnd;
     } else if (kind === 'renewal') {
       // 이미 결제된 이용 기간 안에서 결제수단만 바꾸는 경우 — 오늘은 결제되지 않는다.
       line2 = '이미 결제한 이용 기간이 ' + date + '까지예요. 오늘은 결제되지 않아요.';
-      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = date + '에 ' + price + '이 결제되고, ' + EVERY_MONTH + monthEnd;
     } else if (kind === 'overdue') {
       // 밀린 결제가 있다 — 등록하는 순간 밀린 금액부터 처리하고, 이후 정기 결제로 돌아간다.
+      // 다음 결제일이 첫 결제일 기준인지 알 수 없으니 "(첫 결제일로부터 한 달 뒤)"는 붙이지 않는다.
       line2 = '결제되지 않은 ' + price + '이 등록 후 바로 결제돼요.';
-      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.' + (nextDay >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, ' + EVERY_MONTH + monthEnd;
     } else if (kind === 'immediate') {
       // 체험이 이미 끝난 뒤의 신규(또는 재)등록 — 등록하는 순간 바로 첫 결제가 일어난다.
       line2 = '등록하면 바로 첫 결제(' + price + ')가 진행돼요.';
-      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.' + (nextDay >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = '다음 결제는 ' + nextDate + '(첫 결제일로부터 한 달 뒤)에 ' + nextPrice + '이고, ' + EVERY_MONTH + monthEnd;
     } else {
       // 'trial_end' — 체험 중 최초 등록. 결제는 체험이 끝나는 날부터 시작된다.
       line2 = '오늘은 결제되지 않아요. ' + date + '까지 무료로 이용하실 수 있어요.';
-      line3 = date + '부터 매월 ' + day + '일에 ' + price + '이 자동결제돼요.' + (day >= 29 ? monthEnd : '');
-      firstChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
+      line3 = date + '에 ' + price + '이 처음 결제되고, ' + EVERY_MONTH + monthEnd;
+      beforeChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
     }
 
-    // 환불 기준(대표 9/18) — 청약철회는 첫 결제만(7일 안 전액), 매월 자동결제 건은 환불하지 않는다.
-    // 이번 결제가 첫 결제인지는 서버(firstCharge)만 안다 — true가 아니면 첫 결제 환불을 약속하지 않는다.
-    // 첫 결제 전 해지 무청구 문구(trial_end만)는 사실이므로 firstCharge 값과 무관하게 둔다.
-    var line4 = opts.firstCharge === true
-      ? CANCEL_ANYTIME + firstChargeClause + '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요(가족당 1회). 그 뒤 ' + MONTHLY_NO_REFUND
-      : CANCEL_ANYTIME + firstChargeClause + MONTHLY_NO_REFUND;
+    var line4 = CANCEL_ANYTIME + beforeChargeClause + NO_REFUND;
     return [line1, line2, line3, line4];
   }
 
@@ -287,28 +300,18 @@
     return '해지하면 더 이상 결제되지 않아요.' + pauseNote + reports;
   }
 
-  // 결제 내역의 환불 요청 버튼 — 서버가 청약철회 대상(첫 결제 후 7일 안)이라고 한 결제이고 아직 요청하지 않았을 때만.
-  // 7일 계산·첫 결제 여부는 서버(withdrawalEligible)가 정한다 — 웹에서 날짜로 어림짐작하지 않는다.
-  function canRequestRefund(p) {
-    return !!p && p.withdrawalEligible === true && !p.refundRequest;
-  }
-
-  // 해지 화면의 환불 안내 한 줄. 첫 결제 7일 안이면 환불 요청 안내, 아니면 이번 달 요금 환불 없음.
-  // 결제된 이번 달 요금이 없는 상태(체험 중 · 밀린 결제 · 쉬는 중)나 이미 환불을 요청한 경우는 빈 문자열(숨김).
+  // 해지 화면의 환불 안내 한 줄 — 결제된 요금은 환불하지 않는다(대표 9/18, 고객 요청 환불 없음).
+  // 결제된 이번 달 요금이 없는 상태(체험 중 · 밀린 결제 · 쉬는 중)나 예전에 보낸 환불 요청이 처리 중이면 빈 문자열(숨김).
   function cancelRefundText(sub, payments) {
     sub = sub || {};
     var list = payments || [];
-    var eligible = list.filter(function (p) { return p && p.withdrawalEligible === true; });
-    if (eligible.some(function (p) { return !p.refundRequest; })) {
-      return "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요(가족당 1회) — 결제 내역의 '환불 요청'을 이용해 주세요.";
-    }
-    if (eligible.length) return '';
+    if (list.some(function (p) { return p && p.refundRequest === 'open'; })) return '';
     var pause = sub.pause || (sub.billing && sub.billing.pause);
     if (sub.status !== 'active' || (pause && pause.state === 'active')) return '';
-    return '이미 결제된 이번 달 요금은 환불되지 않아요.';
+    return '이미 ' + NO_REFUND;
   }
 
-  // 결제 내역 행의 환불 요청 상태 표시. 요청이 없으면 null(그때만 canRequestRefund로 버튼을 판단한다).
+  // 결제 내역 행의 환불 요청 상태 표시 — 셀프 환불 요청은 없앴지만(대표 9/18) 예전에 보낸 요청의 결과는 계속 보여 준다.
   function refundRequestLabel(p) {
     if (!p || !p.refundRequest) return null;
     if (p.refundRequest === 'open') return '환불 요청됨';
@@ -386,10 +389,8 @@
     invalid_reason: '해지 이유를 다시 확인해 주세요.',
   };
   // period_ended는 해지 취소(resume)에서도 쓰는 코드라, 쉬어가기 요청에서 받은 경우에만 쉬어가기 문구로 바꾼다.
-  // 환불 요청의 invalid_reason은 해지 이유가 아니라 요청 내용(사유) 문제다.
   var CONTEXT_MESSAGES = {
     pause: { period_ended: PAUSE_UNAVAILABLE },
-    refund: { invalid_reason: '환불 요청 내용을 다시 확인해 주세요.' },
   };
 
   function errorMessage(code, context) {
@@ -455,7 +456,7 @@
   return {
     normalizePayer: normalizePayer,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
-    formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth,
+    formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,
     errorMessage: errorMessage, paymentStatusLabel: paymentStatusLabel,
     makeOAuthState: makeOAuthState, parseOAuthReturn: parseOAuthReturn,
@@ -466,6 +467,6 @@
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
     planLineText: planLineText, featureSegments: featureSegments, modeSummary: modeSummary, familyModeChips: familyModeChips, familyLines: familyLines,
     planCardModel: planCardModel, priceTableSections: priceTableSections, readOnlyCompositionLines: readOnlyCompositionLines,
-    cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
+    cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, payEventRequest: payEventRequest,
   };
 });

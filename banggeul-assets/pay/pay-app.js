@@ -286,7 +286,8 @@
       C.noticeLines({
         planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
         nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount,
-        firstCharge: r.data.firstCharge, now: new Date(),
+        // 결제 기준일 — /checkout의 billingDay, 없으면 /status의 값. 둘 다 없으면(옛 서버) PayCore가 결제 예정일에서 읽는다.
+        billingDay: r.data.billingDay !== undefined ? r.data.billingDay : state.status.billingDay, now: new Date(),
         modeSummary: C.modeSummary(state.status.planDetails && state.status.planDetails[r.data.plan] && state.status.planDetails[r.data.plan].lines),
       }).forEach(function (line) { list.appendChild(li(line)); });
       // A-1 — 누르면 무엇이 일어나는지(금액)를 버튼에 적는다. 필수 고지 4종 바로 아래 버튼이다.
@@ -446,7 +447,9 @@
     var list = $('done-lines');
     list.innerHTML = '';
     if (result.chargeAt && result.amount) {
-      list.appendChild(li(C.formatKstDate(result.chargeAt) + '부터 매월 ' + C.kstDayOfMonth(result.chargeAt) + '일에 ' + C.formatWon(result.amount) + '이 자동결제돼요.'));
+      var billingDay = result.billingDay !== undefined ? result.billingDay
+        : (state.checkout && state.checkout.billingDay !== undefined ? state.checkout.billingDay : state.status && state.status.billingDay);
+      list.appendChild(li(C.doneChargeLine({ chargeAt: result.chargeAt, amount: result.amount, billingDay: billingDay })));
     } else if (!result.chargeAt) {
       list.appendChild(li('해지 예약은 그대로예요. 결제수단만 바뀌었어요.'));
     }
@@ -506,15 +509,8 @@
       tr.appendChild(text(document.createElement('td'), C.paymentStatusLabel(p.status)));
       var action = document.createElement('td');
       var refundLabel = C.refundRequestLabel(p);
-      if (refundLabel) {
-        text(action, refundLabel); // 처리된 요청(closed)도 다시 요청 버튼을 띄우지 않는다
-      } else if (C.canRequestRefund(p)) {
-        var btn = text(document.createElement('button'), '환불 요청');
-        btn.type = 'button';
-        btn.className = 'btn';
-        btn.onclick = function () { openRefund(p); };
-        action.appendChild(btn);
-      }
+      // 셀프 환불 요청은 없앴다(대표 9/18) — 예전에 보낸 요청의 상태만 보여 준다.
+      if (refundLabel) text(action, refundLabel);
       tr.appendChild(action);
       body.appendChild(tr);
     });
@@ -602,31 +598,6 @@
           return load().then(function () { banner('한 달 쉬어가기를 신청했어요. ' + C.formatKstDate(until) + '에 자동으로 다시 시작돼요.', true); });
         }).catch(function (e) { fail(e, 'pause'); });
       });
-  }
-
-  // ── 환불 요청 ──
-  function openRefund(payment) {
-    var d = $('refund-dialog');
-    $('rf-reason').value = '';
-    busy($('rf-yes'), false);
-    $('rf-no').onclick = function () { d.close(); };
-    $('rf-yes').onclick = function () {
-      var reason = $('rf-reason').value.trim().slice(0, 300);
-      var body = { paymentId: payment.paymentId };
-      if (reason) body.reason = reason;
-      busy($('rf-yes'), true);
-      auth.api('/family/billing/refund-request', { method: 'POST', body: body }).then(function (r) {
-        if (r.status !== 200) throw r;
-        d.close();
-        track('refund_request');
-        return load().then(function () { banner('환불 요청을 보냈어요. 확인 후 고객센터(' + C.CS_PHONE + ')에서 연락드려요.', true); });
-      }).catch(function (e) {
-        busy($('rf-yes'), false);
-        d.close();
-        fail(e, 'refund');
-      });
-    };
-    d.showModal();
   }
 
   // ── 시작 ──
