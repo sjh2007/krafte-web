@@ -1,0 +1,20 @@
+{
+  "headers": [
+    {
+      "source": "/banggeul-pay.html",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/banggeul-pay.html",
+      "has": [{ "type": "host", "value": "krafte.net" }],
+      "destination": "https://www.krafte.net/banggeul-pay.html",
+      "permanent": true
+    }
+  ]
+}
