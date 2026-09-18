@@ -135,10 +135,34 @@
   function titleOf(line) { return (line && line.title) ? String(line.title) : '부모님'; }
   function wonOrPending(n) { return (n === null || n === undefined) ? '준비 중' : formatWon(n); }
 
-  // 카드의 부모님별 줄: {호칭} ({앱|전화}) {포함 내용} · {기본|한 분 더} {금액|준비 중}
+  // 포함 내용(서버 feature, 예 '주 5회 · 하루 3분')을 칸별 조각으로 — [{ text, strong }].
+  // phrase: 풀어 쓴 문구(1칸 '… 안부', 2칸 '하루 n분 통화'). strong: 같은 요금제의 앱 방식(서버 priceTable.app[plan].feature)과
+  // 다른 칸 — 전화 방식의 차이를 굵게 보인다. 비교 기준이 없으면 굵게 하지 않는다(요금표를 웹에 두지 않는다).
+  var FEATURE_SEP = ' · ';
+  function featureSegments(feature, appFeature, phrase) {
+    if (!feature) return [];
+    var parts = String(feature).split(FEATURE_SEP);
+    var appParts = appFeature ? String(appFeature).split(FEATURE_SEP) : null;
+    var out = [];
+    parts.forEach(function (part, i) {
+      if (i > 0) out.push({ text: FEATURE_SEP, strong: false });
+      var text = part;
+      if (phrase && i === 0) text = part + ' 안부';
+      else if (phrase && i === 1 && /분$/.test(part)) text = part + ' 통화';
+      out.push({ text: text, strong: !!appParts && appParts[i] !== undefined && appParts[i] !== part });
+    });
+    return out;
+  }
+
+  // 카드의 부모님별 줄(여러 분일 때): {호칭} ({앱|전화}) {포함 내용} · {기본|한 분 더} {금액|준비 중}
+  function planLineSegments(line, appFeature) {
+    var feat = featureSegments(line.feature, appFeature, false);
+    return [{ text: titleOf(line) + ' (' + MODE_SHORT[modeOf(line)] + ')' + (feat.length ? ' ' : ''), strong: false }]
+      .concat(feat)
+      .concat([{ text: ' · ' + (LINE_KIND[line.kind] || LINE_KIND.base) + ' ' + wonOrPending(line.amount), strong: false }]);
+  }
   function planLineText(line) {
-    return titleOf(line) + ' (' + MODE_SHORT[modeOf(line)] + ')' + (line.feature ? ' ' + line.feature : '') + ' · ' +
-      (LINE_KIND[line.kind] || LINE_KIND.base) + ' ' + wonOrPending(line.amount);
+    return planLineSegments(line, null).map(function (s) { return s.text; }).join('');
   }
 
   // 필수 고지 1번째 줄의 방식 요약 — 한 분이면 앱 설치/전화 방식, 여러 분이면 부모님 n분.
@@ -148,9 +172,10 @@
     return '부모님 ' + lines.length + '분';
   }
 
-  function familyModesText(lines) {
-    if (!lines || !lines.length) return null;
-    return '우리 가족 이용 방식: ' + lines.map(function (l) { return titleOf(l) + ' · ' + MODE_FAMILY[modeOf(l)]; }).join(' · ');
+  // 우리 가족 이용 방식 — 부모님별 칩. mode로 색을 나눈다.
+  var MODE_CHIP = { app: '앱으로 받아요', phone: '전화로 받아요' };
+  function familyModeChips(lines) {
+    return (lines || []).map(function (l) { return { text: titleOf(l) + ' · ' + MODE_CHIP[modeOf(l)], mode: modeOf(l) }; });
   }
 
   // 부모님 구성은 요금제와 무관하다 — 줄이 있는 첫 요금제의 줄을 쓴다. planDetails가 없으면(옛 서버) null.
@@ -165,14 +190,19 @@
 
   // 카드 안내와 오류 안내(phone_extra_price_undecided)가 같은 문구를 쓴다.
   var PHONE_EXTRA_PENDING = '전화 방식 부모님 한 분 더 요금은 아직 준비 중이에요. 고객센터(' + CS_PHONE + ')로 문의해 주세요.';
-  function planCardModel(plan, detail) {
+  // appFeature — 서버 priceTable.app[plan].feature(방식별 차이 굵게의 기준). 없으면 굵게 없음.
+  // 부모님 한 분이면 summary(풀어 쓴 한 줄, 금액은 카드 머리에만)·lines 빈 배열, 두 분 이상이면 summary null·부모님별 줄.
+  function planCardModel(plan, detail, appFeature) {
     detail = detail || {};
     var hasAmount = detail.amount !== null && detail.amount !== undefined;
+    var list = detail.lines || [];
+    var single = list.length === 1;
     return {
       plan: plan,
       name: PLAN_NAMES[plan] || plan,
       priceText: hasAmount ? '월 ' + formatWon(detail.amount) : '준비 중',
-      lines: (detail.lines || []).map(planLineText),
+      summary: single ? featureSegments(list[0].feature, appFeature, true) : null,
+      lines: single ? [] : list.map(function (l) { return planLineSegments(l, appFeature); }),
       note: !hasAmount && detail.error === 'phone_extra_price_undecided' ? PHONE_EXTRA_PENDING : null,
       selectable: hasAmount,
     };
@@ -417,7 +447,7 @@
     CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
     isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
-    planLineText: planLineText, modeSummary: modeSummary, familyModesText: familyModesText, familyLines: familyLines,
+    planLineText: planLineText, featureSegments: featureSegments, modeSummary: modeSummary, familyModeChips: familyModeChips, familyLines: familyLines,
     planCardModel: planCardModel, priceTableSections: priceTableSections, readOnlyCompositionLines: readOnlyCompositionLines,
     cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };

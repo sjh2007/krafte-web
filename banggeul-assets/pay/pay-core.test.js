@@ -438,9 +438,14 @@ test('modeSummary — 한 분이면 앱 설치/전화 방식, 여러 분이면 �
   assert.equal(C.modeSummary(undefined), null);
 });
 
-test('familyModesText — 우리 가족 이용 방식: 호칭 · 방식', () => {
-  assert.equal(C.familyModesText([appBase, phoneExtra]), '우리 가족 이용 방식: 엄마 · 앱 설치 · 아빠 · 전화(무설치)');
-  assert.equal(C.familyModesText([]), null);
+test('familyModeChips — 부모님별 칩 {호칭} · 앱으로/전화로 받아요(방식 구분)', () => {
+  assert.deepEqual(C.familyModeChips([appBase, phoneExtra]), [
+    { text: '엄마 · 앱으로 받아요', mode: 'app' },
+    { text: '아빠 · 전화로 받아요', mode: 'phone' },
+  ]);
+  assert.deepEqual(C.familyModeChips([Object.assign({}, appBase, { title: '' })]), [{ text: '부모님 · 앱으로 받아요', mode: 'app' }]);
+  assert.deepEqual(C.familyModeChips([]), []);
+  assert.deepEqual(C.familyModeChips(undefined), []);
 });
 
 test('familyLines — planDetails에서 부모님 구성(줄)을 꺼낸다, 없으면 null(옛 서버)', () => {
@@ -450,8 +455,14 @@ test('familyLines — planDetails에서 부모님 구성(줄)을 꺼낸다, 없�
 });
 
 test('planCardModel — 합계·줄·준비 중 안내·선택 가능 여부', () => {
-  const ok = C.planCardModel('standard', { amount: 8900, error: null, lines: [appBase] });
-  assert.deepEqual(ok, { plan: 'standard', name: '스탠다드', priceText: '월 8,900원', lines: ['엄마 (앱) 매일 · 하루 3분 · 기본 8,900원'], note: null, selectable: true });
+  // 부모님 두 분 이상 — 부모님별 줄+금액
+  const ok = C.planCardModel('standard', { amount: 16800, error: null, lines: [appBase, Object.assign({}, appBase, { elderId: 'e3', title: '아빠', kind: 'extra', amount: 7900 })] });
+  assert.equal(ok.name, '스탠다드');
+  assert.equal(ok.priceText, '월 16,800원');
+  assert.equal(ok.summary, null);
+  assert.deepEqual(ok.lines.map(segText), ['엄마 (앱) 매일 · 하루 3분 · 기본 8,900원', '아빠 (앱) 매일 · 하루 3분 · 한 분 더 7,900원']);
+  assert.equal(ok.selectable, true);
+  assert.equal(ok.note, null);
   const pending = C.planCardModel('plus', { amount: null, error: 'phone_extra_price_undecided', lines: [appBase, phoneExtra] });
   assert.equal(pending.priceText, '준비 중');
   assert.equal(pending.selectable, false);
@@ -463,6 +474,60 @@ test('planCardModel — 합계·줄·준비 중 안내·선택 가능 여부', (
   const other = C.planCardModel('lite', { amount: null, error: 'no_elder', lines: [] });
   assert.equal(other.selectable, false);
   assert.equal(other.note, null);
+});
+
+const segText = (segs) => segs.map((s) => s.text).join('');
+const strongs = (segs) => segs.filter((s) => s.strong).map((s) => s.text);
+const APP_FEATURE = { lite: '이틀에 한 번 · 하루 3분', standard: '매일 · 하루 3분', plus: '매일 · 하루 5분' };
+
+test('featureSegments — 풀어 쓴 문구(안부·통화)와 앱 대비 다른 칸 굵게(기준은 서버 priceTable.app)', () => {
+  // 전화 스탠다드: 주 5회(앱은 매일) 굵게
+  let s = C.featureSegments('주 5회 · 하루 3분', APP_FEATURE.standard, true);
+  assert.equal(segText(s), '주 5회 안부 · 하루 3분 통화');
+  assert.deepEqual(strongs(s), ['주 5회 안부']);
+  // 전화 플러스: 하루 3분(앱은 5분) 굵게
+  s = C.featureSegments('매일 · 하루 3분', APP_FEATURE.plus, true);
+  assert.equal(segText(s), '매일 안부 · 하루 3분 통화');
+  assert.deepEqual(strongs(s), ['하루 3분 통화']);
+  // 전화 라이트·앱: 앱과 같으면 굵게 없음
+  assert.deepEqual(strongs(C.featureSegments('이틀에 한 번 · 하루 3분', APP_FEATURE.lite, true)), []);
+  assert.equal(segText(C.featureSegments('이틀에 한 번 · 하루 3분', APP_FEATURE.lite, true)), '이틀에 한 번 안부 · 하루 3분 통화');
+  assert.equal(segText(C.featureSegments('매일 · 하루 5분', APP_FEATURE.plus, true)), '매일 안부 · 하루 5분 통화');
+  // 비교 기준이 없으면(옛 서버·요금표 없음) 굵게 없음
+  assert.deepEqual(strongs(C.featureSegments('주 5회 · 하루 3분', null, true)), []);
+  // 풀어 쓰지 않는 형태(여러 분 줄)는 원문 그대로, 굵게는 같게
+  s = C.featureSegments('주 5회 · 하루 3분', APP_FEATURE.standard, false);
+  assert.equal(segText(s), '주 5회 · 하루 3분');
+  assert.deepEqual(strongs(s), ['주 5회']);
+  assert.deepEqual(C.featureSegments('', APP_FEATURE.standard, true), []);
+  assert.deepEqual(C.featureSegments(undefined, null, true), []);
+});
+
+test('planCardModel — 부모님 한 분이면 풀어 쓴 한 줄(금액 중복 없음)', () => {
+  const phoneBase = { elderId: 'p1', title: '아빠', mode: 'phone', kind: 'base', amount: 24900, feature: '주 5회 · 하루 3분' };
+  const m = C.planCardModel('standard', { amount: 24900, error: null, lines: [phoneBase] }, APP_FEATURE.standard);
+  assert.equal(m.priceText, '월 24,900원');
+  assert.equal(segText(m.summary), '주 5회 안부 · 하루 3분 통화');
+  assert.deepEqual(strongs(m.summary), ['주 5회 안부']);
+  assert.deepEqual(m.lines, []);
+  assert.doesNotMatch(segText(m.summary), /원/);
+  // 앱 한 분 — 굵게 없음
+  const a = C.planCardModel('plus', { amount: 14900, error: null, lines: [Object.assign({}, appBase, { feature: '매일 · 하루 5분', amount: 14900 })] }, APP_FEATURE.plus);
+  assert.equal(segText(a.summary), '매일 안부 · 하루 5분 통화');
+  assert.deepEqual(strongs(a.summary), []);
+});
+
+test('planCardModel — 여러 분 줄에서도 전화 부모님의 앱 대비 다른 칸 굵게', () => {
+  const m = C.planCardModel('standard', { amount: null, error: 'phone_extra_price_undecided', lines: [appBase, phoneExtra] }, APP_FEATURE.standard);
+  assert.equal(m.summary, null);
+  assert.deepEqual(m.lines.map(segText), ['엄마 (앱) 매일 · 하루 3분 · 기본 8,900원', '아빠 (전화) 주 5회 · 하루 3분 · 한 분 더 준비 중']);
+  assert.deepEqual(m.lines.map(strongs), [[], ['주 5회']]);
+  // 전화 기본 + 앱 한 분 더(플러스): 전화 줄의 하루 3분만 굵게
+  const pb = { elderId: 'p1', title: '아빠', mode: 'phone', kind: 'base', amount: 29900, feature: '매일 · 하루 3분' };
+  const ae = { elderId: 'e1', title: '엄마', mode: 'app', kind: 'extra', amount: 13900, feature: '매일 · 하루 5분' };
+  const m2 = C.planCardModel('plus', { amount: 43800, error: null, lines: [pb, ae] }, APP_FEATURE.plus);
+  assert.deepEqual(m2.lines.map(strongs), [['하루 3분'], []]);
+  assert.equal(segText(m2.lines[1]), '엄마 (앱) 매일 · 하루 5분 · 한 분 더 13,900원');
 });
 
 test('priceTableSections — 참고용 전체 요금표(앱 설치·전화), 금액 없으면 준비 중', () => {
@@ -488,7 +553,8 @@ test('필수 고지 1번째 줄 — 방식 요약이 있으면 {요금제} 요�
 });
 
 test('요금제 카드 문구 — 금칙어·부가세 별도 없음', () => {
-  const all = [C.planLineText(appBase), C.planLineText(phoneExtra), C.familyModesText([appBase, phoneExtra]),
+  const all = [C.planLineText(appBase), C.planLineText(phoneExtra), C.familyModeChips([appBase, phoneExtra]).map((c) => c.text).join(' '),
+    segText(C.featureSegments('주 5회 · 하루 3분', APP_FEATURE.standard, true)),
     C.planCardModel('plus', { amount: null, error: 'phone_extra_price_undecided', lines: [phoneExtra] }).note].join(' ');
   assert.doesNotMatch(all, /위험|감지|부가세 별도/);
 });

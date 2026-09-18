@@ -171,11 +171,27 @@
     });
   }
   // readOnly — 요금을 정할 수 없는 가족의 안내 화면에서 구성만 보여 줄 때(라디오는 모두 비활성·선택 없음).
+  // 조각 [{ text, strong }]을 글자 노드·<strong>으로 붙인다(textContent만 — innerHTML 금지).
+  function appendSegments(parent, segs) {
+    segs.forEach(function (sg) {
+      parent.appendChild(sg.strong ? el('strong', '', sg.text) : document.createTextNode(sg.text));
+    });
+    return parent;
+  }
   function planCards(container, name, selected, lines, readOnly) {
     var s = state.status;
-    container.appendChild(el('p', 'family-modes', C.familyModesText(lines)));
+    // 우리 가족 이용 방식 — 부모님별 칩(방식별 색). 호칭은 textContent.
+    var modes = el('div', 'family-modes');
+    modes.appendChild(el('p', 'family-modes-label', '우리 가족 이용 방식'));
+    var chips = el('ul', 'mode-chips');
+    chips.setAttribute('aria-label', '우리 가족 이용 방식');
+    C.familyModeChips(lines).forEach(function (c) { chips.appendChild(el('li', 'mode-chip mode-' + c.mode, c.text)); });
+    modes.appendChild(chips);
+    container.appendChild(modes);
     ['lite', 'standard', 'plus'].forEach(function (p) {
-      var m = C.planCardModel(p, s.planDetails[p]);
+      // 방식별 차이 굵게의 기준 — 서버 priceTable.app[plan].feature(웹에 요금표를 두지 않는다).
+      var appFeature = s.priceTable && s.priceTable.app && s.priceTable.app[p] ? s.priceTable.app[p].feature : null;
+      var m = C.planCardModel(p, s.planDetails[p], appFeature);
       // label은 라디오와 이름·금액만 감싼다(label 안에 ul·p를 두지 않는다). 부모님별 줄·안내는 aria-describedby로 잇는다 —
       // 라디오의 이름은 요금제 이름·금액만 읽힌다.
       var card = el('div', 'plan-card');
@@ -189,18 +205,26 @@
       head.appendChild(el('span', 'price', m.priceText));
       card.appendChild(head);
       var ids = [];
-      var ul = el('ul', 'plan-lines');
-      ul.id = name + '-' + p + '-lines';
-      m.lines.forEach(function (line) { ul.appendChild(el('li', '', line)); });
-      card.appendChild(ul);
-      ids.push(ul.id);
+      if (m.summary) {
+        // 부모님 한 분 — 요금제 이름 아래 풀어 쓴 한 줄(본문 크기, 금액은 머리에만).
+        var sum = appendSegments(el('p', 'plan-summary'), m.summary);
+        sum.id = name + '-' + p + '-summary';
+        card.appendChild(sum);
+        ids.push(sum.id);
+      } else if (m.lines.length) {
+        var ul = el('ul', 'plan-lines');
+        ul.id = name + '-' + p + '-lines';
+        m.lines.forEach(function (segs) { ul.appendChild(appendSegments(el('li'), segs)); });
+        card.appendChild(ul);
+        ids.push(ul.id);
+      }
       if (m.note) {
         var note = el('p', 'plan-note', m.note);
         note.id = name + '-' + p + '-note';
         card.appendChild(note);
         ids.push(note.id);
       }
-      input.setAttribute('aria-describedby', ids.join(' '));
+      if (ids.length) input.setAttribute('aria-describedby', ids.join(' '));
       container.appendChild(card);
     });
     var sections = C.priceTableSections(s.priceTable);
