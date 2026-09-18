@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="favicon-banggeul.ico" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260917" />
+<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260918" />
 </head>
 <body>
 <header class="top">
@@ -42,6 +42,11 @@
   <section id="view-register" class="view" hidden>
     <button type="button" class="link" id="reg-back-manage" hidden>← 구독 관리로 돌아가기</button>
     <h1>결제수단 등록</h1>
+    <ul class="card values" id="reg-values">
+      <li>부모님께 방글이가 안부전화를 드려요</li>
+      <li>통화 내용은 보호자 앱에 요약 리포트로 와요</li>
+      <li>부모님은 따로 가입·결제하지 않으셔도 돼요. 가족 보호자 3명까지 함께 봐요.</li>
+    </ul>
     <div class="card" id="reg-plan-card">
       <h2>요금제</h2>
       <p class="muted small" id="reg-elders"></p>
@@ -60,7 +65,7 @@
       <ul id="reg-notice"></ul>
       <label class="consent"><input type="checkbox" id="reg-consent" disabled /> <span id="reg-consent-label">위 내용을 확인했고, 매월 자동결제에 동의합니다.</span></label>
       <p class="small"><a href="terms.html" target="_blank" rel="noopener">이용약관</a> · <a href="refund.html" target="_blank" rel="noopener">환불정책</a> · <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
-      <button type="button" class="btn primary block" id="reg-submit" disabled>결제수단 등록하기</button>
+      <button type="button" class="btn primary block" id="reg-submit" disabled>결제수단 등록</button>
     </div>
   </section>
 
@@ -76,6 +81,11 @@
     <div class="card">
       <p class="status" id="mg-status"></p>
       <dl class="facts" id="mg-facts"></dl>
+      <div class="pause-box" id="mg-pause" hidden>
+        <p id="mg-pause-text"></p>
+        <button type="button" class="btn" id="mg-pause-cancel" hidden>쉬어가기 취소</button>
+        <p class="muted small" id="mg-pause-cs" hidden>쉬어가는 중에는 이 페이지에서 취소할 수 없어요. 고객센터(1877-1979)로 연락해 주세요.</p>
+      </div>
       <div class="actions">
         <button type="button" class="btn" id="mg-method">결제수단 변경</button>
         <button type="button" class="btn" id="mg-resume" hidden>해지 취소</button>
@@ -90,7 +100,7 @@
     </div>
     <div class="card">
       <h2>결제 내역</h2>
-      <table class="history"><thead><tr><th>날짜</th><th>금액</th><th>상태</th></tr></thead><tbody id="mg-history"></tbody></table>
+      <table class="history"><thead><tr><th>날짜</th><th>금액</th><th>상태</th><th><span class="sr-only">환불</span></th></tr></thead><tbody id="mg-history"></tbody></table>
       <p class="muted small" id="mg-history-empty" hidden>아직 결제 내역이 없어요.</p>
     </div>
   </section>
@@ -115,11 +125,41 @@
   </div>
 </dialog>
 
+<dialog id="cancel-sheet" aria-labelledby="cs-title">
+  <h2 id="cs-title">구독을 해지할까요?</h2>
+  <div class="card pause-offer" id="cs-pause" hidden>
+    <h3>한 달만 쉬어 가실 수도 있어요</h3>
+    <p id="cs-pause-text"></p>
+    <button type="button" class="btn block" id="cs-pause-btn">한 달 쉬어가기</button>
+  </div>
+  <p class="muted small" id="cs-pause-limit" hidden></p>
+  <p id="cs-keep"></p>
+  <fieldset class="reasons">
+    <legend>해지 이유(선택)</legend>
+    <div class="choices" id="cs-reasons"></div>
+    <textarea id="cs-reason-text" maxlength="300" rows="3" placeholder="해지 이유를 적어 주세요(선택, 300자 이내)" aria-label="기타 해지 이유" hidden></textarea>
+  </fieldset>
+  <div class="actions even">
+    <button type="button" class="btn primary" id="cs-keep-btn">계속 이용하기</button>
+    <button type="button" class="btn danger" id="cs-cancel-btn">해지하기</button>
+  </div>
+</dialog>
+
+<dialog id="refund-dialog" aria-labelledby="rf-title">
+  <h2 id="rf-title">환불 요청</h2>
+  <p>결제 후 7일 안에 안부전화 이용 기록이 없으면 전액 환불돼요. 요청을 보내 주시면 확인 후 고객센터(1877-1979)에서 연락드려요.</p>
+  <textarea id="rf-reason" maxlength="300" rows="3" placeholder="환불 사유(선택, 300자 이내)" aria-label="환불 사유"></textarea>
+  <div class="actions even">
+    <button type="button" class="btn" id="rf-no">돌아가기</button>
+    <button type="button" class="btn primary" id="rf-yes">환불 요청 보내기</button>
+  </div>
+</dialog>
+
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="banggeul-assets/pay/pay-config.js?v=20260917"></script>
-<script src="banggeul-assets/pay/pay-core.js?v=20260917"></script>
-<script src="banggeul-assets/pay/pay-auth.js?v=20260917"></script>
-<script src="banggeul-assets/pay/pay-app.js?v=20260917"></script>
+<script src="banggeul-assets/pay/pay-config.js?v=20260918"></script>
+<script src="banggeul-assets/pay/pay-core.js?v=20260918"></script>
+<script src="banggeul-assets/pay/pay-auth.js?v=20260918"></script>
+<script src="banggeul-assets/pay/pay-app.js?v=20260918"></script>
 </body>
 </html>

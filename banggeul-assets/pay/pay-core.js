@@ -13,7 +13,19 @@
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
   var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
   var OAUTH_PROVIDERS = { kakao: true, naver: true };
-  var CHARGE_KINDS = { none: true, trial_end: true, renewal: true, overdue: true, immediate: true };
+  var CHARGE_KINDS = { none: true, trial_end: true, renewal: true, overdue: true, immediate: true, pause_end: true };
+  // 해지 이유 — 서버 화이트리스트(CANCEL_REASONS)와 같은 순서·값. 라벨은 운영 콘솔과 같다.
+  var CANCEL_REASONS = [
+    { value: 'price', label: '요금이 부담돼요' },
+    { value: 'not_used', label: '부모님이 잘 안 받으세요' },
+    { value: 'call_quality', label: '통화가 아쉬워요' },
+    { value: 'no_longer_needed', label: '이제 필요 없어요' },
+    { value: 'other', label: '기타' },
+  ];
+  // 결제 흐름 측정 — 서버 화이트리스트(PAY_EVENTS)와 같다. 이벤트 이름만 보낸다(개인 정보 없음).
+  var PAY_EVENTS = ['pay_view', 'login_view', 'login_success', 'register_view', 'consent_checked', 'pg_open',
+    'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done', 'refund_request'];
+  var REFUND_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
   function formatWon(n) {
     if (n === null || n === undefined || isNaN(Number(n))) return '-';
@@ -70,7 +82,12 @@
 
     var line2, line3, firstChargeClause;
 
-    if (kind === 'renewal') {
+    if (kind === 'pause_end') {
+      // 쉬어가기 중(또는 예정)에 결제수단만 바꾸는 경우 — 쉬어가기가 끝나는 날 결제가 다시 시작된다.
+      line2 = '쉬어가기가 ' + date + '에 끝나요. 오늘은 결제되지 않아요.';
+      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
+      firstChargeClause = '';
+    } else if (kind === 'renewal') {
       // 이미 결제된 이용 기간 안에서 결제수단만 바꾸는 경우 — 오늘은 결제되지 않는다.
       line2 = '이미 결제한 이용 기간이 ' + date + '까지예요. 오늘은 결제되지 않아요.';
       line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
@@ -98,6 +115,68 @@
     return [line1, line2, line3, line4];
   }
 
+  // A-1 등록 버튼 문구 — 누르면 무엇이 일어나는지(얼마가 언제) 버튼에 적는다. 금액은 서버 값만 쓴다.
+  function submitLabel(o) {
+    o = o || {};
+    var kind = o.chargeKind;
+    if (kind === 'trial_end') {
+      var monthly = (o.monthlyAmount !== null && o.monthlyAmount !== undefined) ? o.monthlyAmount : o.amount;
+      return '무료 체험 후 월 ' + formatWon(monthly) + ' 자동결제 등록';
+    }
+    if (kind === 'overdue') return formatWon(o.amount) + ' 결제하고 다시 이용하기';
+    if (kind === 'immediate') return formatWon(o.amount) + ' 결제하고 시작하기';
+    if (kind === 'renewal' || kind === 'none' || kind === 'pause_end') return '결제수단 변경';
+    return '결제수단 등록';
+  }
+
+  // 해지 화면의 한 달 쉬어가기 안내. kind: 'offer'(카드와 버튼) · 'limit'(한 줄 안내) · 'none'(숨김).
+  function pauseOffer(p) {
+    if (p && p.eligible && p.from && p.until) {
+      return {
+        kind: 'offer',
+        text: '다음 결제일(' + formatKstDate(p.from) + ')부터 한 달 동안 결제와 안부전화를 쉬어요. ' +
+          formatKstDate(p.until) + '에 자동으로 다시 시작되고, 3일 전과 1일 전에 알려 드려요. 1년에 2번까지 쓸 수 있어요.',
+      };
+    }
+    if (p && !p.eligible && p.reason === 'pause_limit') return { kind: 'limit', text: '쉬어가기는 1년에 2번까지 쓸 수 있어요.' };
+    return { kind: 'none', text: '' };
+  }
+
+  // 구독 관리의 쉬어가기 표시 — 예정이면 웹에서 취소할 수 있고, 쉬는 중이면 취소할 수 없다(고객센터 안내).
+  function pauseManageText(pause, amount) {
+    if (!pause || !pause.from || !pause.until) return null;
+    if (pause.state === 'active') {
+      return { text: '쉬어가는 중이에요. ' + formatKstDate(pause.until) + '에 다시 시작하고 ' + formatWon(amount) + '이 결제돼요.', canCancel: false };
+    }
+    return { text: '쉬어가기 예정: ' + formatKstDate(pause.from) + ' ~ ' + formatKstDate(pause.until) + ' · 그동안 결제와 안부전화가 쉬어요', canCancel: true };
+  }
+
+  // 해지 화면 ② — 해지해도 언제까지 쓰는지. 결제가 밀린 상태(past_due)는 바로 끝난다(기존 문구).
+  function cancelKeepText(sub, now) {
+    sub = sub || {};
+    var b = sub.billing || {};
+    var reports = ' 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.';
+    if (sub.status === 'past_due') return '지금 바로 해지되고 안부전화가 중단돼요. 결제되지 않은 금액은 청구되지 않아요.';
+    var until = sub.status === 'trial' ? sub.trialEndsAt : b.currentPeriodEnd;
+    var nowMs = (now ? new Date(now) : new Date()).getTime();
+    if (until && new Date(until).getTime() > nowMs) return '해지해도 ' + formatKstDate(until) + '까지 이용하실 수 있어요.' + reports;
+    return '해지하면 더 이상 결제되지 않아요.' + reports;
+  }
+
+  // 결제 내역의 환불 요청 버튼 — 결제 완료이고 결제 후 7일 안이며 아직 요청하지 않은 결제만.
+  function canRequestRefund(p, now) {
+    if (!p || p.status !== 'paid' || !p.paidAt || p.refundRequest) return false;
+    var nowMs = (now ? new Date(now) : new Date()).getTime();
+    var paidMs = new Date(p.paidAt).getTime();
+    return !isNaN(paidMs) && nowMs - paidMs < REFUND_WINDOW_MS;
+  }
+
+  // 결제 흐름 측정 요청 — 화이트리스트에 없는 이름은 보내지 않는다(null).
+  function payEventRequest(apiBase, name) {
+    if (PAY_EVENTS.indexOf(name) < 0) return null;
+    return { url: apiBase + '/web/pay-events', body: JSON.stringify({ events: [{ name: name }] }) };
+  }
+
   function decideView(s) {
     var sub = (s && s.subscription) || {};
     var billing = sub.billing || {};
@@ -113,6 +192,7 @@
     return code === 'no_family' ? 'no_family' : null;
   }
 
+  var PAUSE_UNAVAILABLE = '지금은 쉬어가기를 신청할 수 없어요.';
   var ERROR_MESSAGES = {
     consent_required: '자동결제 동의에 체크해 주세요.',
     owner_only: '결제는 대표 보호자만 할 수 있어요.',
@@ -139,9 +219,22 @@
     unauthorized: '다시 로그인해 주세요.',
     oauth_state_mismatch: '로그인 확인에 실패했어요. 다시 시도해 주세요.',
     payment_window_failed: '결제수단 등록이 완료되지 않았어요. 다시 시도해 주세요.',
+    not_active: PAUSE_UNAVAILABLE,
+    canceled: PAUSE_UNAVAILABLE,
+    no_billing: PAUSE_UNAVAILABLE,
+    already_paused: PAUSE_UNAVAILABLE,
+    not_scheduled: PAUSE_UNAVAILABLE,
+    pause_limit: '쉬어가기는 1년에 2번까지 쓸 수 있어요.',
+    pause_started: '이미 쉬어가는 중이라 취소할 수 없어요. 고객센터(' + CS_PHONE + ')로 연락해 주세요.',
+    not_paused: '쉬어가기 예정이 없어요.',
+    not_refundable: '환불 요청할 수 없는 결제예요.',
+    invalid_reason: '해지 이유를 다시 확인해 주세요.',
   };
+  // period_ended는 해지 취소(resume)에서도 쓰는 코드라, 쉬어가기 요청에서 받은 경우에만 쉬어가기 문구로 바꾼다.
+  var PAUSE_CONTEXT_MESSAGES = { period_ended: PAUSE_UNAVAILABLE };
 
-  function errorMessage(code) {
+  function errorMessage(code, context) {
+    if (context === 'pause' && PAUSE_CONTEXT_MESSAGES[code]) return PAUSE_CONTEXT_MESSAGES[code];
     return ERROR_MESSAGES[code] || '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터(' + CS_PHONE + ')로 연락해 주세요.';
   }
 
@@ -194,5 +287,8 @@
     makeOAuthState: makeOAuthState, parseOAuthReturn: parseOAuthReturn,
     kakaoAuthorizeUrl: kakaoAuthorizeUrl, naverAuthorizeUrl: naverAuthorizeUrl,
     parsePortoneReturn: parsePortoneReturn,
+    CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS,
+    submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
+    cancelKeepText: cancelKeepText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };
 });

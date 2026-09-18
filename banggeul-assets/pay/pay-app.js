@@ -14,7 +14,10 @@
   var CONSENT_LABEL_CANCEL_PENDING = '위 내용을 확인했고, 해지를 취소하면 이 결제수단으로 자동결제되는 것에 동의합니다.';
 
   function $(id) { return document.getElementById(id); }
+  var currentView = null;
   function show(view) {
+    if (view === 'login' && currentView !== 'login') track('login_view');
+    currentView = view;
     VIEWS.forEach(function (v) { $('view-' + v).hidden = v !== view; });
     $('logout').hidden = view === 'login' || view === 'loading' || !auth.getSession();
     window.scrollTo(0, 0);
@@ -24,6 +27,19 @@
     b.textContent = text || '';
     b.className = 'banner' + (ok ? ' ok' : '');
     b.hidden = !text;
+  }
+  // 결제 흐름 측정 — 이벤트 이름만 보낸다(사용자 ID·기기 정보 없음). 실패는 조용히 무시한다.
+  // sendBeacon은 쿠키를 싣는(credentials include) 요청이라, JSON 본문이면 서버 CORS(Access-Control-Allow-Origin: *)의
+  // 사전 확인을 통과하지 못해 버려진다 — 같은 성질(페이지를 떠나도 전송)의 fetch keepalive를 쿠키 없이 쓴다.
+  function track(name) {
+    try {
+      var req = C.payEventRequest(CFG.apiBase, name);
+      if (!req || !window.fetch) return;
+      window.fetch(req.url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: req.body,
+        keepalive: true, credentials: 'omit', mode: 'cors',
+      }).catch(function () {});
+    } catch (e) { /* 측정 실패는 화면 흐름에 영향을 주지 않는다 */ }
   }
   function clearUrl() { history.replaceState(null, '', location.pathname); }
   function randomHex() {
@@ -52,7 +68,8 @@
       d.showModal();
     });
   }
-  function fail(err) {
+  // context: 'pause' — 쉬어가기 요청·취소에서 온 오류(period_ended 문구가 해지 취소와 다르다).
+  function fail(err, context) {
     var code = (err && err.code) || (err && err.data && err.data.error) || 'unknown';
     // HTTP 401은 서버가 어떤 오류 코드를 실어 보내든 세션 만료와 같이 취급한다.
     if ((err && err.status === 401) || code === 'unauthorized') code = 'session_expired';
@@ -64,10 +81,10 @@
     }
     // 불러오는 중 화면에서 실패하면 배너만으로는 안 보인다 — 다시 시도할 수 있는 안내 화면을 보여준다.
     if (!$('view-loading').hidden) {
-      message('잠시 문제가 생겼어요', C.errorMessage(code), { label: '다시 시도', onclick: load });
+      message('잠시 문제가 생겼어요', C.errorMessage(code, context), { label: '다시 시도', onclick: load });
       return false;
     }
-    banner(C.errorMessage(code));
+    banner(C.errorMessage(code, context));
     return false;
   }
 
@@ -141,7 +158,9 @@
     $('reg-back-manage').hidden = !fromManage;
     // 이미 등록된 가족이 결제수단만 바꾸러 온 경우엔 요금제는 구독 관리 화면에서 바꾼다 — 여기선 숨긴다.
     $('reg-plan-card').hidden = !!fromManage;
+    text($('reg-submit'), C.submitLabel(null));
     show('register');
+    track('register_view');
     return refreshCheckout();
   }
 
@@ -169,6 +188,8 @@
         planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
         nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount, now: new Date(),
       }).forEach(function (line) { list.appendChild(li(line)); });
+      // A-1 — 누르면 무엇이 일어나는지(금액)를 버튼에 적는다. 필수 고지 4종 바로 아래 버튼이다.
+      text($('reg-submit'), C.submitLabel({ chargeKind: r.data.chargeKind, amount: r.data.amount, monthlyAmount: monthlyAmount }));
       updateSubmit();
     }).catch(function (e) {
       if (seq !== checkoutSeq) return;
@@ -244,6 +265,7 @@
     var stuckTimer = setTimeout(function () {
       if (!settled) busy($('reg-submit'), false);
     }, 5 * 60 * 1000);
+    track('pg_open');
     window.PortOne.requestIssueBillingKey({
       storeId: co.storeId,
       channelKey: co.channelKey,
@@ -260,6 +282,7 @@
         // 결제창을 닫았거나 실패했다 — 다시 시도하려면 새 issueId가 필요하다(같은 값은 재사용할 수 없다).
         // 포트원이 준 메시지는 화면에 그대로 옮기지 않는다(코드만 콘솔에 남긴다).
         console.warn('PortOne 결제창 실패:', resp.code);
+        track('register_fail');
         sessionStorage.removeItem(PENDING_KEY);
         busy($('reg-submit'), false);
         return refreshCheckout().then(function () {
@@ -296,7 +319,7 @@
     }).then(function (r) {
       if (r.status !== 200) throw r;
       renderDone(r.data);
-    }).catch(function (e) { load().then(function () { fail(e); }); });
+    }).catch(function (e) { track('register_fail'); load().then(function () { fail(e); }); });
   }
 
   function renderDone(result) {
@@ -311,6 +334,7 @@
     list.appendChild(li('해지는 언제든 이 페이지의 "구독 관리"에서 할 수 있어요.'));
     $('done-app').href = CFG.appDeepLink;
     show('done');
+    track('register_success');
   }
 
   // ── 구독 관리 ──
@@ -341,14 +365,35 @@
     text($('mg-method'), sub.expired ? '결제수단 등록하고 다시 구독하기' : '결제수단 변경');
     planChoices($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan);
 
+    // 한 달 쉬어가기 — 예정이면 취소 버튼, 쉬는 중이면 고객센터 안내 한 줄.
+    var pauseView = C.pauseManageText(sub.pause || b.pause, s.amounts[b.pendingPlan || s.currentPlan]);
+    $('mg-pause').hidden = !pauseView;
+    if (pauseView) {
+      text($('mg-pause-text'), pauseView.text);
+      $('mg-pause-cancel').hidden = !pauseView.canCancel;
+      $('mg-pause-cs').hidden = pauseView.canCancel;
+    }
+
     var body = $('mg-history');
     body.innerHTML = '';
     var rows = (s.payments || []).filter(function (p) { return p.status !== 'revoked'; });
+    var now = new Date();
     rows.forEach(function (p) {
       var tr = document.createElement('tr');
       tr.appendChild(text(document.createElement('td'), C.formatKstDate(p.paidAt || p.dueAt)));
       tr.appendChild(text(document.createElement('td'), C.formatWon(p.amount)));
       tr.appendChild(text(document.createElement('td'), C.paymentStatusLabel(p.status)));
+      var action = document.createElement('td');
+      if (p.refundRequest) {
+        text(action, '환불 요청됨');
+      } else if (C.canRequestRefund(p, now)) {
+        var btn = text(document.createElement('button'), '환불 요청');
+        btn.type = 'button';
+        btn.className = 'btn';
+        btn.onclick = function () { openRefund(p); };
+        action.appendChild(btn);
+      }
+      tr.appendChild(action);
       body.appendChild(tr);
     });
     $('mg-history-empty').hidden = rows.length > 0;
@@ -362,19 +407,99 @@
     }).catch(fail);
   }
 
+  // ── 해지 화면(쉬어가기 제안 · 이용 안내 · 해지 이유) ──
+  function renderReasons() {
+    var box = $('cs-reasons');
+    box.innerHTML = '';
+    C.CANCEL_REASONS.forEach(function (r) {
+      var label = document.createElement('label');
+      label.className = 'choice';
+      var input = document.createElement('input');
+      input.type = 'radio'; input.name = 'cancelReason'; input.value = r.value;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(' ' + r.label));
+      box.appendChild(label);
+    });
+    var other = $('cs-reason-text');
+    other.value = '';
+    other.hidden = true;
+  }
+
   function onCancel() {
-    var sub = state.status.subscription;
-    var b = sub.billing || {};
-    var detail;
-    if (sub.status === 'past_due') {
-      // 결제가 밀린 상태 — 유예 기간을 더 끌지 않고 지금 바로 끝난다.
-      detail = '지금 바로 해지되고 안부전화가 중단돼요. 결제되지 않은 금액은 청구되지 않아요.';
-    } else {
-      var until = sub.status === 'trial' ? sub.trialEndsAt : b.currentPeriodEnd;
-      detail = until ? C.formatKstDate(until) + '까지는 그대로 이용하실 수 있고, 그 뒤로는 결제되지 않아요.' : '더 이상 결제되지 않아요.';
-    }
-    confirmDialog('구독을 해지할까요? ' + detail)
-      .then(function (yes) { if (yes) postAndReload('/family/billing/cancel', undefined, '해지했어요.'); });
+    var s = state.status;
+    var offer = C.pauseOffer(s.pause);
+    $('cs-pause').hidden = offer.kind !== 'offer';
+    text($('cs-pause-text'), offer.kind === 'offer' ? offer.text : '');
+    $('cs-pause-limit').hidden = offer.kind !== 'limit';
+    text($('cs-pause-limit'), offer.kind === 'limit' ? offer.text : '');
+    text($('cs-keep'), C.cancelKeepText(s.subscription, new Date()));
+    renderReasons();
+    busy($('cs-cancel-btn'), false);
+    track('cancel_view');
+    $('cancel-sheet').showModal();
+  }
+
+  function closeCancelSheet() {
+    var d = $('cancel-sheet');
+    if (d.open) d.close();
+  }
+
+  function onCancelConfirm() {
+    var reason = selectedValue('cancelReason');
+    var reasonText = $('cs-reason-text').value.trim();
+    var body = {};
+    if (reason) body.reason = reason;
+    if (reason === 'other' && reasonText) body.reasonText = reasonText.slice(0, 300);
+    busy($('cs-cancel-btn'), true);
+    auth.api('/family/billing/cancel', { method: 'POST', body: body }).then(function (r) {
+      if (r.status !== 200) throw r;
+      closeCancelSheet();
+      track('cancel_done');
+      return load().then(function () { banner('해지했어요.', true); });
+    }).catch(function (e) {
+      busy($('cs-cancel-btn'), false);
+      closeCancelSheet();
+      fail(e);
+    });
+  }
+
+  function onPauseRequest() {
+    var p = state.status.pause || {};
+    closeCancelSheet();
+    confirmDialog(C.formatKstDate(p.from) + '부터 ' + C.formatKstDate(p.until) + '까지 결제와 안부전화를 쉬어요. 한 달 쉬어가기를 신청할까요?')
+      .then(function (yes) {
+        if (!yes) return;
+        auth.api('/family/billing/pause', { method: 'POST' }).then(function (r) {
+          if (r.status !== 200) throw r;
+          track('pause_done');
+          return load().then(function () { banner('한 달 쉬어가기를 신청했어요. ' + C.formatKstDate(p.until) + '에 자동으로 다시 시작돼요.', true); });
+        }).catch(function (e) { fail(e, 'pause'); });
+      });
+  }
+
+  // ── 환불 요청 ──
+  function openRefund(payment) {
+    var d = $('refund-dialog');
+    $('rf-reason').value = '';
+    busy($('rf-yes'), false);
+    $('rf-no').onclick = function () { d.close(); };
+    $('rf-yes').onclick = function () {
+      var reason = $('rf-reason').value.trim().slice(0, 300);
+      var body = { paymentId: payment.paymentId };
+      if (reason) body.reason = reason;
+      busy($('rf-yes'), true);
+      auth.api('/family/billing/refund-request', { method: 'POST', body: body }).then(function (r) {
+        if (r.status !== 200) throw r;
+        d.close();
+        track('refund_request');
+        return load().then(function () { banner('환불 요청을 보냈어요. 확인 후 고객센터(' + CFG.csPhone + ')에서 연락드려요.', true); });
+      }).catch(function (e) {
+        busy($('rf-yes'), false);
+        d.close();
+        fail(e);
+      });
+    };
+    d.showModal();
   }
 
   // ── 시작 ──
@@ -388,7 +513,7 @@
       if (!expected || expected !== oauth.state) { show('login'); return Promise.resolve(banner(C.errorMessage('oauth_state_mismatch'))); }
       show('loading');
       return auth.signInWithWebCode({ provider: oauth.provider, code: oauth.code, state: oauth.state, redirectUri: CFG.redirectUri })
-        .then(load).catch(function (e) { show('login'); fail(e); });
+        .then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
     }
     var pg = C.parsePortoneReturn(location.search);
     if (pg) {
@@ -397,12 +522,18 @@
       if (pg.code || !pg.billingKey) {
         // 포트원이 준 메시지는 화면에 그대로 옮기지 않는다(코드만 콘솔에 남긴다).
         console.warn('PortOne 결제창 실패(모바일 복귀):', pg.code);
+        track('register_fail');
         sessionStorage.removeItem(PENDING_KEY);
         return load().then(function () { banner(C.errorMessage('payment_window_failed')); });
       }
       return submitBillingKey(pg.billingKey);
     }
     if (!auth.getSession()) { show('login'); return Promise.resolve(); }
+    return load();
+  }
+
+  function onLoginSuccess() {
+    track('login_success');
     return load();
   }
 
@@ -424,7 +555,7 @@
       client_id: CFG.googleWebClientId,
       callback: function (resp) {
         show('loading');
-        auth.signInWithGoogleIdToken(resp.credential).then(load).catch(function (e) { show('login'); fail(e); });
+        auth.signInWithGoogleIdToken(resp.credential).then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
       },
     });
     window.google.accounts.id.renderButton($('login-google'), { theme: 'outline', size: 'large', text: 'signin_with', width: 320, locale: 'ko' });
@@ -436,11 +567,14 @@
     $('email-form').onsubmit = function (ev) {
       ev.preventDefault();
       show('loading');
-      auth.signInWithEmail($('email').value.trim(), $('password').value).then(load).catch(function (e) { show('login'); fail(e); });
+      auth.signInWithEmail($('email').value.trim(), $('password').value).then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
     };
     $('logout').onclick = function () { auth.signOut(); banner(''); show('login'); };
     $('play-link-login').href = CFG.playStoreUrl;
-    $('reg-consent').onchange = updateSubmit;
+    $('reg-consent').onchange = function () {
+      if ($('reg-consent').checked) track('consent_checked');
+      updateSubmit();
+    };
     $('reg-submit').onclick = onRegister;
     Array.prototype.forEach.call(document.querySelectorAll('input[name="method"]'), function (el) { el.onchange = refreshCheckout; });
     $('reg-plans').onchange = onPlanChange;
@@ -448,6 +582,31 @@
     $('mg-method').onclick = function () { renderRegister(true); };
     $('reg-back-manage').onclick = renderManage;
     $('mg-cancel').onclick = onCancel;
+    $('cs-keep-btn').onclick = closeCancelSheet;
+    $('cs-cancel-btn').onclick = onCancelConfirm;
+    $('cs-pause-btn').onclick = onPauseRequest;
+    $('cs-reasons').onchange = function () {
+      var other = selectedValue('cancelReason') === 'other';
+      $('cs-reason-text').hidden = !other;
+      if (other) $('cs-reason-text').focus();
+    };
+    // 바깥(배경)을 누르면 계속 이용으로 본다. Esc는 브라우저 기본 동작으로 닫힌다(= 계속 이용).
+    $('cancel-sheet').addEventListener('click', function (ev) {
+      var d = $('cancel-sheet');
+      if (ev.target !== d) return;
+      var r = d.getBoundingClientRect();
+      var inside = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+      if (!inside) closeCancelSheet();
+    });
+    $('mg-pause-cancel').onclick = function () {
+      confirmDialog('쉬어가기를 취소할까요? 원래 결제일에 자동결제돼요.').then(function (yes) {
+        if (!yes) return;
+        auth.api('/family/billing/pause/cancel', { method: 'POST' }).then(function (r) {
+          if (r.status !== 200) throw r;
+          return load().then(function () { banner('쉬어가기를 취소했어요.', true); });
+        }).catch(function (e) { fail(e, 'pause'); });
+      });
+    };
     $('mg-resume').onclick = function () { postAndReload('/family/billing/resume', undefined, '해지를 취소했어요. 다음 결제일에 자동결제돼요.'); };
     $('mg-plan-submit').onclick = function () {
       var plan = selectedValue('mgPlan');
@@ -480,5 +639,6 @@
 
   bind();
   initGoogle();
+  track('pay_view');
   handleReturns();
 })();

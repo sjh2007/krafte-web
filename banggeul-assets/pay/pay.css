@@ -45,3 +45,19 @@ form input{display:block;width:100%;min-height:46px;margin-top:4px;padding:0 12p
 .foot{text-align:center;color:var(--gray);font-size:.82rem;padding:24px 20px 40px}
 dialog{border:0;border-radius:16px;padding:20px;max-width:420px;width:calc(100% - 40px)}
 dialog::backdrop{background:rgba(21,26,35,.45)}
+/* 결제 2차 — 가치 요약·쉬어가기·해지 화면·환불 요청 */
+.values{list-style:none;padding:14px 18px;background:var(--blue-bg);border-color:#C9DDFF}
+.values li{position:relative;padding-left:22px;margin:4px 0;font-weight:600;color:var(--blue-deep)}
+.values li::before{content:"✓";position:absolute;left:0;color:var(--blue)}
+.pause-box{background:var(--blue-bg);border-radius:12px;padding:12px 14px;margin:0 0 14px}
+.pause-box p{margin:0 0 8px}
+.pause-offer{background:var(--blue-bg);border-color:#C9DDFF}
+.pause-offer h3{font-size:1rem;margin:0 0 6px}
+.pause-offer p{margin:0}
+.reasons{border:0;padding:0;margin:14px 0}
+.reasons legend{font-weight:700;margin-bottom:8px}
+textarea{display:block;width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;resize:vertical}
+.actions.even{display:grid;grid-template-columns:1fr 1fr}
+.history .btn{min-height:36px;padding:0 10px;font-size:.85rem}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+dialog{max-height:calc(100% - 40px);overflow:auto}

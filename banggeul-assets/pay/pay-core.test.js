@@ -188,3 +188,120 @@ test('포트원 결제창 복귀(모바일 리다이렉트) 파라미터', () =>
   assert.deepEqual(C.parsePortoneReturn('?pgReturn=1&code=FAILURE_TYPE_PG&message=%EC%B7%A8%EC%86%8C'), { billingKey: null, code: 'FAILURE_TYPE_PG', message: '취소' });
   assert.equal(C.parsePortoneReturn('?billingKey=bk_1'), null); // 우리 표식(pgReturn) 없으면 무시
 });
+
+// ── 결제 2차(Task 4): 버튼 금액·쉬어가기·해지·환불 요청·흐름 측정 ──
+
+test('submitLabel — 결제 성격별 등록 버튼 문구(금액은 서버 값)', () => {
+  assert.equal(C.submitLabel({ chargeKind: 'trial_end', amount: 8900, monthlyAmount: 8900 }), '무료 체험 후 월 8,900원 자동결제 등록');
+  assert.equal(C.submitLabel({ chargeKind: 'trial_end', amount: 8900, monthlyAmount: 14900 }), '무료 체험 후 월 14,900원 자동결제 등록');
+  assert.equal(C.submitLabel({ chargeKind: 'trial_end', amount: 8900 }), '무료 체험 후 월 8,900원 자동결제 등록');
+  assert.equal(C.submitLabel({ chargeKind: 'overdue', amount: 8900, monthlyAmount: 8900 }), '8,900원 결제하고 다시 이용하기');
+  assert.equal(C.submitLabel({ chargeKind: 'immediate', amount: 14900, monthlyAmount: 14900 }), '14,900원 결제하고 시작하기');
+  assert.equal(C.submitLabel({ chargeKind: 'renewal', amount: 8900 }), '결제수단 변경');
+  assert.equal(C.submitLabel({ chargeKind: 'none', amount: null }), '결제수단 변경');
+  assert.equal(C.submitLabel({ chargeKind: 'pause_end', amount: 8900 }), '결제수단 변경');
+  assert.equal(C.submitLabel({ chargeKind: 'weird' }), '결제수단 등록');
+  assert.equal(C.submitLabel({}), '결제수단 등록');
+  assert.equal(C.submitLabel(null), '결제수단 등록');
+});
+
+test('필수 고지 — pause_end(쉬어가기 중 결제수단 변경)', () => {
+  assert.equal(C.CHARGE_KINDS.pause_end, true);
+  const lines = C.noticeLines({
+    planName: '스탠다드', amount: 8900, monthlyAmount: 8900, chargeKind: 'pause_end',
+    chargeAt: '2026-11-25T03:00:00.000Z', now: new Date('2026-11-01T03:00:00.000Z'),
+  });
+  assert.equal(lines.length, 4);
+  assert.equal(lines[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
+  assert.equal(lines[1], '쉬어가기가 11월 25일에 끝나요. 오늘은 결제되지 않아요.');
+  assert.equal(lines[2], '11월 25일에 8,900원이 결제되고, 이후 매월 25일에 자동결제돼요.');
+  const renewal = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'renewal', chargeAt: '2026-11-25T03:00:00.000Z' });
+  assert.equal(lines[3], renewal[3]);
+});
+
+test('필수 고지 — pause_end, 29일 이후는 말일 안내', () => {
+  const lines = C.noticeLines({ planName: '플러스', amount: 14900, chargeKind: 'pause_end', chargeAt: '2026-10-31T03:00:00.000Z' });
+  assert.equal(lines[2], '10월 31일에 14,900원이 결제되고, 이후 매월 31일에 자동결제돼요. 그 날짜가 없는 달은 마지막 날에 결제돼요.');
+});
+
+test('pauseOffer — 해지 화면의 쉬어가기 안내(가능/횟수 초과/그 밖)', () => {
+  const ok = C.pauseOffer({ eligible: true, reason: null, from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z', usedThisYear: 0, max: 2 });
+  assert.equal(ok.kind, 'offer');
+  assert.equal(ok.text, '다음 결제일(10월 25일)부터 한 달 동안 결제와 안부전화를 쉬어요. 11월 25일에 자동으로 다시 시작되고, 3일 전과 1일 전에 알려 드려요. 1년에 2번까지 쓸 수 있어요.');
+  assert.deepEqual(C.pauseOffer({ eligible: false, reason: 'pause_limit' }), { kind: 'limit', text: '쉬어가기는 1년에 2번까지 쓸 수 있어요.' });
+  assert.deepEqual(C.pauseOffer({ eligible: false, reason: 'not_active' }), { kind: 'none', text: '' });
+  assert.deepEqual(C.pauseOffer({ eligible: true, reason: null }), { kind: 'none', text: '' }); // 날짜 없으면 숨김
+  assert.deepEqual(C.pauseOffer(undefined), { kind: 'none', text: '' });
+});
+
+test('pauseManageText — 구독 관리의 쉬어가기 표시', () => {
+  const p = { state: 'scheduled', from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z' };
+  assert.deepEqual(C.pauseManageText(p, 8900), { text: '쉬어가기 예정: 10월 25일 ~ 11월 25일 · 그동안 결제와 안부전화가 쉬어요', canCancel: true });
+  assert.deepEqual(C.pauseManageText(Object.assign({}, p, { state: 'active' }), 8900), {
+    text: '쉬어가는 중이에요. 11월 25일에 다시 시작하고 8,900원이 결제돼요.', canCancel: false,
+  });
+  assert.equal(C.pauseManageText(null, 8900), null);
+});
+
+test('cancelKeepText — 해지 후 이용 안내', () => {
+  const now = new Date('2026-10-01T00:00:00.000Z');
+  assert.equal(
+    C.cancelKeepText({ status: 'active', billing: { currentPeriodEnd: '2026-10-25T03:00:00.000Z' } }, now),
+    '해지해도 10월 25일까지 이용하실 수 있어요. 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.');
+  assert.equal(
+    C.cancelKeepText({ status: 'trial', trialEndsAt: '2026-10-20T03:00:00.000Z', billing: {} }, now),
+    '해지해도 10월 20일까지 이용하실 수 있어요. 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.');
+  assert.equal(C.cancelKeepText({ status: 'past_due', billing: {} }, now),
+    '지금 바로 해지되고 안부전화가 중단돼요. 결제되지 않은 금액은 청구되지 않아요.');
+  assert.equal(C.cancelKeepText({ status: 'active', billing: { currentPeriodEnd: '2026-09-01T03:00:00.000Z' } }, now),
+    '해지하면 더 이상 결제되지 않아요. 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.');
+});
+
+test('CANCEL_REASONS — 서버 화이트리스트와 같은 5개', () => {
+  assert.deepEqual(C.CANCEL_REASONS.map((r) => r.value), ['price', 'not_used', 'call_quality', 'no_longer_needed', 'other']);
+  C.CANCEL_REASONS.forEach((r) => assert.ok(r.label));
+});
+
+test('canRequestRefund — paid · 결제 후 7일 안 · 요청 없음', () => {
+  const now = new Date('2026-10-08T00:00:00.000Z');
+  const p = { paymentId: 'p1', status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: null };
+  assert.equal(C.canRequestRefund(p, now), true);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { paidAt: '2026-09-30T23:00:00.000Z' }), now), false); // 7일 지남
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { status: 'failed' }), now), false);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { refundRequest: 'open' }), now), false);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { paidAt: null }), now), false);
+  assert.equal(C.canRequestRefund(Object.assign({}, p, { refundRequest: undefined }), now), true);
+});
+
+test('errorMessage — 쉬어가기·해지 이유·환불 요청 오류 코드', () => {
+  ['not_active', 'canceled', 'no_billing', 'already_paused', 'not_scheduled'].forEach((c) =>
+    assert.equal(C.errorMessage(c), '지금은 쉬어가기를 신청할 수 없어요.'));
+  assert.equal(C.errorMessage('period_ended', 'pause'), '지금은 쉬어가기를 신청할 수 없어요.');
+  // 해지 취소(resume)의 period_ended 문구는 그대로 둔다.
+  assert.equal(C.errorMessage('period_ended'), '이용 기간이 이미 끝나 해지를 취소할 수 없어요. 결제수단을 다시 등록해 주세요.');
+  assert.equal(C.errorMessage('pause_limit'), '쉬어가기는 1년에 2번까지 쓸 수 있어요.');
+  assert.equal(C.errorMessage('pause_started'), '이미 쉬어가는 중이라 취소할 수 없어요. 고객센터(1877-1979)로 연락해 주세요.');
+  assert.equal(C.errorMessage('not_paused'), '쉬어가기 예정이 없어요.');
+  assert.equal(C.errorMessage('not_refundable'), '환불 요청할 수 없는 결제예요.');
+  assert.equal(C.errorMessage('invalid_reason'), '해지 이유를 다시 확인해 주세요.');
+  assert.equal(C.errorMessage('???', 'pause'), '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터(1877-1979)로 연락해 주세요.');
+});
+
+test('payEventRequest — 화이트리스트 이벤트만, 개인 정보 없이 이름만', () => {
+  const r = C.payEventRequest('https://api.test', 'pay_view');
+  assert.equal(r.url, 'https://api.test/web/pay-events');
+  assert.deepEqual(JSON.parse(r.body), { events: [{ name: 'pay_view' }] });
+  assert.equal(C.payEventRequest('https://api.test', 'unknown_event'), null);
+  assert.deepEqual(C.PAY_EVENTS, ['pay_view', 'login_view', 'login_success', 'register_view', 'consent_checked', 'pg_open',
+    'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done', 'refund_request']);
+});
+
+test('2차 화면 문구에 금칙어가 없다', () => {
+  const texts = [
+    C.pauseOffer({ eligible: true, from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z' }).text,
+    C.pauseManageText({ state: 'active', from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z' }, 8900).text,
+    C.cancelKeepText({ status: 'past_due', billing: {} }, new Date()),
+    C.submitLabel({ chargeKind: 'trial_end', amount: 8900 }),
+  ].concat(C.CANCEL_REASONS.map((r) => r.label)).join(' ');
+  assert.doesNotMatch(texts, /위험|감지|부가세 별도/);
+});
