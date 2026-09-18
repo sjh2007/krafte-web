@@ -305,3 +305,50 @@ test('2차 화면 문구에 금칙어가 없다', () => {
   ].concat(C.CANCEL_REASONS.map((r) => r.label)).join(' ');
   assert.doesNotMatch(texts, /위험|감지|부가세 별도/);
 });
+
+// ── Task 4 검토 반영 ──
+
+test('pauseManageText — 금액을 모르면 금액 절을 뺀다', () => {
+  const p = { state: 'active', from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z' };
+  assert.deepEqual(C.pauseManageText(p, null), { text: '쉬어가는 중이에요. 11월 25일에 다시 시작해요.', canCancel: false });
+  assert.deepEqual(C.pauseManageText(p, undefined), { text: '쉬어가는 중이에요. 11월 25일에 다시 시작해요.', canCancel: false });
+});
+
+test('cancelKeepText — 쉬어가기 예정이면 함께 취소 안내, 쉬는 중이면 바로 종료', () => {
+  const now = new Date('2026-10-01T00:00:00.000Z');
+  const scheduled = { status: 'active', pause: { state: 'scheduled', from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z' },
+    billing: { currentPeriodEnd: '2026-10-25T03:00:00.000Z' } };
+  assert.equal(C.cancelKeepText(scheduled, now),
+    '해지해도 10월 25일까지 이용하실 수 있어요. 쉬어가기 예정도 함께 취소돼요. 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.');
+  const active = { status: 'active', pause: { state: 'active', from: '2026-09-25T03:00:00.000Z', until: '2026-10-25T03:00:00.000Z' },
+    billing: { currentPeriodEnd: '2026-09-25T03:00:00.000Z' } };
+  assert.equal(C.cancelKeepText(active, now), '해지하면 바로 종료돼요. 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.');
+  // billing.pause만 있어도 같다
+  const viaBilling = { status: 'active', billing: { currentPeriodEnd: '2026-09-25T03:00:00.000Z', pause: active.pause } };
+  assert.equal(C.cancelKeepText(viaBilling, now), '해지하면 바로 종료돼요. 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.');
+});
+
+test('errorMessage — invalid_reason은 환불 요청 맥락에서 다른 문구', () => {
+  assert.equal(C.errorMessage('invalid_reason', 'refund'), '환불 요청 내용을 다시 확인해 주세요.');
+  assert.equal(C.errorMessage('invalid_reason'), '해지 이유를 다시 확인해 주세요.');
+  assert.equal(C.errorMessage('invalid_reason', 'pause'), '해지 이유를 다시 확인해 주세요.');
+});
+
+test('payEventRequest — 사전 확인 없는 text/plain 본문', () => {
+  const r = C.payEventRequest('https://api.test', 'pg_open');
+  assert.equal(r.contentType, 'text/plain;charset=UTF-8');
+  assert.deepEqual(JSON.parse(r.body), { events: [{ name: 'pg_open' }] });
+});
+
+test('ONCE_PER_TAB_EVENTS · isReturnLoad — 방문당 1회 측정', () => {
+  assert.deepEqual(C.ONCE_PER_TAB_EVENTS, ['pay_view', 'login_view', 'consent_checked']);
+  assert.equal(C.isReturnLoad('?code=c1&state=naver.ab'), true);
+  assert.equal(C.isReturnLoad('?error=access_denied&state=kakao.x'), true);
+  assert.equal(C.isReturnLoad('?pgReturn=1&billingKey=bk'), true);
+  assert.equal(C.isReturnLoad(''), false);
+  assert.equal(C.isReturnLoad('?utm_source=kakao'), false);
+});
+
+test('CS_PHONE 노출', () => {
+  assert.equal(C.CS_PHONE, '1877-1979');
+});

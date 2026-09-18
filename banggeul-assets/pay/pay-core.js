@@ -25,6 +25,8 @@
   // 결제 흐름 측정 — 서버 화이트리스트(PAY_EVENTS)와 같다. 이벤트 이름만 보낸다(개인 정보 없음).
   var PAY_EVENTS = ['pay_view', 'login_view', 'login_success', 'register_view', 'consent_checked', 'pg_open',
     'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done', 'refund_request'];
+  // 탭(세션)당 한 번만 세는 이벤트 — 로그인·결제창 복귀로 페이지가 다시 열려도 방문 한 번으로 센다.
+  var ONCE_PER_TAB_EVENTS = ['pay_view', 'login_view', 'consent_checked'];
   var REFUND_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
   function formatWon(n) {
@@ -146,7 +148,12 @@
   function pauseManageText(pause, amount) {
     if (!pause || !pause.from || !pause.until) return null;
     if (pause.state === 'active') {
-      return { text: '쉬어가는 중이에요. ' + formatKstDate(pause.until) + '에 다시 시작하고 ' + formatWon(amount) + '이 결제돼요.', canCancel: false };
+      var hasAmount = amount !== null && amount !== undefined && !isNaN(Number(amount));
+      return {
+        text: '쉬어가는 중이에요. ' + formatKstDate(pause.until) +
+          (hasAmount ? '에 다시 시작하고 ' + formatWon(amount) + '이 결제돼요.' : '에 다시 시작해요.'),
+        canCancel: false,
+      };
     }
     return { text: '쉬어가기 예정: ' + formatKstDate(pause.from) + ' ~ ' + formatKstDate(pause.until) + ' · 그동안 결제와 안부전화가 쉬어요', canCancel: true };
   }
@@ -157,10 +164,15 @@
     var b = sub.billing || {};
     var reports = ' 지금까지 받은 리포트는 해지 후에도 보호자 앱에서 볼 수 있어요.';
     if (sub.status === 'past_due') return '지금 바로 해지되고 안부전화가 중단돼요. 결제되지 않은 금액은 청구되지 않아요.';
+    var pause = sub.pause || b.pause;
+    // 쉬는 중 해지 — 결제한 기간은 이미 끝났으므로 바로 종료된다.
+    if (pause && pause.state === 'active') return '해지하면 바로 종료돼요.' + reports;
+    // 쉬어가기 예정 중 해지 — 서버가 예정을 함께 지운다(쓰지 않은 쉬어가기는 횟수에서 빠진다).
+    var pauseNote = pause && pause.state === 'scheduled' ? ' 쉬어가기 예정도 함께 취소돼요.' : '';
     var until = sub.status === 'trial' ? sub.trialEndsAt : b.currentPeriodEnd;
     var nowMs = (now ? new Date(now) : new Date()).getTime();
-    if (until && new Date(until).getTime() > nowMs) return '해지해도 ' + formatKstDate(until) + '까지 이용하실 수 있어요.' + reports;
-    return '해지하면 더 이상 결제되지 않아요.' + reports;
+    if (until && new Date(until).getTime() > nowMs) return '해지해도 ' + formatKstDate(until) + '까지 이용하실 수 있어요.' + pauseNote + reports;
+    return '해지하면 더 이상 결제되지 않아요.' + pauseNote + reports;
   }
 
   // 결제 내역의 환불 요청 버튼 — 결제 완료이고 결제 후 7일 안이며 아직 요청하지 않은 결제만.
@@ -174,7 +186,13 @@
   // 결제 흐름 측정 요청 — 화이트리스트에 없는 이름은 보내지 않는다(null).
   function payEventRequest(apiBase, name) {
     if (PAY_EVENTS.indexOf(name) < 0) return null;
-    return { url: apiBase + '/web/pay-events', body: JSON.stringify({ events: [{ name: name }] }) };
+    // text/plain — CORS 사전 확인(OPTIONS) 없이 보낸다. 본문은 JSON 문자열 그대로다(서버가 text/plain을 받는다).
+    return { url: apiBase + '/web/pay-events', body: JSON.stringify({ events: [{ name: name }] }), contentType: 'text/plain;charset=UTF-8' };
+  }
+
+  // 로그인(카카오·네이버) 또는 모바일 결제창에서 돌아와 페이지가 다시 열린 경우.
+  function isReturnLoad(search) {
+    return !!(parseOAuthReturn(search) || parsePortoneReturn(search));
   }
 
   function decideView(s) {
@@ -231,10 +249,15 @@
     invalid_reason: '해지 이유를 다시 확인해 주세요.',
   };
   // period_ended는 해지 취소(resume)에서도 쓰는 코드라, 쉬어가기 요청에서 받은 경우에만 쉬어가기 문구로 바꾼다.
-  var PAUSE_CONTEXT_MESSAGES = { period_ended: PAUSE_UNAVAILABLE };
+  // 환불 요청의 invalid_reason은 해지 이유가 아니라 요청 내용(사유) 문제다.
+  var CONTEXT_MESSAGES = {
+    pause: { period_ended: PAUSE_UNAVAILABLE },
+    refund: { invalid_reason: '환불 요청 내용을 다시 확인해 주세요.' },
+  };
 
   function errorMessage(code, context) {
-    if (context === 'pause' && PAUSE_CONTEXT_MESSAGES[code]) return PAUSE_CONTEXT_MESSAGES[code];
+    var byContext = CONTEXT_MESSAGES[context];
+    if (byContext && byContext[code]) return byContext[code];
     return ERROR_MESSAGES[code] || '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터(' + CS_PHONE + ')로 연락해 주세요.';
   }
 
@@ -287,7 +310,8 @@
     makeOAuthState: makeOAuthState, parseOAuthReturn: parseOAuthReturn,
     kakaoAuthorizeUrl: kakaoAuthorizeUrl, naverAuthorizeUrl: naverAuthorizeUrl,
     parsePortoneReturn: parsePortoneReturn,
-    CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS,
+    CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
+    isReturnLoad: isReturnLoad,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
     cancelKeepText: cancelKeepText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };

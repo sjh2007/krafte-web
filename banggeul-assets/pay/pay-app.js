@@ -29,15 +29,21 @@
     b.hidden = !text;
   }
   // 결제 흐름 측정 — 이벤트 이름만 보낸다(사용자 ID·기기 정보 없음). 실패는 조용히 무시한다.
-  // sendBeacon은 쿠키를 싣는(credentials include) 요청이라, JSON 본문이면 서버 CORS(Access-Control-Allow-Origin: *)의
-  // 사전 확인을 통과하지 못해 버려진다 — 같은 성질(페이지를 떠나도 전송)의 fetch keepalive를 쿠키 없이 쓴다.
+  // sendBeacon은 쿠키를 싣는(credentials include) 요청이라 서버 CORS(Access-Control-Allow-Origin: *)와 맞지 않는다 —
+  // 같은 성질(페이지를 떠나도 전송)의 fetch keepalive를 쿠키·referrer 없이, 사전 확인이 없는 text/plain으로 보낸다.
+  // pay_view·login_view·consent_checked는 탭(세션)당 한 번만 센다(로그인·결제창 복귀로 다시 열려도 방문 한 번).
+  var TRACKED_ONCE_PREFIX = 'banggeulPayTracked.';
   function track(name) {
     try {
+      if (C.ONCE_PER_TAB_EVENTS.indexOf(name) >= 0) {
+        if (sessionStorage.getItem(TRACKED_ONCE_PREFIX + name)) return;
+        sessionStorage.setItem(TRACKED_ONCE_PREFIX + name, '1');
+      }
       var req = C.payEventRequest(CFG.apiBase, name);
       if (!req || !window.fetch) return;
       window.fetch(req.url, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: req.body,
-        keepalive: true, credentials: 'omit', mode: 'cors',
+        method: 'POST', headers: { 'Content-Type': req.contentType }, body: req.body,
+        keepalive: true, credentials: 'omit', mode: 'cors', referrerPolicy: 'no-referrer',
       }).catch(function () {});
     } catch (e) { /* 측정 실패는 화면 흐름에 영향을 주지 않는다 */ }
   }
@@ -172,6 +178,7 @@
     // 새 요청을 시작하는 순간 이전 결제 준비값·동의는 무효로 만든다(다른 수단·요금제의 값으로 등록되는 것을 막는다).
     state.checkout = null;
     $('reg-consent').checked = false;
+    text($('reg-submit'), C.submitLabel(null));
     updateSubmit();
     var seq = ++checkoutSeq;
     return auth.api('/family/billing/checkout', { method: 'POST', body: { method: method } }).then(function (r) {
@@ -366,7 +373,9 @@
     planChoices($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan);
 
     // 한 달 쉬어가기 — 예정이면 취소 버튼, 쉬는 중이면 고객센터 안내 한 줄.
-    var pauseView = C.pauseManageText(sub.pause || b.pause, s.amounts[b.pendingPlan || s.currentPlan]);
+    var resumeAmount = s.amounts[b.pendingPlan || s.currentPlan];
+    if (resumeAmount === null || resumeAmount === undefined) resumeAmount = s.amount; // 그래도 없으면 금액 절을 뺀다
+    var pauseView = C.pauseManageText(sub.pause || b.pause, resumeAmount);
     $('mg-pause').hidden = !pauseView;
     if (pauseView) {
       text($('mg-pause-text'), pauseView.text);
@@ -472,7 +481,9 @@
         auth.api('/family/billing/pause', { method: 'POST' }).then(function (r) {
           if (r.status !== 200) throw r;
           track('pause_done');
-          return load().then(function () { banner('한 달 쉬어가기를 신청했어요. ' + C.formatKstDate(p.until) + '에 자동으로 다시 시작돼요.', true); });
+          var sp = r.data && r.data.subscription && r.data.subscription.pause;
+          var until = (sp && sp.until) || p.until;
+          return load().then(function () { banner('한 달 쉬어가기를 신청했어요. ' + C.formatKstDate(until) + '에 자동으로 다시 시작돼요.', true); });
         }).catch(function (e) { fail(e, 'pause'); });
       });
   }
@@ -496,7 +507,7 @@
       }).catch(function (e) {
         busy($('rf-yes'), false);
         d.close();
-        fail(e);
+        fail(e, 'refund');
       });
     };
     d.showModal();
@@ -571,6 +582,7 @@
     };
     $('logout').onclick = function () { auth.signOut(); banner(''); show('login'); };
     $('play-link-login').href = CFG.playStoreUrl;
+    Array.prototype.forEach.call(document.querySelectorAll('.cs-phone'), function (el) { el.textContent = C.CS_PHONE; });
     $('reg-consent').onchange = function () {
       if ($('reg-consent').checked) track('consent_checked');
       updateSubmit();
@@ -639,6 +651,6 @@
 
   bind();
   initGoogle();
-  track('pay_view');
+  if (!C.isReturnLoad(location.search)) track('pay_view');
   handleReturns();
 })();
