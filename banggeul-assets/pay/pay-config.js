@@ -9,5 +9,5 @@ window.PAY_CONFIG = {
   origin: 'https://www.krafte.net',
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.kraft.banggeul',
   appDeepLink: 'banggeul://',
-  csPhone: '1877-1979',
+  // 고객센터 번호는 PayCore.CS_PHONE 하나만 쓴다.
 };

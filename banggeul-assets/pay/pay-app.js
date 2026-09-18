@@ -126,7 +126,7 @@
       state.status = r.data;
       var view = C.decideView(r.data);
       if (view === 'not_owner') return message('대표 보호자만 결제할 수 있어요', '가족을 처음 만든 대표 보호자 계정으로 로그인해 주세요.');
-      if (view === 'free') return message('무료로 이용 중인 가족이에요', '결제할 것이 없어요. 궁금한 점은 고객센터(' + CFG.csPhone + ')로 연락해 주세요.');
+      if (view === 'free') return message('무료로 이용 중인 가족이에요', '결제할 것이 없어요. 궁금한 점은 고객센터(' + C.CS_PHONE + ')로 연락해 주세요.');
       if (view === 'billing_off') return message('결제 기능을 준비하고 있어요', '무료 체험은 그대로 이용하실 수 있어요. 결제가 열리면 알려드릴게요.');
       if (view === 'amount_error') return message('요금을 계산하지 못했어요', C.errorMessage(r.data.amountError));
       if (view === 'manage') return renderManage();
@@ -135,8 +135,19 @@
   }
 
   // ── 결제수단 등록 ──
+  function el(tag, className, value) {
+    var e = document.createElement(tag);
+    if (className) e.className = className;
+    if (value !== undefined) e.textContent = value;
+    return e;
+  }
+  // 요금제 고르기. 서버가 planDetails를 주면 요금제 카드(부모님별 방식·포함 내용·금액) + 참고용 전체 요금표(접힘),
+  // 없으면(옛 서버) 이름·금액 라디오만. 호칭 등 서버 문자열은 전부 textContent로만 넣는다(innerHTML 금지).
   function planChoices(container, name, selected) {
     container.innerHTML = '';
+    var s = state.status;
+    var lines = C.familyLines(s.planDetails);
+    if (lines) return planCards(container, name, selected, lines);
     ['lite', 'standard', 'plus'].forEach(function (p) {
       var amount = state.status.amounts[p];
       var label = document.createElement('label');
@@ -149,6 +160,38 @@
       container.appendChild(label);
     });
   }
+  function planCards(container, name, selected, lines) {
+    var s = state.status;
+    container.appendChild(el('p', 'family-modes', C.familyModesText(lines)));
+    ['lite', 'standard', 'plus'].forEach(function (p) {
+      var m = C.planCardModel(p, s.planDetails[p]);
+      var label = el('label', 'choice plan-card');
+      var head = el('span', 'plan-head');
+      var input = document.createElement('input');
+      input.type = 'radio'; input.name = name; input.value = p; input.checked = p === selected; input.disabled = !m.selectable;
+      head.appendChild(input);
+      head.appendChild(el('span', 'plan-name', m.name));
+      head.appendChild(el('span', 'price', m.priceText));
+      label.appendChild(head);
+      var ul = el('ul', 'plan-lines');
+      m.lines.forEach(function (line) { ul.appendChild(el('li', '', line)); });
+      label.appendChild(ul);
+      if (m.note) label.appendChild(el('p', 'plan-note', m.note));
+      container.appendChild(label);
+    });
+    var sections = C.priceTableSections(s.priceTable);
+    if (!sections.length) return;
+    var details = el('details', 'price-table');
+    details.appendChild(el('summary', '', '전체 요금표 보기'));
+    details.appendChild(el('p', 'muted small', '참고용 요금표예요. 여기서는 고를 수 없고, 이용 방식(앱 설치·전화)은 부모님별로 방글이 앱에서 정해져요.'));
+    sections.forEach(function (sec) {
+      details.appendChild(el('h3', '', sec.title));
+      var ul = el('ul', 'plan-lines');
+      sec.rows.forEach(function (r) { ul.appendChild(el('li', '', r.name + ' · ' + r.feature + ' · ' + r.price)); });
+      details.appendChild(ul);
+    });
+    container.appendChild(details);
+  }
   function selectedValue(name) {
     var el = document.querySelector('input[name="' + name + '"]:checked');
     return el ? el.value : null;
@@ -156,7 +199,7 @@
 
   function renderRegister(fromManage) {
     var s = state.status;
-    text($('reg-elders'), '부모님 ' + s.elderCount + '분 기준 금액이에요(부가세 포함).');
+    text($('reg-elders'), s.planDetails ? '금액은 모두 부가세 포함이에요.' : '부모님 ' + s.elderCount + '분 기준 금액이에요(부가세 포함).');
     planChoices($('reg-plans'), 'regPlan', s.plan);
     $('reg-consent').checked = false;
     $('reg-submit').disabled = true;
@@ -195,6 +238,7 @@
         planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
         nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount,
         firstCharge: r.data.firstCharge, now: new Date(),
+        modeSummary: C.modeSummary(state.status.planDetails && state.status.planDetails[r.data.plan] && state.status.planDetails[r.data.plan].lines),
       }).forEach(function (line) { list.appendChild(li(line)); });
       // A-1 — 누르면 무엇이 일어나는지(금액)를 버튼에 적는다. 필수 고지 4종 바로 아래 버튼이다.
       text($('reg-submit'), C.submitLabel({ chargeKind: r.data.chargeKind, amount: r.data.amount, monthlyAmount: monthlyAmount }));

@@ -56,7 +56,8 @@
     // 1번째 줄은 "이번 청구액"이 아니라 요금제의 월 정액을 보여준다 — chargeKind가 'none'이면 이번 청구(amount)는
     // 없어도(null) 요금제 자체의 월 가격(monthlyAmount)은 있다. monthlyAmount가 없으면 구버전 호출 호환으로 amount를 쓴다.
     var line1Price = formatWon((opts.monthlyAmount !== null && opts.monthlyAmount !== undefined) ? opts.monthlyAmount : opts.amount);
-    var line1 = opts.planName + ' 요금제 · 월 ' + line1Price + ' (부가세 포함)';
+    // 방식 요약(앱 설치 · 전화 방식 · 부모님 n분)은 서버 planDetails가 있을 때만 — 옛 서버면 빼고 그대로 보인다.
+    var line1 = opts.planName + ' 요금제 · ' + (opts.modeSummary ? opts.modeSummary + ' · ' : '') + '월 ' + line1Price + ' (부가세 포함)';
     var kind = opts.chargeKind;
 
     // chargeKind가 'none'이거나(구버전 호출 호환) chargeAt이 없으면 해지 예약 중에 결제수단만 바꾸는 경우다.
@@ -116,9 +117,78 @@
     // 이번 결제가 첫 결제인지는 서버(firstCharge)만 안다 — true가 아니면 첫 결제 환불을 약속하지 않는다.
     // 첫 결제 전 해지 무청구 문구(trial_end만)는 사실이므로 firstCharge 값과 무관하게 둔다.
     var line4 = opts.firstCharge === true
-      ? CANCEL_ANYTIME + firstChargeClause + '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요. 그 뒤 ' + MONTHLY_NO_REFUND
+      ? CANCEL_ANYTIME + firstChargeClause + '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요(가족당 1회). 그 뒤 ' + MONTHLY_NO_REFUND
       : CANCEL_ANYTIME + firstChargeClause + MONTHLY_NO_REFUND;
     return [line1, line2, line3, line4];
+  }
+
+  // ── 요금제 카드(대표 9/18 2차) — 그 가족의 실제 구성(서버 planDetails)으로 부모님별 방식·포함 내용·금액을 보여 준다.
+  // 방식(앱 설치·전화)은 부모님별로 앱에서 정해진다 — 웹에서 고르지 않는다. 금액·포함 내용은 서버 값만 쓴다.
+  // 호칭(title)은 보호자가 등록한 사용자 입력이다 — 가공하지 않고, 화면에는 textContent로만 넣는다.
+  var PLAN_KEYS = ['lite', 'standard', 'plus'];
+  var MODE_SHORT = { app: '앱', phone: '전화' };
+  var MODE_FAMILY = { app: '앱 설치', phone: '전화(무설치)' };
+  var MODE_SINGLE = { app: '앱 설치', phone: '전화 방식' };
+  var LINE_KIND = { base: '기본', extra: '한 분 더' };
+
+  function modeOf(line) { return line && line.mode === 'phone' ? 'phone' : 'app'; }
+  function titleOf(line) { return (line && line.title) ? String(line.title) : '부모님'; }
+  function wonOrPending(n) { return (n === null || n === undefined) ? '준비 중' : formatWon(n); }
+
+  // 카드의 부모님별 줄: {호칭} ({앱|전화}) {포함 내용} · {기본|한 분 더} {금액|준비 중}
+  function planLineText(line) {
+    return titleOf(line) + ' (' + MODE_SHORT[modeOf(line)] + ')' + (line.feature ? ' ' + line.feature : '') + ' · ' +
+      (LINE_KIND[line.kind] || LINE_KIND.base) + ' ' + wonOrPending(line.amount);
+  }
+
+  // 필수 고지 1번째 줄의 방식 요약 — 한 분이면 앱 설치/전화 방식, 여러 분이면 부모님 n분.
+  function modeSummary(lines) {
+    if (!lines || !lines.length) return null;
+    if (lines.length === 1) return MODE_SINGLE[modeOf(lines[0])];
+    return '부모님 ' + lines.length + '분';
+  }
+
+  function familyModesText(lines) {
+    if (!lines || !lines.length) return null;
+    return '우리 가족 이용 방식: ' + lines.map(function (l) { return titleOf(l) + ' · ' + MODE_FAMILY[modeOf(l)]; }).join(' · ');
+  }
+
+  // 부모님 구성은 요금제와 무관하다 — 줄이 있는 첫 요금제의 줄을 쓴다. planDetails가 없으면(옛 서버) null.
+  function familyLines(planDetails) {
+    if (!planDetails) return null;
+    for (var i = 0; i < PLAN_KEYS.length; i++) {
+      var d = planDetails[PLAN_KEYS[i]];
+      if (d && d.lines && d.lines.length) return d.lines;
+    }
+    return null;
+  }
+
+  var PHONE_EXTRA_PENDING = '전화 방식 부모님 한 분 더 요금은 준비 중이에요. 고객센터(' + CS_PHONE + ')로 문의해 주세요.';
+  function planCardModel(plan, detail) {
+    detail = detail || {};
+    var hasAmount = detail.amount !== null && detail.amount !== undefined;
+    return {
+      plan: plan,
+      name: PLAN_NAMES[plan] || plan,
+      priceText: hasAmount ? '월 ' + formatWon(detail.amount) : '준비 중',
+      lines: (detail.lines || []).map(planLineText),
+      note: !hasAmount && detail.error === 'phone_extra_price_undecided' ? PHONE_EXTRA_PENDING : null,
+      selectable: hasAmount,
+    };
+  }
+
+  // 참고용 전체 요금표(고를 수 없다) — 서버 priceTable을 방식별로 편다.
+  function priceTableSections(table) {
+    if (!table) return [];
+    return ['app', 'phone'].filter(function (m) { return table[m]; }).map(function (m) {
+      return {
+        title: MODE_FAMILY[m],
+        rows: PLAN_KEYS.filter(function (p) { return table[m][p]; }).map(function (p) {
+          var r = table[m][p];
+          return { name: PLAN_NAMES[p], feature: r.feature || '', price: '기본 ' + wonOrPending(r.base) + ' · 한 분 더 ' + wonOrPending(r.extra) };
+        }),
+      };
+    });
   }
 
   // A-1 등록 버튼 문구 — 누르면 무엇이 일어나는지(얼마가 언제) 버튼에 적는다. 금액은 서버 값만 쓴다.
@@ -271,7 +341,7 @@
     pause_limit: '쉬어가기는 1년에 2번까지 쓸 수 있어요.',
     pause_started: '이미 쉬어가는 중이라 취소할 수 없어요. 고객센터(' + CS_PHONE + ')로 연락해 주세요.',
     not_paused: '쉬어가기 예정이 없어요.',
-    not_refundable: '환불 요청할 수 없는 결제예요.',
+    not_refundable: '환불 요청할 수 없는 결제예요. 서비스 장애 등은 고객센터(' + CS_PHONE + ')로 문의해 주세요.',
     invalid_reason: '해지 이유를 다시 확인해 주세요.',
   };
   // period_ended는 해지 취소(resume)에서도 쓰는 코드라, 쉬어가기 요청에서 받은 경우에만 쉬어가기 문구로 바꾼다.
@@ -339,6 +409,8 @@
     CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
     isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
+    planLineText: planLineText, modeSummary: modeSummary, familyModesText: familyModesText, familyLines: familyLines,
+    planCardModel: planCardModel, priceTableSections: priceTableSections,
     cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };
 });

@@ -276,8 +276,8 @@ test('canRequestRefund — 서버의 withdrawalEligible === true이고 요청 �
   assert.equal(C.canRequestRefund(null), false);
 });
 
-test('필수 고지 4번째 줄 — firstCharge true/false 환불 기준', () => {
-  const tail = '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요. 그 뒤 매월 결제된 요금은 환불되지 않아요(고객센터 1877-1979).';
+test('필수 고지 4번째 줄 — firstCharge true/false 환불 기준(청약철회 가족당 1회)', () => {
+  const tail = '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요(가족당 1회). 그 뒤 매월 결제된 요금은 환불되지 않아요(고객센터 1877-1979).';
   const head = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ';
   const trial = C.noticeLines({ planName: '스탠다드', amount: 8900, chargeKind: 'trial_end', chargeAt: '2026-10-25T03:00:00.000Z', firstCharge: true });
   assert.equal(trial[3], head + '첫 결제 전에 해지하면 청구되지 않아요. ' + tail);
@@ -330,7 +330,7 @@ test('errorMessage — 쉬어가기·해지 이유·환불 요청 오류 코드'
   assert.equal(C.errorMessage('pause_limit'), '쉬어가기는 1년에 2번까지 쓸 수 있어요.');
   assert.equal(C.errorMessage('pause_started'), '이미 쉬어가는 중이라 취소할 수 없어요. 고객센터(1877-1979)로 연락해 주세요.');
   assert.equal(C.errorMessage('not_paused'), '쉬어가기 예정이 없어요.');
-  assert.equal(C.errorMessage('not_refundable'), '환불 요청할 수 없는 결제예요.');
+  assert.equal(C.errorMessage('not_refundable'), '환불 요청할 수 없는 결제예요. 서비스 장애 등은 고객센터(1877-1979)로 문의해 주세요.');
   assert.equal(C.errorMessage('invalid_reason'), '해지 이유를 다시 확인해 주세요.');
   assert.equal(C.errorMessage('???', 'pause'), '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터(1877-1979)로 연락해 주세요.');
 });
@@ -412,4 +412,81 @@ test('refundRequestLabel — 환불 요청 처리 결과 표시', () => {
   assert.equal(C.refundRequestLabel(null), null);
   // 처리된 요청은 다시 요청 버튼을 띄우지 않는다
   assert.equal(C.canRequestRefund({ status: 'paid', paidAt: '2026-10-02T00:00:00.000Z', refundRequest: 'closed', refundResolution: 'rejected', withdrawalEligible: true }), false);
+});
+
+// ── 요금제 카드(대표 9/18 2차) — 그 가족의 실제 구성으로 부모님별 방식·포함 내용·금액 ──
+const appBase = { elderId: 'e1', title: '엄마', mode: 'app', kind: 'base', amount: 8900, feature: '매일 · 하루 3분' };
+const phoneExtra = { elderId: 'e2', title: '아빠', mode: 'phone', kind: 'extra', amount: null, feature: '주 5회 · 하루 3분' };
+
+test('planLineText — {호칭} ({앱|전화}) {포함 내용} · {기본|한 분 더} {금액|준비 중}', () => {
+  assert.equal(C.planLineText(appBase), '엄마 (앱) 매일 · 하루 3분 · 기본 8,900원');
+  assert.equal(C.planLineText(phoneExtra), '아빠 (전화) 주 5회 · 하루 3분 · 한 분 더 준비 중');
+  assert.equal(C.planLineText(Object.assign({}, phoneExtra, { amount: 0 })), '아빠 (전화) 주 5회 · 하루 3분 · 한 분 더 0원');
+  // 호칭이 비었으면 '부모님'
+  assert.equal(C.planLineText(Object.assign({}, appBase, { title: '' })), '부모님 (앱) 매일 · 하루 3분 · 기본 8,900원');
+  // 포함 내용이 없으면(서버 누락) 빈칸을 두 번 찍지 않는다
+  assert.equal(C.planLineText(Object.assign({}, appBase, { feature: undefined })), '엄마 (앱) · 기본 8,900원');
+  // 호칭은 사용자 입력 그대로(가공·해석하지 않는다 — 화면에는 textContent로만 넣는다)
+  assert.equal(C.planLineText(Object.assign({}, appBase, { title: '<b>엄마</b>' })), '<b>엄마</b> (앱) 매일 · 하루 3분 · 기본 8,900원');
+});
+
+test('modeSummary — 한 분이면 앱 설치/전화 방식, 여러 분이면 부모님 n분', () => {
+  assert.equal(C.modeSummary([appBase]), '앱 설치');
+  assert.equal(C.modeSummary([Object.assign({}, appBase, { mode: 'phone' })]), '전화 방식');
+  assert.equal(C.modeSummary([appBase, phoneExtra]), '부모님 2분');
+  assert.equal(C.modeSummary([]), null);
+  assert.equal(C.modeSummary(undefined), null);
+});
+
+test('familyModesText — 우리 가족 이용 방식: 호칭 · 방식', () => {
+  assert.equal(C.familyModesText([appBase, phoneExtra]), '우리 가족 이용 방식: 엄마 · 앱 설치 · 아빠 · 전화(무설치)');
+  assert.equal(C.familyModesText([]), null);
+});
+
+test('familyLines — planDetails에서 부모님 구성(줄)을 꺼낸다, 없으면 null(옛 서버)', () => {
+  assert.equal(C.familyLines(undefined), null);
+  assert.equal(C.familyLines({}), null);
+  assert.deepEqual(C.familyLines({ lite: { amount: null, error: 'x', lines: [] }, standard: { amount: 8900, error: null, lines: [appBase] } }), [appBase]);
+});
+
+test('planCardModel — 합계·줄·준비 중 안내·선택 가능 여부', () => {
+  const ok = C.planCardModel('standard', { amount: 8900, error: null, lines: [appBase] });
+  assert.deepEqual(ok, { plan: 'standard', name: '스탠다드', priceText: '월 8,900원', lines: ['엄마 (앱) 매일 · 하루 3분 · 기본 8,900원'], note: null, selectable: true });
+  const pending = C.planCardModel('plus', { amount: null, error: 'phone_extra_price_undecided', lines: [appBase, phoneExtra] });
+  assert.equal(pending.priceText, '준비 중');
+  assert.equal(pending.selectable, false);
+  assert.equal(pending.note, '전화 방식 부모님 한 분 더 요금은 준비 중이에요. 고객센터(1877-1979)로 문의해 주세요.');
+  assert.equal(pending.lines.length, 2);
+  // 합계가 없으면(다른 오류) 준비 중 안내 없이 선택 불가
+  const other = C.planCardModel('lite', { amount: null, error: 'no_elder', lines: [] });
+  assert.equal(other.selectable, false);
+  assert.equal(other.note, null);
+});
+
+test('priceTableSections — 참고용 전체 요금표(앱 설치·전화), 금액 없으면 준비 중', () => {
+  const table = {
+    app: { lite: { base: 5900, extra: 4900, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 8900, extra: 7900, feature: '매일 · 하루 3분' }, plus: { base: 14900, extra: 13900, feature: '매일 · 하루 5분' } },
+    phone: { lite: { base: 19900, extra: null, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 24900, extra: null, feature: '주 5회 · 하루 3분' }, plus: { base: 29900, extra: null, feature: '매일 · 하루 3분' } },
+  };
+  const s = C.priceTableSections(table);
+  assert.deepEqual(s.map((x) => x.title), ['앱 설치', '전화(무설치)']);
+  assert.deepEqual(s[0].rows[0], { name: '라이트', feature: '이틀에 한 번 · 하루 3분', price: '기본 5,900원 · 한 분 더 4,900원' });
+  assert.deepEqual(s[1].rows[1], { name: '스탠다드', feature: '주 5회 · 하루 3분', price: '기본 24,900원 · 한 분 더 준비 중' });
+  assert.deepEqual(C.priceTableSections(undefined), []);
+  assert.deepEqual(C.priceTableSections({ app: table.app }).map((x) => x.title), ['앱 설치']);
+});
+
+test('필수 고지 1번째 줄 — 방식 요약이 있으면 {요금제} 요금제 · {방식} · 월 {금액}', () => {
+  const base = { planName: '스탠다드', amount: 8900, chargeKind: 'trial_end', chargeAt: '2026-10-25T03:00:00.000Z' };
+  assert.equal(C.noticeLines(Object.assign({ modeSummary: '앱 설치' }, base))[0], '스탠다드 요금제 · 앱 설치 · 월 8,900원 (부가세 포함)');
+  assert.equal(C.noticeLines(Object.assign({ modeSummary: '부모님 2분' }, base))[0], '스탠다드 요금제 · 부모님 2분 · 월 8,900원 (부가세 포함)');
+  assert.equal(C.noticeLines(Object.assign({ modeSummary: null }, base))[0], '스탠다드 요금제 · 월 8,900원 (부가세 포함)');
+  assert.equal(C.noticeLines({ planName: '스탠다드', amount: null, monthlyAmount: 8900, chargeKind: 'none', chargeAt: null, modeSummary: '전화 방식' })[0],
+    '스탠다드 요금제 · 전화 방식 · 월 8,900원 (부가세 포함)');
+});
+
+test('요금제 카드 문구 — 금칙어·부가세 별도 없음', () => {
+  const all = [C.planLineText(appBase), C.planLineText(phoneExtra), C.familyModesText([appBase, phoneExtra]),
+    C.planCardModel('plus', { amount: null, error: 'phone_extra_price_undecided', lines: [phoneExtra] }).note].join(' ');
+  assert.doesNotMatch(all, /위험|감지|부가세 별도/);
 });
