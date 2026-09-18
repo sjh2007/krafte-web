@@ -8,7 +8,7 @@
   'use strict';
 
   var KST_MS = 9 * 60 * 60 * 1000;
-  var BILLING_CONSENT_VERSION = '2026-09-18';
+  var BILLING_CONSENT_VERSION = '2026-09-18b'; // 4번째 줄 청약철회 (가족당 1회) 문구 반영
   var CS_PHONE = '1877-1979';
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
   var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
@@ -262,7 +262,7 @@
     var list = payments || [];
     var eligible = list.filter(function (p) { return p && p.withdrawalEligible === true; });
     if (eligible.some(function (p) { return !p.refundRequest; })) {
-      return "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요 — 결제 내역의 '환불 요청'을 이용해 주세요.";
+      return "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요(가족당 1회) — 결제 내역의 '환불 요청'을 이용해 주세요.";
     }
     if (eligible.length) return '';
     var pause = sub.pause || (sub.billing && sub.billing.pause);

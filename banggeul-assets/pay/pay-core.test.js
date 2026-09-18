@@ -300,13 +300,13 @@ test('필수 고지 4번째 줄 — firstCharge true/false 환불 기준(청약�
   assert.equal(C.noticeLines({ planName: '스탠다드', amount: null, monthlyAmount: 8900, chargeKind: 'none', chargeAt: null, firstCharge: true })[3], monthly);
 });
 
-test('BILLING_CONSENT_VERSION — 환불 기준 변경(2026-09-18)', () => {
-  assert.equal(C.BILLING_CONSENT_VERSION, '2026-09-18');
+test('BILLING_CONSENT_VERSION — 청약철회 가족당 1회 문구(2026-09-18b)', () => {
+  assert.equal(C.BILLING_CONSENT_VERSION, '2026-09-18b');
 });
 
 test('cancelRefundText — 해지 화면 환불 안내', () => {
   const noRefund = '이미 결제된 이번 달 요금은 환불되지 않아요.';
-  const eligible = "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요 — 결제 내역의 '환불 요청'을 이용해 주세요.";
+  const eligible = "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요(가족당 1회) — 결제 내역의 '환불 요청'을 이용해 주세요.";
   const active = { status: 'active', billing: { currentPeriodEnd: '2026-10-25T03:00:00.000Z' } };
   assert.equal(C.cancelRefundText(active, [{ status: 'paid', withdrawalEligible: false, refundRequest: null }]), noRefund);
   assert.equal(C.cancelRefundText(active, []), noRefund);
