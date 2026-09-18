@@ -63,14 +63,18 @@ textarea{display:block;width:100%;margin-top:8px;padding:10px 12px;border:1px so
 dialog{max-height:calc(100% - 40px);overflow:auto}
 /* 요금제 카드(9/18 2차) — 부모님별 방식·포함 내용·금액. 360px에서도 줄바꿈으로 읽히게 한다. */
 .family-modes{margin:0 0 2px;font-weight:600;font-size:.92rem;overflow-wrap:anywhere}
-.choice.plan-card{flex-direction:column;align-items:stretch;gap:4px;padding:12px 14px}
-.plan-head{display:flex;align-items:center;gap:10px;min-height:28px}
+.plan-card{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.plan-head{display:flex;align-items:center;gap:10px;min-height:28px;cursor:pointer}
+.plan-head input{width:18px;height:18px;accent-color:var(--blue)}
+.plan-head .price{margin-left:auto;font-weight:700}
 .plan-name{font-weight:700}
 .plan-card .price{white-space:nowrap}
 .plan-lines{margin:0;padding-left:18px;font-size:.88rem;color:var(--gray);overflow-wrap:anywhere}
 .plan-lines li{margin:2px 0}
 .plan-note{margin:2px 0 0;font-size:.85rem;color:var(--blue-deep)}
 .plan-card:has(input:checked){border-color:var(--blue);background:var(--blue-bg)}
-.plan-card:has(input:disabled){cursor:not-allowed;background:#FAFBFC}
+.plan-card:has(input:disabled){background:#FAFBFC}
+.plan-card:has(input:disabled) .plan-head{cursor:not-allowed}
+#msg-plans{margin-top:16px}
 .price-table summary{cursor:pointer;color:var(--gray);margin:4px 0}
 .price-table h3{font-size:.95rem;margin:10px 0 4px}

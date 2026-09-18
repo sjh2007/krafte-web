@@ -142,7 +142,7 @@ test('decideErrorView — 가족 없음은 앱 가입 안내', () => {
 test('errorMessage — 서버 오류 코드별 문구, 모르는 코드는 기본 문구', () => {
   assert.equal(C.errorMessage('consent_required'), '자동결제 동의에 체크해 주세요.');
   assert.equal(C.errorMessage('owner_only'), '결제는 대표 보호자만 할 수 있어요.');
-  assert.equal(C.errorMessage('phone_extra_price_undecided'), '전화 방식 부모님을 추가한 요금은 아직 준비 중이에요. 고객센터(1877-1979)로 문의해 주세요.');
+  assert.equal(C.errorMessage('phone_extra_price_undecided'), '전화 방식 부모님 한 분 더 요금은 아직 준비 중이에요. 고객센터(1877-1979)로 문의해 주세요.');
   assert.equal(C.errorMessage('???'), '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터(1877-1979)로 연락해 주세요.');
 });
 
@@ -455,7 +455,9 @@ test('planCardModel — 합계·줄·준비 중 안내·선택 가능 여부', (
   const pending = C.planCardModel('plus', { amount: null, error: 'phone_extra_price_undecided', lines: [appBase, phoneExtra] });
   assert.equal(pending.priceText, '준비 중');
   assert.equal(pending.selectable, false);
-  assert.equal(pending.note, '전화 방식 부모님 한 분 더 요금은 준비 중이에요. 고객센터(1877-1979)로 문의해 주세요.');
+  assert.equal(pending.note, '전화 방식 부모님 한 분 더 요금은 아직 준비 중이에요. 고객센터(1877-1979)로 문의해 주세요.');
+  // 검토 M2 — 카드 안내와 오류 안내가 같은 문구
+  assert.equal(pending.note, C.errorMessage('phone_extra_price_undecided'));
   assert.equal(pending.lines.length, 2);
   // 합계가 없으면(다른 오류) 준비 중 안내 없이 선택 불가
   const other = C.planCardModel('lite', { amount: null, error: 'no_elder', lines: [] });
@@ -489,4 +491,16 @@ test('요금제 카드 문구 — 금칙어·부가세 별도 없음', () => {
   const all = [C.planLineText(appBase), C.planLineText(phoneExtra), C.familyModesText([appBase, phoneExtra]),
     C.planCardModel('plus', { amount: null, error: 'phone_extra_price_undecided', lines: [phoneExtra] }).note].join(' ');
   assert.doesNotMatch(all, /위험|감지|부가세 별도/);
+});
+
+test('readOnlyCompositionLines — 준비 중(amount_error · phone_extra_price_undecided) 가족에게 구성을 읽기 전용으로 보인다(검토 M1)', () => {
+  const pd = { lite: { amount: null, error: 'phone_extra_price_undecided', lines: [appBase, phoneExtra] } };
+  const s = { isOwner: true, billingEnabled: true, subscription: { status: 'trial', billing: {} }, amount: null, amountError: 'phone_extra_price_undecided', planDetails: pd };
+  assert.equal(C.decideView(s), 'amount_error');
+  assert.deepEqual(C.readOnlyCompositionLines(s), [appBase, phoneExtra]);
+  // 다른 금액 오류 · planDetails 없음(옛 서버) · 줄 없음이면 null(메시지만)
+  assert.equal(C.readOnlyCompositionLines(Object.assign({}, s, { amountError: 'no_elder' })), null);
+  assert.equal(C.readOnlyCompositionLines(Object.assign({}, s, { planDetails: undefined })), null);
+  assert.equal(C.readOnlyCompositionLines(Object.assign({}, s, { planDetails: { lite: { amount: null, error: 'x', lines: [] } } })), null);
+  assert.equal(C.readOnlyCompositionLines(null), null);
 });

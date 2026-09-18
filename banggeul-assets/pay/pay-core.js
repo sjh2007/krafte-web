@@ -163,7 +163,8 @@
     return null;
   }
 
-  var PHONE_EXTRA_PENDING = '전화 방식 부모님 한 분 더 요금은 준비 중이에요. 고객센터(' + CS_PHONE + ')로 문의해 주세요.';
+  // 카드 안내와 오류 안내(phone_extra_price_undecided)가 같은 문구를 쓴다.
+  var PHONE_EXTRA_PENDING = '전화 방식 부모님 한 분 더 요금은 아직 준비 중이에요. 고객센터(' + CS_PHONE + ')로 문의해 주세요.';
   function planCardModel(plan, detail) {
     detail = detail || {};
     var hasAmount = detail.amount !== null && detail.amount !== undefined;
@@ -175,6 +176,13 @@
       note: !hasAmount && detail.error === 'phone_extra_price_undecided' ? PHONE_EXTRA_PENDING : null,
       selectable: hasAmount,
     };
+  }
+
+  // 요금을 정할 수 없어(전화 방식 부모님 한 분 더 준비 중) 등록 대신 안내 화면을 보이는 가족에게도 구성은 보여 준다 —
+  // 그 가족의 부모님 줄(없으면 null). 카드는 읽기 전용(선택 없음)으로 그린다.
+  function readOnlyCompositionLines(s) {
+    if (!s || s.amountError !== 'phone_extra_price_undecided') return null;
+    return familyLines(s.planDetails);
   }
 
   // 참고용 전체 요금표(고를 수 없다) — 서버 priceTable을 방식별로 편다.
@@ -318,7 +326,7 @@
     invalid_billing_key: '결제수단 등록을 확인하지 못했어요. 다시 시도해 주세요.',
     free_family: '무료로 이용 중인 가족이라 결제할 것이 없어요.',
     no_elder: '등록된 부모님이 없어요. 방글이 앱에서 부모님을 먼저 등록해 주세요.',
-    phone_extra_price_undecided: '전화 방식 부모님을 추가한 요금은 아직 준비 중이에요. 고객센터(' + CS_PHONE + ')로 문의해 주세요.',
+    phone_extra_price_undecided: PHONE_EXTRA_PENDING,
     nothing_to_cancel: '해지할 예정 결제가 없어요.',
     not_canceled: '해지 예약 상태가 아니에요.',
     period_ended: '이용 기간이 이미 끝나 해지를 취소할 수 없어요. 결제수단을 다시 등록해 주세요.',
@@ -410,7 +418,7 @@
     isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
     planLineText: planLineText, modeSummary: modeSummary, familyModesText: familyModesText, familyLines: familyLines,
-    planCardModel: planCardModel, priceTableSections: priceTableSections,
+    planCardModel: planCardModel, priceTableSections: priceTableSections, readOnlyCompositionLines: readOnlyCompositionLines,
     cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
   };
 });

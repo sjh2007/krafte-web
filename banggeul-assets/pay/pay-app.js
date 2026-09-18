@@ -98,6 +98,8 @@
   function message(title, body, action) {
     text($('msg-title'), title);
     text($('msg-body'), body);
+    $('msg-plans').innerHTML = '';
+    $('msg-plans').hidden = true;
     var a = $('msg-action');
     a.hidden = !action;
     a.onclick = null;
@@ -128,7 +130,15 @@
       if (view === 'not_owner') return message('대표 보호자만 결제할 수 있어요', '가족을 처음 만든 대표 보호자 계정으로 로그인해 주세요.');
       if (view === 'free') return message('무료로 이용 중인 가족이에요', '결제할 것이 없어요. 궁금한 점은 고객센터(' + C.CS_PHONE + ')로 연락해 주세요.');
       if (view === 'billing_off') return message('결제 기능을 준비하고 있어요', '무료 체험은 그대로 이용하실 수 있어요. 결제가 열리면 알려드릴게요.');
-      if (view === 'amount_error') return message('요금을 계산하지 못했어요', C.errorMessage(r.data.amountError));
+      if (view === 'amount_error') {
+        message('요금을 계산하지 못했어요', C.errorMessage(r.data.amountError));
+        var composition = C.readOnlyCompositionLines(r.data);
+        if (composition) {
+          planCards($('msg-plans'), 'msgPlan', null, composition, true);
+          $('msg-plans').hidden = false;
+        }
+        return;
+      }
       if (view === 'manage') return renderManage();
       return renderRegister();
     }).catch(fail);
@@ -160,24 +170,38 @@
       container.appendChild(label);
     });
   }
-  function planCards(container, name, selected, lines) {
+  // readOnly — 요금을 정할 수 없는 가족의 안내 화면에서 구성만 보여 줄 때(라디오는 모두 비활성·선택 없음).
+  function planCards(container, name, selected, lines, readOnly) {
     var s = state.status;
     container.appendChild(el('p', 'family-modes', C.familyModesText(lines)));
     ['lite', 'standard', 'plus'].forEach(function (p) {
       var m = C.planCardModel(p, s.planDetails[p]);
-      var label = el('label', 'choice plan-card');
-      var head = el('span', 'plan-head');
+      // label은 라디오와 이름·금액만 감싼다(label 안에 ul·p를 두지 않는다). 부모님별 줄·안내는 aria-describedby로 잇는다 —
+      // 라디오의 이름은 요금제 이름·금액만 읽힌다.
+      var card = el('div', 'plan-card');
+      var head = el('label', 'plan-head');
       var input = document.createElement('input');
-      input.type = 'radio'; input.name = name; input.value = p; input.checked = p === selected; input.disabled = !m.selectable;
+      input.type = 'radio'; input.name = name; input.value = p;
+      input.checked = !readOnly && p === selected;
+      input.disabled = readOnly || !m.selectable;
       head.appendChild(input);
       head.appendChild(el('span', 'plan-name', m.name));
       head.appendChild(el('span', 'price', m.priceText));
-      label.appendChild(head);
+      card.appendChild(head);
+      var ids = [];
       var ul = el('ul', 'plan-lines');
+      ul.id = name + '-' + p + '-lines';
       m.lines.forEach(function (line) { ul.appendChild(el('li', '', line)); });
-      label.appendChild(ul);
-      if (m.note) label.appendChild(el('p', 'plan-note', m.note));
-      container.appendChild(label);
+      card.appendChild(ul);
+      ids.push(ul.id);
+      if (m.note) {
+        var note = el('p', 'plan-note', m.note);
+        note.id = name + '-' + p + '-note';
+        card.appendChild(note);
+        ids.push(note.id);
+      }
+      input.setAttribute('aria-describedby', ids.join(' '));
+      container.appendChild(card);
     });
     var sections = C.priceTableSections(s.priceTable);
     if (!sections.length) return;
