@@ -419,7 +419,10 @@
       f3.appendChild(pc);
       box.appendChild(f3);
     } else {
-      var hint = C.selectionPriceHint(ctx.plan, C.displayTotal(ctx.plan, selection, elders, s.priceTable));
+      // 구독 관리 — 요금제는 여기서 고르지 않는다. 지금 요금제가 고른 조합의 통화 일정에 모자라면 미리 알린다(바꾸기는 막음).
+      var limits = C.planBlockers(ctx.plan, selection, elders);
+      var hint = limits.length ? '' : C.selectionPriceHint(ctx.plan, C.displayTotal(ctx.plan, selection, elders, s.priceTable));
+      limits.forEach(function (b) { box.appendChild(el('p', 'step-note', C.planLimitNote(b))); });
       if (hint) {
         var est = el('p', 'step-text', hint);
         est.id = prefix + '-estimate';
@@ -443,6 +446,8 @@
     else if (act === 'who') ctx.st = C.stepsSetChosen(ctx.st, t.dataset.elder, t.checked, elders);
     else if (act === 'plan') ctx.plan = t.value;
     else return;
+    // 방식·누구가 바뀌어 지금 요금제가 부모님 통화 일정에 모자라면 고를 수 있는 가장 싼 요금제로 옮긴다(등록 화면).
+    if (act !== 'plan' && ctx.withPlans) ctx.plan = C.ensureValidPlan(ctx.plan, displaySelection(ctx.st, elders), elders, state.status.priceTable);
     renderSteps(prefix);
     if (prefix === 'reg') refreshCheckout(); // 바뀔 때마다 서버 금액을 다시 받고 동의를 풀어 둔다
     else $('mg-selection-msg').textContent = '';
@@ -456,7 +461,8 @@
     $('reg-steps').innerHTML = '';
     $('reg-steps').hidden = !state.stepMode;
     if (state.stepMode) {
-      state.steps.reg = { st: C.defaultStepState(s.elders, s.selection, s.phoneModeAvailable), plan: s.plan, withPlans: true };
+      var regSt = C.defaultStepState(s.elders, s.selection, s.phoneModeAvailable);
+      state.steps.reg = { st: regSt, plan: C.ensureValidPlan(s.plan, displaySelection(regSt, s.elders), s.elders, s.priceTable), withPlans: true };
       renderSteps('reg');
       $('reg-plans').innerHTML = '';
     } else {
@@ -813,7 +819,7 @@
     var ctx = state.steps.mg;
     if (!ctx) return;
     var msgEl = $('mg-selection-msg');
-    var v = C.validateSteps(ctx.st, s.elders, { phoneModeAvailable: s.phoneModeAvailable });
+    var v = C.validateSteps(ctx.st, s.elders, { phoneModeAvailable: s.phoneModeAvailable, plan: ctx.plan });
     if (!v.ok) return text(msgEl, v.message);
     if (C.sameSelection(v.selection, nextSelection(s))) return text(msgEl, C.errorMessage('same_selection'));
     text(msgEl, '');

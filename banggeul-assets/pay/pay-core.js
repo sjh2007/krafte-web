@@ -391,6 +391,7 @@
     invalid_selection: '부모님 선택을 다시 확인해 주세요.',
     phone_mode_unavailable: '전화 방식은 아직 준비 중이에요. 앱으로 받기를 골라 주세요.',
     same_selection: '지금과 같은 방식·인원이에요.',
+    plan_limit: '선택하신 요금제로는 부모님 통화 일정이 맞지 않아요. 더 넉넉한 요금제를 고르거나 앱에서 통화 일정을 바꿔 주세요.',
   };
   // period_ended는 해지 취소(resume)에서도 쓰는 코드라, 쉬어가기 요청에서 받은 경우에만 쉬어가기 문구로 바꾼다.
   var CONTEXT_MESSAGES = {
@@ -617,6 +618,36 @@
     return out;
   }
 
+  // 부모님별 최소 요금제(서버 elders[i].requiredPlan[mode] — 앱에서 정한 통화 일정이 들어가는 가장 싼 요금제).
+  // 그 요금제보다 낮은 요금제는 고를 수 없다. requiredPlan이 없으면(옛 서버)·null이면(일정 없음) 제한 없음.
+  var PLAN_RANK = { lite: 0, standard: 1, plus: 2 };
+  function planBlockers(plan, selection, elders) {
+    var list = elders || [];
+    var out = [];
+    orderSelection(selection, list).forEach(function (x) {
+      var i = -1;
+      for (var k = 0; k < list.length; k++) if (idOf(list[k]) === String(x.elderId)) { i = k; break; }
+      var e = list[i];
+      var req = e && e.requiredPlan && e.requiredPlan[normMode(x.mode)];
+      if (req && PLAN_RANK[req] !== undefined && PLAN_RANK[plan] !== undefined && PLAN_RANK[req] > PLAN_RANK[plan]) {
+        out.push({ elderId: String(x.elderId), label: elderLabel(e, i), requiredPlan: req, mode: normMode(x.mode) });
+      }
+    });
+    return out;
+  }
+  function planLimitNote(b) {
+    return b.label + '의 통화 일정(앱에서 설정)에는 ' + (PLAN_NAMES[b.requiredPlan] || b.requiredPlan) + ' 이상이 필요해요';
+  }
+  function planValid(plan, selection, elders, table) {
+    return PLAN_KEYS.indexOf(plan) >= 0 && displayTotal(plan, selection, elders, table) !== null && !planBlockers(plan, selection, elders).length;
+  }
+  // 조합이 바뀌어 지금 요금제를 고를 수 없게 되면 고를 수 있는 가장 싼 요금제로 조용히 옮긴다(없으면 그대로).
+  function ensureValidPlan(plan, selection, elders, table) {
+    if (planValid(plan, selection, elders, table)) return plan;
+    for (var i = 0; i < PLAN_KEYS.length; i++) if (planValid(PLAN_KEYS[i], selection, elders, table)) return PLAN_KEYS[i];
+    return plan;
+  }
+
   // ③ 요금제 카드 — 지금 고른 조합의 월 합계 하나 + 방식별 포함 내용(전화는 같은 요금제의 앱과 다른 칸 굵게).
   // 두 방식이 섞였으면 "앱: …" "전화: …" 두 줄.
   function stepPlanCardModel(plan, selection, elders, table) {
@@ -630,14 +661,18 @@
       return segs;
     }).filter(function (segs) { return segs.length; });
     var hasPhone = used.indexOf('phone') >= 0;
+    var blockers = planBlockers(plan, selection, elders);
+    var note = null;
+    if (total === null) note = hasPhone && (selection || []).length > 1 ? PHONE_EXTRA_PENDING : null;
+    else if (blockers.length) note = blockers.map(planLimitNote).join(' ');
     return {
       plan: plan,
       name: PLAN_NAMES[plan] || plan,
       total: total,
       priceText: total === null ? '준비 중' : '월 ' + formatWon(total),
       features: features,
-      note: total === null && hasPhone && (selection || []).length > 1 ? PHONE_EXTRA_PENDING : null,
-      selectable: total !== null,
+      note: note,
+      selectable: total !== null && !blockers.length,
     };
   }
 
@@ -682,6 +717,7 @@
 
   // 검증 — 부모님 1분 이상, "누구"는 고른 수만큼, 전화를 못 쓰는 가족에 전화 없음, (등록이면) 고를 수 있는 요금제.
   // opts: { phoneModeAvailable, plan, priceTable, requirePlan }. 성공이면 selection을 함께 돌려준다.
+  // plan이 주어지면(등록·구독 관리 모두) 부모님 통화 일정의 최소 요금제(requiredPlan)도 확인한다 → plan_limit.
   function validateSteps(st, elders, opts) {
     opts = opts || {};
     var ids = (elders || []).map(idOf);
@@ -699,6 +735,9 @@
       if (!opts.plan || PLAN_KEYS.indexOf(opts.plan) < 0 || displayTotal(opts.plan, selection, elders, opts.priceTable) === null) {
         return { ok: false, error: 'invalid_plan', message: errorMessage('invalid_plan') };
       }
+    }
+    if (opts.plan && planBlockers(opts.plan, selection, elders).length) {
+      return { ok: false, error: 'plan_limit', message: errorMessage('plan_limit') };
     }
     return { ok: true, selection: selection };
   }
@@ -760,7 +799,7 @@
     selectionSummary: selectionSummary, selectionDescribe: selectionDescribe, sameSelection: sameSelection, unpairedNotes: unpairedNotes,
     validateSteps: validateSteps, checkoutBody: checkoutBody, billingKeyBody: billingKeyBody, selectionBody: selectionBody,
     checkoutMonthly: checkoutMonthly, selectionAppliedText: selectionAppliedText, selectionConfirmText: selectionConfirmText,
-    selectionPriceHint: selectionPriceHint,
+    selectionPriceHint: selectionPriceHint, planBlockers: planBlockers, planLimitNote: planLimitNote, ensureValidPlan: ensureValidPlan,
     normalizePayer: normalizePayer,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,

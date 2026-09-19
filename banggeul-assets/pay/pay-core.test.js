@@ -639,7 +639,8 @@ function allScreenStrings() {
     ...Object.values(C.STEP_TEXT), ...Object.values(C.MODE_CHOICE));
   const one = C.stepsSetCount(C.defaultStepState(E3, null, true), 1, E3);
   out.push(C.validateSteps(one, E3, {}).message, C.validateSteps(C.stepsSetCount(one, 2, E3), E3, {}).message);
-  ['invalid_selection', 'phone_mode_unavailable', 'same_selection'].forEach((c) => out.push(C.errorMessage(c)));
+  ['invalid_selection', 'phone_mode_unavailable', 'same_selection', 'plan_limit'].forEach((c) => out.push(C.errorMessage(c)));
+  out.push(C.planLimitNote({ label: '할머니 김순자', requiredPlan: 'standard' }));
   ['consent_required', 'not_refundable', 'invalid_reason', 'period_ended', '???'].forEach((c) =>
     ['pause', 'refund', undefined].forEach((ctx) => out.push(C.errorMessage(c, ctx))));
   const html = fs.readFileSync(path.join(__dirname, '../../banggeul-pay.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
@@ -903,4 +904,57 @@ test('단계 화면 문구 — 확정 문구 그대로, 금칙어 검사가 새 
   const all = allScreenStrings();
   ['부모님마다 다르게 할게요', '전화 방식 준비 중이에요', '할머니 김순자', '앱 1분 · 전화 1분', '다음 결제일(10월 25일)부터 적용돼요.',
     '방식·인원 바꾸기', '어느 분께 드릴까요?'].forEach((t) => assert.ok(all.includes(t), t));
+});
+
+// ── 부모님 통화 일정의 최소 요금제(requiredPlan, 9/19 추가) ──
+const LIMITED = [
+  Object.assign({}, ELDERS[0], { requiredPlan: { app: 'standard', phone: 'plus' } }),
+  Object.assign({}, ELDERS[1], { requiredPlan: { app: null, phone: null } }),
+];
+
+test('planBlockers — 고른 방식의 requiredPlan보다 낮은 요금제면 막는다(lite < standard < plus)', () => {
+  const app = [{ elderId: 'e1', mode: 'app' }, { elderId: 'e2', mode: 'phone' }];
+  assert.deepEqual(C.planBlockers('lite', app, LIMITED), [{ elderId: 'e1', label: '할머니 김순자', requiredPlan: 'standard', mode: 'app' }]);
+  assert.deepEqual(C.planBlockers('standard', app, LIMITED), []);
+  const phone = [{ elderId: 'e1', mode: 'phone' }];
+  assert.equal(C.planBlockers('standard', phone, LIMITED).length, 1);
+  assert.deepEqual(C.planBlockers('plus', phone, LIMITED), []);
+  // 고르지 않은 부모님·requiredPlan 없음(옛 서버)·null(일정 없음)은 제한 없음
+  assert.deepEqual(C.planBlockers('lite', [{ elderId: 'e2', mode: 'phone' }], LIMITED), []);
+  assert.deepEqual(C.planBlockers('lite', app, ELDERS), []);
+});
+
+test('stepPlanCardModel — 통화 일정에 모자란 요금제는 고를 수 없고 안내가 붙는다', () => {
+  const sel = [{ elderId: 'e1', mode: 'app' }];
+  const lite = C.stepPlanCardModel('lite', sel, LIMITED, TABLE);
+  assert.equal(lite.selectable, false);
+  assert.equal(lite.priceText, '월 5,900원'); // 금액은 그대로 보인다
+  assert.equal(lite.note, '할머니 김순자의 통화 일정(앱에서 설정)에는 스탠다드 이상이 필요해요');
+  assert.equal(C.stepPlanCardModel('standard', sel, LIMITED, TABLE).selectable, true);
+  assert.equal(C.stepPlanCardModel('standard', sel, LIMITED, TABLE).note, null);
+  // 옛 서버(requiredPlan 없음) — 막지 않는다
+  assert.equal(C.stepPlanCardModel('lite', sel, ELDERS, TABLE).selectable, true);
+});
+
+test('ensureValidPlan — 조합이 바뀌어 지금 요금제가 모자라면 고를 수 있는 가장 싼 요금제로', () => {
+  assert.equal(C.ensureValidPlan('standard', [{ elderId: 'e1', mode: 'app' }], LIMITED, TABLE), 'standard');
+  assert.equal(C.ensureValidPlan('lite', [{ elderId: 'e1', mode: 'app' }], LIMITED, TABLE), 'standard');
+  assert.equal(C.ensureValidPlan('standard', [{ elderId: 'e1', mode: 'phone' }], LIMITED, TABLE), 'plus');
+  assert.equal(C.ensureValidPlan('plus', [{ elderId: 'e1', mode: 'app' }], LIMITED, TABLE), 'plus'); // 이미 되면 그대로(내리지 않는다)
+  assert.equal(C.ensureValidPlan('lite', [{ elderId: 'e1', mode: 'app' }], ELDERS, TABLE), 'lite');
+  // 고를 수 있는 요금제가 없으면 그대로 두고 검증이 막는다
+  const noPlus = { app: TABLE.app, phone: { lite: TABLE.phone.lite, standard: TABLE.phone.standard, plus: { base: null, extra: null } } };
+  assert.equal(C.ensureValidPlan('standard', [{ elderId: 'e1', mode: 'phone' }], LIMITED, noPlus), 'standard');
+});
+
+test('validateSteps — plan이 주어지면 통화 일정 최소 요금제 확인(plan_limit)', () => {
+  const st = C.stepsSetShared(C.defaultStepState(LIMITED, null, true), 'phone');
+  const v = C.validateSteps(st, LIMITED, { plan: 'standard', priceTable: TABLE, requirePlan: true });
+  assert.equal(v.error, 'plan_limit');
+  assert.equal(v.message, '선택하신 요금제로는 부모님 통화 일정이 맞지 않아요. 더 넉넉한 요금제를 고르거나 앱에서 통화 일정을 바꿔 주세요.');
+  assert.equal(C.validateSteps(st, LIMITED, { plan: 'plus', priceTable: TABLE, requirePlan: true }).ok, true);
+  assert.equal(C.validateSteps(st, LIMITED, { plan: 'standard' }).error, 'plan_limit'); // 구독 관리(요금제 필수 아님)
+  assert.equal(C.validateSteps(st, LIMITED, {}).ok, true);
+  assert.equal(C.errorMessage('plan_limit'), v.message);
+  assert.doesNotMatch(C.planLimitNote({ label: '엄마', requiredPlan: 'plus' }) + v.message, /위험|감지|부가세 별도/);
 });
