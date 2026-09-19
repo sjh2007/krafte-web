@@ -40,15 +40,16 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-</head>
+<style>.policy-notice{margin:0;background:#EDF5FF;border-bottom:1px solid #C9DDFF;font-family:Pretendard,-apple-system,system-ui,sans-serif}.policy-notice a{display:block;max-width:1120px;margin:auto;padding:14px 20px;color:#0044B4;font-size:14px;line-height:1.6;text-decoration:none;overflow-wrap:anywhere}.policy-notice span{display:inline-block;margin-left:8px;text-decoration:underline}.policy-notice a:focus-visible{outline:3px solid #0062FF;outline-offset:-3px}</style></head>
 <body>
 <header><div class="nav">
   <a class="logo" href="ai-banggeul-landing.html">AI방글이</a>
   <a class="back" href="ai-banggeul-landing.html">← 서비스 소개로</a>
 </div></header>
+<aside class="policy-notice" aria-label="약관 개정 공지"><a href="banggeul-policy-notice-20260918.html"><strong>약관 개정 안내</strong> · 2026년 9월 25일 시행 <span>자세히 보기 →</span></a></aside>
 <main>
 <h1>개인정보처리방침</h1>
-<p class="updated">시행일 2026년 8월 11일 · 주식회사 크래프트</p>
+<p class="updated">시행일 2026년 9월 25일 · 주식회사 크래프트</p>
 
 <p>주식회사 크래프트(이하 "회사")는 「개인정보 보호법」 등 관련 법령을 준수하며, 이용자와 수신자의 개인정보를 보호하기 위하여
 다음과 같이 개인정보처리방침을 수립·공개합니다.</p>
@@ -56,14 +57,17 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
 <h2>1. 수집하는 개인정보 항목과 수집 방법</h2>
 <table>
   <tr><th>구분</th><th>수집 항목</th><th>수집 방법</th></tr>
-  <tr><td>이용자(자녀)</td><td>이메일 주소, 이름, 휴대전화번호, 결제 정보(결제대행사를 통해 처리)</td><td>가입·결제 시 이용자 입력</td></tr>
+  <tr><td>이용자(자녀)</td><td>이메일 주소, 이름, 휴대전화번호, 결제수단 종류, 결제 내역 및 결제 식별값(빌링키)</td><td>가입·결제 시 이용자 입력</td></tr>
   <tr><td>수신자(부모님)</td><td>이름(호칭), 휴대전화번호, 통화 음성 및 텍스트 변환 내용, 통화 요약</td><td>이용자 등록 및 서비스 이용 과정에서 자동 생성</td></tr>
+  <tr><td>해지·환불 시(선택)</td><td>해지 이유(선택지 및 자유 기재 300자 이내), 환불 요청 사유</td><td>이용자가 해지·환불 요청 시 선택하여 입력</td></tr>
   <tr><td>자동 수집</td><td>접속 로그, 기기·브라우저 정보, 서비스 이용 기록</td><td>서비스 이용 시 자동 생성</td></tr>
 </table>
 <div class="box">
   <p><b>수신자의 개인정보는 이용자가 수신자 본인의 동의를 받아 제공하는 것을 전제로 처리됩니다.</b>
   수신자는 언제든지 회사에 연락하여 자신의 개인정보 처리 정지 및 통화 발신 중지를 요청할 수 있습니다.</p>
 </div>
+
+<p>카드번호 등 결제수단 원정보는 포트원·PG사가 보관·처리하며 회사가 직접 보관하지 않습니다. 회사는 정기결제와 환불 처리를 위해 결제수단 종류, 결제 내역 및 결제 식별값(빌링키)을 보관합니다.</p>
 
 <h2>2. 개인정보의 처리 목적</h2>
 <ul>
@@ -72,7 +76,7 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
   <li>수신자(부모님)가 별도로 동의한 경우에 한하여, 등록된 보호자에게 통화 대화 전문 열람 제공 (동의는 연결 시 수신자가 직접 선택하며 언제든 철회할 수 있습니다)</li>
   <li>수신자(부모님)가 앱 설정에서 '통화 중 위치 정보 공유'를 직접 켠 경우에 한하여, 통화 시점의 시·군·구 단위 지역 정보를 등록된 보호자에게 제공 (기본값은 꺼짐이며 언제든 끌 수 있습니다)</li>
   <li>요금 결제, 청구, 환불 처리</li>
-  <li>고객 문의 응대 및 서비스 개선</li>
+  <li>고객 문의 응대 및 서비스 개선 (해지 이유는 서비스 개선 목적으로만 이용)</li>
 </ul>
 
 <h2>3. 보유 및 이용기간</h2>
@@ -81,6 +85,8 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
   <tr><td>회원 정보</td><td>회원 탈퇴 시까지 (탈퇴 후 지체 없이 파기)</td></tr>
   <tr><td>통화 음성 원본</td><td>생성 후 30일 이내 파기</td></tr>
   <tr><td>통화 요약 텍스트</td><td>회원 탈퇴 시까지</td></tr>
+  <tr><td>해지 이유</td><td>수집일부터 1년 (경과 후 자동 파기)</td></tr>
+  <tr><td>환불 요청 사유</td><td>5년 (전자상거래법 — 계약·청약철회 기록)</td></tr>
   <tr><td>계약·청약철회·대금결제 기록</td><td>5년 (전자상거래법)</td></tr>
   <tr><td>소비자 불만·분쟁처리 기록</td><td>3년 (전자상거래법)</td></tr>
   <tr><td>접속 기록</td><td>3개월 (통신비밀보호법)</td></tr>
@@ -93,7 +99,7 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
 <h2>5. 개인정보 처리의 위탁</h2>
 <table>
   <tr><th>수탁자</th><th>위탁 업무</th></tr>
-  <tr><td>결제대행사(포트원 및 연동 PG사)</td><td>결제 처리 및 환불</td></tr>
+  <tr><td>주식회사 코리아포트원(포트원) 및 연동 PG사</td><td>결제 처리 및 환불</td></tr>
   <tr><td>클라우드 인프라 사업자</td><td>서비스 데이터 저장 및 처리</td></tr>
   <tr><td>전기통신사업자</td><td>음성 통화 발신</td></tr>
   <tr><td>AI 음성·언어처리 사업자</td><td>음성 인식 및 통화 요약 생성</td></tr>
@@ -103,6 +109,7 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
 <h2>6. 정보주체의 권리와 행사 방법</h2>
 <p>이용자와 수신자는 언제든지 개인정보 열람·정정·삭제·처리정지를 요구할 수 있습니다.
 서비스 내 기능 또는 아래 연락처로 요청하실 수 있으며, 회사는 지체 없이 조치합니다.</p>
+<p>앱을 이용할 수 없는 경우에도 <a href="banggeul-account-delete.html">계정 및 개인정보 삭제 요청 안내</a>에 따라 이메일로 요청할 수 있습니다.</p>
 
 <h2>7. 개인정보의 파기</h2>
 <p>보유기간이 경과하거나 처리 목적이 달성된 개인정보는 지체 없이 파기합니다.
@@ -121,12 +128,12 @@ footer{border-top:1px solid var(--line);background:var(--paper)}
 개인정보 분쟁조정위원회(kopico.go.kr, 1833-6972)에 문의하실 수 있습니다.</p>
 
 <h2>10. 방침의 변경</h2>
-<p>본 방침은 2026년 8월 11일부터 적용됩니다. 내용의 추가·삭제·수정이 있을 경우 시행 7일 전부터 서비스 내 공지합니다.</p>
+<p>본 방침은 2026년 9월 25일부터 적용됩니다(2026년 8월 11일 제정, 9월 25일 개정 — 해지 이유·환불 요청 사유 항목 추가). 내용의 추가·삭제·수정이 있을 경우 시행 7일 전부터 서비스 내 공지합니다.</p>
 
 </main>
 <footer><div class="finfo">
     <div class="flinks">
-      <a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="refund.html">환불·청약철회</a>
+      <a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="refund.html">환불·청약철회</a><a href="banggeul-account-delete.html">계정 삭제 안내</a>
     </div>
     <b>주식회사 크래프트</b> · 대표 신주환<br>
     사업자등록번호 884-81-02216 · 통신판매업신고 제2021-대구동구-1233호<br>
