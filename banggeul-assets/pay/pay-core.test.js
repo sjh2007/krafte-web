@@ -625,7 +625,7 @@ function allScreenStrings() {
   out.push(C.pauseOffer({ eligible: true, from: '2026-10-25T03:00:00.000Z', until: '2026-11-25T03:00:00.000Z' }).text);
   // 단계 선택(9/19) — 이름표·조합 요약·카드·안내·검증·결과 문구
   const E3 = [{ elderId: 'a', title: '할머니', name: '김순자', mode: 'app', paired: false }, { elderId: 'b', title: '할아버지', name: '', mode: 'phone' }, { elderId: 'c', title: '', name: '', mode: 'app' }];
-  E3.forEach((e, i) => out.push(C.elderLabel(e, i)));
+  E3.forEach((e, i) => out.push(C.elderLabel(e, i, E3)));
   const T = { app: { lite: { base: 5900, extra: 4900, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 8900, extra: 7900, feature: '매일 · 하루 3분' }, plus: { base: 14900, extra: 13900, feature: '매일 · 하루 5분' } },
     phone: { lite: { base: 19900, extra: null, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 24900, extra: 23900, feature: '주 5회 · 하루 3분' }, plus: { base: 29900, extra: 28900, feature: '매일 · 하루 3분' } } };
   const mixedSel = [{ elderId: 'a', mode: 'app' }, { elderId: 'b', mode: 'phone' }];
@@ -640,7 +640,7 @@ function allScreenStrings() {
   const one = C.stepsSetCount(C.defaultStepState(E3, null, true), 1, E3);
   out.push(C.validateSteps(one, E3, {}).message, C.validateSteps(C.stepsSetCount(one, 2, E3), E3, {}).message);
   ['invalid_selection', 'phone_mode_unavailable', 'same_selection', 'plan_limit'].forEach((c) => out.push(C.errorMessage(c)));
-  out.push(C.planLimitNote({ label: '할머니 김순자', requiredPlan: 'standard' }));
+  out.push(C.planLimitNote({ label: '할머니', requiredPlan: 'standard' }));
   ['consent_required', 'not_refundable', 'invalid_reason', 'period_ended', '???'].forEach((c) =>
     ['pause', 'refund', undefined].forEach((ctx) => out.push(C.errorMessage(c, ctx))));
   const html = fs.readFileSync(path.join(__dirname, '../../banggeul-pay.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
@@ -674,13 +674,15 @@ const TABLE = {
   phone: { lite: { base: 19900, extra: 18900, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 24900, extra: 23900, feature: '주 5회 · 하루 3분' }, plus: { base: 29900, extra: 28900, feature: '매일 · 하루 3분' } },
 };
 
-test('elderLabel — 호칭+이름, 이름 없으면 호칭, 호칭 없으면 이름, 둘 다 없으면 부모님 {순번}', () => {
-  assert.equal(C.elderLabel({ title: '할머니', name: '김순자' }, 0), '할머니 김순자');
-  assert.equal(C.elderLabel({ title: '할아버지', name: '' }, 1), '할아버지');
-  assert.equal(C.elderLabel({ title: ' ', name: '박영수' }, 1), '박영수');
-  assert.equal(C.elderLabel({ title: '', name: '' }, 0), '부모님 1');
+test('elderLabel — 호칭만(실명 금지, 대표 9/19), 같은 호칭은 등록 순 번호, 호칭 없으면 부모님 {순번}', () => {
+  const L = [{ title: '할머니', name: '김순자' }, { title: '할머니', name: '' }, { title: '아버지', name: '박영수' }];
+  assert.equal(C.elderLabel(L[0], 0, L), '할머니 1');
+  assert.equal(C.elderLabel(L[1], 1, L), '할머니 2');
+  assert.equal(C.elderLabel(L[2], 2, L), '아버지'); // 이름이 있어도 쓰지 않는다
+  assert.equal(C.elderLabel({ title: '어머니', name: '김영희' }, 0), '어머니');
+  assert.equal(C.elderLabel({ title: ' ', name: '박영수' }, 1), '부모님 2');
   assert.equal(C.elderLabel({}, 1), '부모님 2');
-  assert.equal(C.elderLabel({ title: '<b>엄마</b>', name: '' }, 0), '<b>엄마</b>'); // 가공하지 않는다(textContent로만)
+  assert.equal(C.elderLabel({ title: '<b>어머니</b>' }, 0), '<b>어머니</b>'); // 가공하지 않는다(textContent로만)
 });
 
 test('hasSteps — /status에 elders·priceTable이 있어야 단계 화면(없으면 옛 요금제 카드로)', () => {
@@ -746,7 +748,7 @@ test('단계 상태 전이 — ② 몇 분·누구(한 분이면 누구 필수, 
   let v = C.validateSteps(st, ELDERS, {});
   assert.equal(v.ok, false);
   assert.equal(v.error, 'who_required');
-  assert.equal(v.message, '어느 부모님께 드릴지 골라 주세요.');
+  assert.equal(v.message, '어느 부모님께 전화 드릴지 골라 주세요.');
   st = C.stepsSetChosen(st, 'e2', true, ELDERS);
   st = C.stepsSetChosen(st, 'e1', true, ELDERS); // 한 분 — 라디오처럼 바뀐다
   assert.deepEqual(st.chosen, ['e1']);
@@ -831,7 +833,7 @@ test('selectionSummary — "전화 · 한 분", 섞이면 "앱 1분 · 전화 1�
 });
 
 test('selectionDescribe · sameSelection — 구독 관리의 지금/다음 결제부터', () => {
-  assert.equal(C.selectionDescribe([{ elderId: 'e2', mode: 'phone' }, { elderId: 'e1', mode: 'app' }], ELDERS), '할머니 김순자 (앱) · 할아버지 (전화)');
+  assert.equal(C.selectionDescribe([{ elderId: 'e2', mode: 'phone' }, { elderId: 'e1', mode: 'app' }], ELDERS), '할머니 (앱) · 할아버지 (전화)');
   assert.equal(C.selectionDescribe(null, ELDERS), '');
   assert.equal(C.sameSelection([{ elderId: 'e1', mode: 'app' }, { elderId: 'e2', mode: 'phone' }], [{ elderId: 'e2', mode: 'phone' }, { elderId: 'e1', mode: 'app' }]), true);
   assert.equal(C.sameSelection([{ elderId: 'e1', mode: 'app' }], [{ elderId: 'e1', mode: 'phone' }]), false);
@@ -902,8 +904,8 @@ test('단계 화면 문구 — 확정 문구 그대로, 금칙어 검사가 새 
   assert.equal(C.STEP_TEXT.perParentOpen, '부모님마다 다르게 할게요');
   assert.deepEqual(C.MODE_CHOICE, { app: '앱으로 받기', phone: '전화로 받기' });
   const all = allScreenStrings();
-  ['부모님마다 다르게 할게요', '전화 방식 준비 중이에요', '할머니 김순자', '앱 1분 · 전화 1분', '다음 결제일(10월 25일)부터 적용돼요.',
-    '방식·인원 바꾸기', '어느 분께 드릴까요?'].forEach((t) => assert.ok(all.includes(t), t));
+  ['부모님마다 다르게 할게요', '전화 방식 준비 중이에요', '할머니', '앱 1분 · 전화 1분', '다음 결제일(10월 25일)부터 적용돼요.',
+    '방식·인원 바꾸기', '어느 분께 전화 드릴까요?'].forEach((t) => assert.ok(all.includes(t), t));
 });
 
 // ── 부모님 통화 일정의 최소 요금제(requiredPlan, 9/19 추가) ──
@@ -914,7 +916,7 @@ const LIMITED = [
 
 test('planBlockers — 고른 방식의 requiredPlan보다 낮은 요금제면 막는다(lite < standard < plus)', () => {
   const app = [{ elderId: 'e1', mode: 'app' }, { elderId: 'e2', mode: 'phone' }];
-  assert.deepEqual(C.planBlockers('lite', app, LIMITED), [{ elderId: 'e1', label: '할머니 김순자', requiredPlan: 'standard', mode: 'app' }]);
+  assert.deepEqual(C.planBlockers('lite', app, LIMITED), [{ elderId: 'e1', label: '할머니', requiredPlan: 'standard', mode: 'app' }]);
   assert.deepEqual(C.planBlockers('standard', app, LIMITED), []);
   const phone = [{ elderId: 'e1', mode: 'phone' }];
   assert.equal(C.planBlockers('standard', phone, LIMITED).length, 1);
@@ -929,7 +931,7 @@ test('stepPlanCardModel — 통화 일정에 모자란 요금제는 고를 수 �
   const lite = C.stepPlanCardModel('lite', sel, LIMITED, TABLE);
   assert.equal(lite.selectable, false);
   assert.equal(lite.priceText, '월 5,900원'); // 금액은 그대로 보인다
-  assert.equal(lite.note, '할머니 김순자의 통화 일정(앱에서 설정)에는 스탠다드 이상이 필요해요');
+  assert.equal(lite.note, '할머니의 통화 일정(앱에서 설정)에는 스탠다드 이상이 필요해요');
   assert.equal(C.stepPlanCardModel('standard', sel, LIMITED, TABLE).selectable, true);
   assert.equal(C.stepPlanCardModel('standard', sel, LIMITED, TABLE).note, null);
   // 옛 서버(requiredPlan 없음) — 막지 않는다

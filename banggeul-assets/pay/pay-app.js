@@ -357,7 +357,7 @@
       f1.querySelector('#' + prefix + '-per-parent').setAttribute('aria-controls', pp.id);
       elders.forEach(function (e, i) {
         var row = el('fieldset', 'per-row');
-        row.appendChild(el('legend', '', C.elderLabel(e, i)));
+        row.appendChild(el('legend', '', C.elderLabel(e, i, elders)));
         var rs = el('div', 'seg');
         ['app', 'phone'].forEach(function (m) {
           rs.appendChild(choiceInput('radio', prefix + '-elder-' + i + '-' + m, prefix + 'Elder' + i, m, C.MODE_CHOICE[m],
@@ -385,13 +385,13 @@
       f2.appendChild(cs);
       if (st.count < elders.length) {
         var who = el('fieldset', 'who');
-        who.appendChild(el('legend', '', st.count === 1 ? '어느 분께 드릴까요?' : '어느 분들께 드릴까요? (' + C.countWord(st.count) + ')'));
+        who.appendChild(el('legend', '', st.count === 1 ? '어느 분께 전화 드릴까요?' : '어느 분들께 전화 드릴까요? (' + C.countWord(st.count) + ')'));
         var wl = el('div', 'choices');
         elders.forEach(function (e, i) {
           var on = st.chosen.indexOf(String(e.elderId)) >= 0;
           var full = st.count > 1 && !on && st.chosen.length >= st.count; // 이미 {몇 분}만큼 골랐으면 나머지는 잠근다
           var item = choiceInput(st.count === 1 ? 'radio' : 'checkbox', prefix + '-who-' + i, prefix + 'Who', String(e.elderId),
-            C.elderLabel(e, i), on, full, { act: 'who', elder: String(e.elderId) });
+            C.elderLabel(e, i, elders), on, full, { act: 'who', elder: String(e.elderId) });
           if (st.count === 1) item.querySelector('input').required = true;
           wl.appendChild(item);
         });

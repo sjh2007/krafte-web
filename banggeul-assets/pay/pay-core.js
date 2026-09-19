@@ -474,7 +474,7 @@
     modeLegend: '이용 방식',
     perParentOpen: '부모님마다 다르게 할게요',
     perParentClose: '모두 같은 방식으로 할게요',
-    countLegend: '몇 분께 드릴까요?',
+    countLegend: '몇 분께 전화 드릴까요?',
     planLegend: '요금제',
     vatNote: '금액은 모두 부가세 포함이에요.',
   };
@@ -483,19 +483,19 @@
   function normMode(m) { return m === 'phone' ? 'phone' : 'app'; }
   function idOf(e) { return String(e && e.elderId); }
 
-  // 부모님 이름표 — 호칭+이름("할머니 김순자"), 이름이 없으면 호칭, 호칭이 없으면 이름, 둘 다 없으면 "부모님 {순번}".
+  // 부모님 이름표 — 호칭만("어머니"). 실명은 결제 화면에 쓰지 않는다(대표 9/19: 특정 이름 노출 금지).
+  // 같은 호칭이 둘 이상이면 등록 순서로 번호를 붙인다("할머니 1"·"할머니 2"), 호칭이 없으면 "부모님 {순번}".
   // 사용자 입력 그대로다(가공하지 않는다) — 화면에는 textContent로만 넣는다.
-  function elderLabel(e, index) {
+  function elderLabel(e, index, list) {
     var t = e && e.title ? String(e.title).trim() : '';
-    var n = e && e.name ? String(e.name).trim() : '';
-    if (t && n) return t + ' ' + n;
-    if (t) return t;
-    if (n) return n;
-    return '부모님 ' + ((index || 0) + 1);
+    if (!t) return '부모님 ' + ((index || 0) + 1);
+    var same = (list || []).filter(function (x) { return x && x.title && String(x.title).trim() === t; });
+    if (same.length < 2) return t;
+    return t + ' ' + (same.indexOf(e) + 1);
   }
   function labelById(elders, id) {
     var list = elders || [];
-    for (var i = 0; i < list.length; i++) if (idOf(list[i]) === String(id)) return elderLabel(list[i], i);
+    for (var i = 0; i < list.length; i++) if (idOf(list[i]) === String(id)) return elderLabel(list[i], i, list);
     return '부모님';
   }
 
@@ -630,7 +630,7 @@
       var e = list[i];
       var req = e && e.requiredPlan && e.requiredPlan[normMode(x.mode)];
       if (req && PLAN_RANK[req] !== undefined && PLAN_RANK[plan] !== undefined && PLAN_RANK[req] > PLAN_RANK[plan]) {
-        out.push({ elderId: String(x.elderId), label: elderLabel(e, i), requiredPlan: req, mode: normMode(x.mode) });
+        out.push({ elderId: String(x.elderId), label: elderLabel(e, i, list), requiredPlan: req, mode: normMode(x.mode) });
       }
     });
     return out;
@@ -686,7 +686,7 @@
     return MODE_SHORT[n.phone ? 'phone' : 'app'] + ' · ' + countWord(list.length);
   }
 
-  // 구독 관리의 "지금"·"다음 결제부터" 표시 — "할머니 김순자 (전화) · 할아버지 (앱)"(등록 순서).
+  // 구독 관리의 "지금"·"다음 결제부터" 표시 — "할머니 (전화) · 할아버지 (앱)"(등록 순서).
   function selectionDescribe(selection, elders) {
     if (!selection || !selection.length) return '';
     return orderSelection(selection, elders).map(function (x) {
@@ -710,7 +710,7 @@
     var out = [];
     (elders || []).forEach(function (e, i) {
       var x = sel.filter(function (s) { return s.elderId === idOf(e); })[0];
-      if (x && x.mode === 'app' && e.paired === false) out.push({ elderId: idOf(e), label: elderLabel(e, i), text: note });
+      if (x && x.mode === 'app' && e.paired === false) out.push({ elderId: idOf(e), label: elderLabel(e, i, elders), text: note });
     });
     return out;
   }
@@ -722,9 +722,9 @@
     opts = opts || {};
     var ids = (elders || []).map(idOf);
     if (!ids.length) return { ok: false, error: 'no_elder', message: errorMessage('no_elder') };
-    if (!st || st.count < 1) return { ok: false, error: 'who_required', message: '몇 분께 드릴지 골라 주세요.' };
+    if (!st || st.count < 1) return { ok: false, error: 'who_required', message: '몇 분께 전화 드릴지 골라 주세요.' };
     if (st.count < ids.length && st.chosen.length !== st.count) {
-      return { ok: false, error: 'who_required', message: st.count === 1 ? '어느 부모님께 드릴지 골라 주세요.' : '부모님 ' + countWord(st.count) + '을 골라 주세요.' };
+      return { ok: false, error: 'who_required', message: st.count === 1 ? '어느 부모님께 전화 드릴지 골라 주세요.' : '부모님 ' + countWord(st.count) + '을 골라 주세요.' };
     }
     var selection = stepSelection(st, elders);
     if (!selection.length) return { ok: false, error: 'invalid_selection', message: errorMessage('invalid_selection') };
