@@ -464,14 +464,22 @@
   }
 
   // 모바일 판정 — 포트원 SDK가 모바일 결제창(리다이렉트)을 여는 기준과 같게 사용자 에이전트로 본다.
+  // 서버가 준 결제수단 목록(/status methods)으로 보여 줄 버튼을 정한다. 목록이 없거나 비면 옛 서버로 보고 모두 보여 준다.
+  function visibleMethods(all, available) {
+    if (!Array.isArray(available) || available.length === 0) return all.slice();
+    return all.filter(function (m) { return available.indexOf(m) >= 0; });
+  }
+
   function isMobileUA(ua) {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(String(ua || ''));
   }
 
   // "결제하시는 분" 칸 중 보여 줄 것 — 모바일은 이름을 모를 때 이름 칸 하나만(대표 9/19: 모바일은 바로 결제창으로),
   // PC는 KG이니시스가 세 가지를 모두 요구해 전부 보인다(미리 채운 값은 그대로 두고 고칠 수 있게).
-  function payerFieldsToShow(mobile, prefill) {
+  function payerFieldsToShow(mobile, prefill, requirement) {
     var p = prefill || {};
+    // 토스페이먼츠 카드·카카오페이는 회원 번호만으로 결제창이 열린다(9/19 실호출) — 칸을 모두 숨긴다.
+    if (requirement === 'none') return { name: false, phone: false, email: false };
     if (mobile) return { name: !String(p.fullName || '').trim(), phone: false, email: false };
     return { name: true, phone: true, email: true };
   }
@@ -818,7 +826,7 @@
     validateSteps: validateSteps, checkoutBody: checkoutBody, billingKeyBody: billingKeyBody, selectionBody: selectionBody,
     checkoutMonthly: checkoutMonthly, selectionAppliedText: selectionAppliedText, selectionConfirmText: selectionConfirmText,
     selectionPriceHint: selectionPriceHint, planBlockers: planBlockers, planLimitNote: planLimitNote, ensureValidPlan: ensureValidPlan,
-    normalizePayer: normalizePayer, isMobileUA: isMobileUA, payerFieldsToShow: payerFieldsToShow,
+    normalizePayer: normalizePayer, isMobileUA: isMobileUA, visibleMethods: visibleMethods, payerFieldsToShow: payerFieldsToShow,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,

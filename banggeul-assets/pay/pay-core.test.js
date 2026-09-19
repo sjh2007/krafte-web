@@ -977,3 +977,12 @@ test('payerFieldsToShow · isMobileUA — 모바일은 이름을 알면 칸 없�
   assert.equal(C.isMobileUA('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'), true);
   assert.equal(C.isMobileUA('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140'), false);
 });
+
+test('결제수단·결제자 칸 — 서버가 준 수단만, 토스페이먼츠 카드·카카오페이는 결제자 칸 없음(9/19)', () => {
+  assert.deepEqual(C.visibleMethods(['CARD', 'KAKAOPAY', 'NAVERPAY'], ['CARD', 'KAKAOPAY']), ['CARD', 'KAKAOPAY']);
+  assert.deepEqual(C.visibleMethods(['CARD', 'KAKAOPAY', 'NAVERPAY'], undefined), ['CARD', 'KAKAOPAY', 'NAVERPAY']);
+  assert.deepEqual(C.visibleMethods(['CARD', 'KAKAOPAY', 'NAVERPAY'], []), ['CARD', 'KAKAOPAY', 'NAVERPAY']);
+  assert.deepEqual(C.payerFieldsToShow(false, {}, 'none'), { name: false, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(true, {}, 'none'), { name: false, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(false, {}, 'inicis'), { name: true, phone: true, email: true });
+});

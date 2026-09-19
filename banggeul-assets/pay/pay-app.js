@@ -454,8 +454,27 @@
     else $('mg-selection-msg').textContent = '';
   }
 
+  // 채널이 연결된 결제수단만 보인다(대표 9/19). 고른 수단이 숨으면 첫 수단으로 옮긴다.
+  function renderMethods() {
+    var all = ['CARD', 'KAKAOPAY', 'NAVERPAY'];
+    var show = C.visibleMethods(all, state.status && state.status.methods);
+    var inputs = document.querySelectorAll('input[name="method"]');
+    var checkedVisible = false;
+    Array.prototype.forEach.call(inputs, function (el) {
+      var on = show.indexOf(el.value) >= 0;
+      el.closest('label').hidden = !on;
+      if (!on) el.checked = false;
+      if (on && el.checked) checkedVisible = true;
+    });
+    if (!checkedVisible) {
+      var first = Array.prototype.filter.call(inputs, function (el) { return show.indexOf(el.value) >= 0; })[0];
+      if (first) first.checked = true;
+    }
+  }
+
   function renderRegister(fromManage) {
     var s = state.status;
+    renderMethods();
     // 새 서버(/status에 elders·priceTable)면 단계 선택, 아니면(옛 서버) 지금까지의 요금제 카드. 결제수단만 바꾸러 온
     // 경우엔 방식·인원·요금제를 여기서 고르지 않는다(구독 관리에서 바꾼다) — 둘 다 숨긴다.
     state.stepMode = !fromManage && C.hasSteps(s);
@@ -510,7 +529,7 @@
       if (r.status !== 200) throw r;
       // sent — 이 응답을 받은 요금제·selection. 등록(billing-key)은 화면이 아니라 이 값을 그대로 보낸다.
       state.checkout = Object.assign({}, r.data, { method: method, sent: sent });
-      prefillPayer(r.data.customer);
+      prefillPayer(r.data.customer || {});
       // 해지 예약 중 결제수단만 바꾸는 경우(chargeKind: 'none')는 동의 문구도 달라진다.
       text($('reg-consent-label'), r.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
       var planKey = r.data.plan || (sent && sent.plan);
@@ -548,7 +567,8 @@
   // 서버가 준 결제자 정보(지난 등록값·로그인 이메일)로 빈 칸만 채운다 — 이미 입력한 값은 덮지 않는다.
   // 포트원 SDK customer — 비어 있는 선택값(모바일의 휴대폰·이메일)은 싣지 않는다.
   function sdkCustomer(customerId, v) {
-    var c = { customerId: customerId, fullName: v.fullName };
+    var c = { customerId: customerId };
+    if (v.fullName) c.fullName = v.fullName;
     if (v.phoneNumber) c.phoneNumber = v.phoneNumber;
     if (v.email) c.email = v.email;
     return c;
@@ -562,7 +582,7 @@
     });
     // 모바일은 이름을 알면 "결제하시는 분" 칸 전체를 숨기고 버튼에서 바로 결제창으로 간다(대표 9/19).
     // 칸이 숨어도 미리 채운 값(이름·있으면 휴대폰·이메일)은 그대로 결제창 요청에 실린다.
-    var show = C.payerFieldsToShow(IS_MOBILE, c);
+    var show = C.payerFieldsToShow(IS_MOBILE, c, state.checkout && state.checkout.payerRequirement);
     $('payer-name-row').hidden = !show.name;
     $('payer-phone-row').hidden = !show.phone;
     $('payer-email-row').hidden = !show.email;
@@ -624,7 +644,10 @@
     // 단계 화면이면 이 결제 준비값을 받은 요금제·selection도 함께 붙잡는다(옛 흐름·결제수단만 변경이면 null).
     var sent = co.sent || null;
     var captured = { method: method, consentVersion: consentVersion, plan: sent ? sent.plan : null, selection: sent ? sent.selection : null };
-    var payer = C.normalizePayer({ name: $('payer-name').value, phone: $('payer-phone').value, email: $('payer-email').value }, { mobile: IS_MOBILE });
+    // 결제자 정보가 필요 없는 결제창(토스페이먼츠 카드·카카오페이)은 입력 검사 없이 회원 번호만 보낸다(9/19).
+    var payer = co.payerRequirement === 'none'
+      ? { ok: true, value: {} }
+      : C.normalizePayer({ name: $('payer-name').value, phone: $('payer-phone').value, email: $('payer-email').value }, { mobile: IS_MOBILE });
     if (!payer.ok) {
       banner(C.errorMessage(payer.error));
       var bad = { payer_name: 'payer-name', payer_phone: 'payer-phone', payer_email: 'payer-email' }[payer.error];
