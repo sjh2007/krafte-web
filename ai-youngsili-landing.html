@@ -525,6 +525,21 @@ select option{color:#111}
   <link rel="apple-touch-icon" href="/apple-touch-icon-youngsili.png">
   <link rel="manifest" href="/site-youngsili.webmanifest">
 <link rel="stylesheet" href="youngsili-pricing.css">
+<style>
+body{overflow-x:hidden}
+.clear-showcase{background:#07111e;color:#fff;padding:64px 24px 38px;scroll-margin-top:80px}
+.clear-inner{max-width:1320px;margin:auto}
+.clear-intro{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;margin-bottom:34px}
+.clear-intro h2{font-size:clamp(30px,3.5vw,48px);line-height:1.25;max-width:760px;letter-spacing:-.04em;color:white}
+.clear-intro p{max-width:310px;font-size:16px;line-height:1.7;color:#b6c8dc;margin:0}
+.clear-screen{aspect-ratio:16/9;overflow:hidden;border-radius:12px;border:1px solid #31536c;background:#102237}
+.clear-screen video{display:block;width:100%;height:100%;object-fit:contain}
+.clear-foot{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:18px;font-size:14px;color:#c3d2e3}
+.clear-foot p{margin:0}.clear-foot button{border:0;background:transparent;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:5px;cursor:pointer;padding:8px}
+.clear-foot button:focus-visible{outline:2px solid #6ed6ab;outline-offset:3px}
+.clear-link{display:inline-block;color:#c3f6df;margin-top:16px;text-underline-offset:5px}
+@media(max-width:680px){.clear-showcase{padding:42px 16px 24px}.clear-intro{display:block;margin-bottom:24px}.clear-intro h2{font-size:30px}.clear-intro p{margin-top:18px;max-width:none;font-size:14px}.clear-foot{font-size:12px;gap:10px}.clear-screen{border-radius:7px}}
+</style>
 </head>
 <body>
 
@@ -589,6 +604,7 @@ select option{color:#111}
         <input type="email" placeholder="이메일을 입력하세요…" aria-label="이메일" />
         <button class="btn btn-primary" type="submit">도입 상담받기</button>
       </form>
+      <a class="clear-link" href="#service-film">실제 업무 화면 살펴보기</a>
       <div class="hero-trust">
         <div><span class="ic">●</span> <b>실시간</b> 위험 감지</div>
         <div><span class="ic">●</span> <b>무제한</b> 안부 전화</div>
@@ -699,6 +715,11 @@ select option{color:#111}
   </div>
 </section>
 
+<section class="clear-showcase" id="service-film" aria-labelledby="clear-title"><div class="clear-inner">
+<div class="clear-intro"><h2 id="clear-title">안부를 확인하고,<br>다음 돌봄을 준비하는 한 화면.</h2><p>통화 기록부터 보고서와 전화 안내까지.<br>기관 담당자의 실제 업무 화면을 살펴보세요.</p></div>
+<div class="clear-screen"><video id="service-video" muted loop playsinline preload="metadata" poster="/youngsili-assets/poster.jpg" aria-label="영실이 기관 대시보드 24초 시연"><source src="/youngsili-assets/youngsili-clear-24s.mp4" type="video/mp4"></video></div>
+<div class="clear-foot"><p id="clear-scene">오늘의 돌봄 현황을 한눈에 확인합니다.</p><button type="button" id="clear-motion" aria-label="시연 움직임 정지">움직임 멈추기</button></div>
+</div></section>
 <!-- REALITY -->
 <section class="sec" id="reality">
   <div class="wrap">
@@ -1381,61 +1402,19 @@ select option{color:#111}
     });
   })();
 
-  /* ===== 이메일 발송 (Web3Forms) =====
-     ▼▼▼ 아래 KEY 한 줄만 교체하면 실제 메일이 kraft@krafte.net 으로 발송됩니다.
-     발급: https://web3forms.com → "kraft@krafte.net" 입력 → 메일로 받은 Access Key 붙여넣기.
-     키를 넣기 전에는 방문자 메일 앱이 열리는 mailto 방식으로 자동 대체됩니다. */
-  var WEB3FORMS_KEY='c5c9d5f4-bee8-483c-bf2a-6aa5a456805d';
-  var RECIPIENT='kraft@krafte.net';
-  function keyReady(){return WEB3FORMS_KEY && WEB3FORMS_KEY.indexOf('YOUR_')!==0;}
-  function postWeb3(data){
-    data.access_key=WEB3FORMS_KEY; data.botcheck='';
-    return fetch('https://api.web3forms.com/submit',{method:'POST',
-      headers:{'Content-Type':'application/json',Accept:'application/json'},
-      body:JSON.stringify(data)}).then(function(r){return r.json();});
-  }
-  function mailto(subject,body){location.href='mailto:'+RECIPIENT+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);}
-  var EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  /* 히어로: 이메일 입력 → 도입 상담 신청 */
-  var hf=document.getElementById('heroForm');
-  if(hf){
-    var hin=hf.querySelector('input[type=email]');
-    hin.addEventListener('input',function(){hin.style.borderColor='';});
-    hf.addEventListener('submit',function(e){
-      e.preventDefault();
-      var email=(hin.value||'').trim();
-      if(!EMAIL_RE.test(email)){hin.focus();hin.style.borderColor='#FF9AA0';return;}
-      var btn=hf.querySelector('button'),orig=btn.textContent;
-      var subject='[AI 영실이] 도입 상담 신청',body='홈페이지에서 도입 상담을 신청했습니다.\n신청자 이메일: '+email;
-      function ok(){hf.innerHTML='<div class="hero-form-ok">✓ 상담 신청이 접수되었습니다. 곧 연락드릴게요!</div>';}
-      if(!keyReady()){mailto(subject,body);ok();return;}
-      btn.disabled=true;btn.textContent='전송 중…';
-      postWeb3({subject:subject,from_name:'AI 영실이 랜딩',email:email,message:body})
-        .then(function(res){if(res.success){ok();}else{throw 0;}})
-        .catch(function(){btn.disabled=false;btn.textContent=orig;mailto(subject,body);});
-    });
-  }
-
-  /* 하단 도입 문의 폼 */
-  var inq=document.getElementById('inquiryForm');
-  if(inq){
-    inq.addEventListener('submit',function(e){
-      e.preventDefault();
-      var g=function(n){var el=inq.elements[n];return el?(el.value||'').trim():'';};
-      var d={type:g('type'),name:g('name'),org:g('org'),phone:g('phone'),email:g('email'),message:g('message')};
-      if(!d.type||!d.name||!d.org||!d.phone||!EMAIL_RE.test(d.email)||!d.message){alert('필수 항목을 모두 입력해 주세요.');return;}
-      var subject='[AI 영실이 도입 문의] '+d.org+' '+d.name;
-      var body='문의 유형: '+d.type+'\n이름: '+d.name+'\n소속·기관: '+d.org+'\n연락처: '+d.phone+'\n이메일: '+d.email+'\n\n[문의 내용]\n'+d.message;
-      function done(){inq.style.display='none';document.getElementById('okBox').classList.add('show');}
-      if(!keyReady()){mailto(subject,body);done();return;}
-      var btn=inq.querySelector('button[type=submit]'),orig=btn.textContent;btn.disabled=true;btn.textContent='전송 중…';
-      postWeb3({subject:subject,from_name:d.name,email:d.email,message:body})
-        .then(function(res){if(res.success){done();}else{throw 0;}})
-        .catch(function(){btn.disabled=false;btn.textContent=orig;mailto(subject,body);done();});
-    });
-  }
 })();
 </script>
+<script>
+(()=>{
+const v=document.getElementById('service-video'),b=document.getElementById('clear-motion'),label=document.getElementById('clear-scene');
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');let userPaused=reduced.matches;
+const update=()=>{b.textContent=v.paused?'움직임 재생':'움직임 멈추기';b.setAttribute('aria-label',v.paused?'시연 움직임 재생':'시연 움직임 정지')};
+const sync=()=>{const r=v.getBoundingClientRect();const onScreen=r.bottom>0&&r.top<innerHeight;if(onScreen&&!userPaused&&!document.hidden)v.play().catch(update);else v.pause();update()};
+new IntersectionObserver(()=>sync(),{threshold:[0,.2]}).observe(v);
+b.addEventListener('click',()=>{userPaused=!v.paused;sync()});v.addEventListener('play',update);v.addEventListener('pause',update);document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',e=>{userPaused=e.matches;sync()});
+const scenes=[[0,'오늘의 돌봄 현황을 한눈에 확인합니다.'],[5,'통화 내용을 확인하고 다음 돌봄을 준비합니다.'],[10,'주간업무 보고서를 작성하고 확인합니다.'],[15,'발신 이력과 전화 안내 설정을 확인합니다.'],[19,'상황에 맞는 안내 멘트를 준비합니다.']];
+v.addEventListener('timeupdate',()=>{label.textContent=scenes.filter(s=>v.currentTime>=s[0]).at(-1)[1]});
+})();</script>
+<script src="/youngsili-assets/inquiry.js?v=20260919"></script>
 </body>
 </html>
