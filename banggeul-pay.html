@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="favicon-banggeul.ico" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260919d" />
+<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260919e" />
 </head>
 <body>
 <header class="top">
@@ -62,13 +62,13 @@
         <label class="choice"><input type="radio" name="method" value="NAVERPAY" /> 네이버페이</label>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="payer-card">
       <h2>결제하시는 분</h2>
       <p class="muted small">결제사(KG이니시스) 확인에 필요해요. 결제·환불 안내에만 써요.</p>
       <form id="payer-form" novalidate>
-        <label>이름<input type="text" id="payer-name" autocomplete="name" maxlength="30" /></label>
-        <label>휴대폰 번호<input type="tel" id="payer-phone" autocomplete="tel" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" /></label>
-        <label>이메일<input type="email" id="payer-email" autocomplete="email" maxlength="100" /></label>
+        <label id="payer-name-row">이름<input type="text" id="payer-name" autocomplete="name" maxlength="30" /></label>
+        <label id="payer-phone-row">휴대폰 번호<input type="tel" id="payer-phone" autocomplete="tel" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" /></label>
+        <label id="payer-email-row">이메일<input type="email" id="payer-email" autocomplete="email" maxlength="100" /></label>
       </form>
     </div>
     <div class="card notice" aria-live="polite">
@@ -173,9 +173,9 @@
 
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="banggeul-assets/pay/pay-config.js?v=20260919d"></script>
-<script src="banggeul-assets/pay/pay-core.js?v=20260919d"></script>
-<script src="banggeul-assets/pay/pay-auth.js?v=20260919d"></script>
-<script src="banggeul-assets/pay/pay-app.js?v=20260919d"></script>
+<script src="banggeul-assets/pay/pay-config.js?v=20260919e"></script>
+<script src="banggeul-assets/pay/pay-core.js?v=20260919e"></script>
+<script src="banggeul-assets/pay/pay-auth.js?v=20260919e"></script>
+<script src="banggeul-assets/pay/pay-app.js?v=20260919e"></script>
 </body>
 </html>

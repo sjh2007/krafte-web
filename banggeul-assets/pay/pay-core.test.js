@@ -960,3 +960,20 @@ test('validateSteps — plan이 주어지면 통화 일정 최소 요금제 확�
   assert.equal(C.errorMessage('plan_limit'), v.message);
   assert.doesNotMatch(C.planLimitNote({ label: '엄마', requiredPlan: 'plus' }) + v.message, /위험|감지|부가세 별도/);
 });
+
+test('normalizePayer · 모바일 — 이름만 필수(휴대폰·이메일은 있으면 검사), PC는 세 가지 필수(9/19 이니시스 실호출)', () => {
+  assert.deepEqual(C.normalizePayer({ name: '신보호' }, { mobile: true }), { ok: true, value: { fullName: '신보호' } });
+  assert.deepEqual(C.normalizePayer({ name: '신보호', email: 'p@x.com' }, { mobile: true }), { ok: true, value: { fullName: '신보호', email: 'p@x.com' } });
+  assert.equal(C.normalizePayer({ name: '', phone: '01012345678' }, { mobile: true }).error, 'payer_name');
+  assert.equal(C.normalizePayer({ name: '신', phone: '0212' }, { mobile: true }).error, 'payer_phone');
+  assert.equal(C.normalizePayer({ name: '신보호' }).error, 'payer_phone');
+});
+
+test('payerFieldsToShow · isMobileUA — 모바일은 이름을 알면 칸 없음, 모르면 이름만 / PC는 세 칸', () => {
+  assert.deepEqual(C.payerFieldsToShow(true, { fullName: '신보호' }), { name: false, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(true, {}), { name: true, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(false, { fullName: '신보호' }), { name: true, phone: true, email: true });
+  assert.equal(C.isMobileUA('Mozilla/5.0 (Linux; Android 14; SM-S918N) Mobile Safari'), true);
+  assert.equal(C.isMobileUA('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'), true);
+  assert.equal(C.isMobileUA('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140'), false);
+});

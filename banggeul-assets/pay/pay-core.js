@@ -445,17 +445,35 @@
     return { billingKey: q.get('billingKey'), code: q.get('code'), message: q.get('message') };
   }
 
-  // 결제자 정보 — KG이니시스가 빌링키 발급에 이름·휴대폰·이메일을 필수로 요구한다(9/18 실연동에서 INVALID_REQUEST).
-  // 입력값을 다듬어 포트원 SDK customer 형식으로 돌려준다. 틀리면 { ok:false, error: 오류 코드 }.
-  function normalizePayer(input) {
+  // 결제자 정보 — KG이니시스 빌링키 발급 필수값(9/19 실호출 확인): PC는 이름·휴대폰·이메일 모두,
+  // 모바일은 이름만(휴대폰·이메일은 있으면 보낸다). 입력값을 다듬어 포트원 SDK customer 형식으로 돌려준다.
+  // 틀리면 { ok:false, error: 오류 코드 }. 비어 있는 선택값은 결과에서 뺀다.
+  function normalizePayer(input, opts) {
     var i = input || {};
+    var mobile = !!(opts && opts.mobile);
     var name = String(i.name || '').trim();
     var phone = String(i.phone || '').replace(/[\s-]/g, '');
     var email = String(i.email || '').trim();
     if (!name || name.length > 30) return { ok: false, error: 'payer_name' };
-    if (!/^01[016789]\d{7,8}$/.test(phone)) return { ok: false, error: 'payer_phone' };
-    if (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'payer_email' };
-    return { ok: true, value: { fullName: name, phoneNumber: phone, email: email } };
+    if ((!mobile || phone) && !/^01[016789]\d{7,8}$/.test(phone)) return { ok: false, error: 'payer_phone' };
+    if ((!mobile || email) && (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return { ok: false, error: 'payer_email' };
+    var value = { fullName: name };
+    if (phone) value.phoneNumber = phone;
+    if (email) value.email = email;
+    return { ok: true, value: value };
+  }
+
+  // 모바일 판정 — 포트원 SDK가 모바일 결제창(리다이렉트)을 여는 기준과 같게 사용자 에이전트로 본다.
+  function isMobileUA(ua) {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(String(ua || ''));
+  }
+
+  // "결제하시는 분" 칸 중 보여 줄 것 — 모바일은 이름을 모를 때 이름 칸 하나만(대표 9/19: 모바일은 바로 결제창으로),
+  // PC는 KG이니시스가 세 가지를 모두 요구해 전부 보인다(미리 채운 값은 그대로 두고 고칠 수 있게).
+  function payerFieldsToShow(mobile, prefill) {
+    var p = prefill || {};
+    if (mobile) return { name: !String(p.fullName || '').trim(), phone: false, email: false };
+    return { name: true, phone: true, email: true };
   }
 
   // ── 단계 선택형 결제(대표 확정 v0.26, API 계약 9/19) — ① 이용 방식 → ② 몇 분·누구 → ③ 요금제.
@@ -800,7 +818,7 @@
     validateSteps: validateSteps, checkoutBody: checkoutBody, billingKeyBody: billingKeyBody, selectionBody: selectionBody,
     checkoutMonthly: checkoutMonthly, selectionAppliedText: selectionAppliedText, selectionConfirmText: selectionConfirmText,
     selectionPriceHint: selectionPriceHint, planBlockers: planBlockers, planLimitNote: planLimitNote, ensureValidPlan: ensureValidPlan,
-    normalizePayer: normalizePayer,
+    normalizePayer: normalizePayer, isMobileUA: isMobileUA, payerFieldsToShow: payerFieldsToShow,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,

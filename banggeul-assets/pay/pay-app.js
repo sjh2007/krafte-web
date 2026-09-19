@@ -6,6 +6,7 @@
   var auth = window.PayAuth.createAuth({ fetch: window.fetch.bind(window), storage: window.sessionStorage, config: CFG });
   var OAUTH_STATE_KEY = 'banggeulPayOAuthState';
   var PENDING_KEY = 'banggeulPayPending';
+  var IS_MOBILE = C.isMobileUA(navigator.userAgent); // 모바일은 결제자 칸을 줄인다(대표 9/19)
   var VIEWS = ['loading', 'login', 'register', 'done', 'manage', 'message'];
   // steps — 단계 선택 상태(등록 'reg' · 구독 관리 'mg'). stepMode — 등록 화면이 단계 선택으로 그려졌는지(새 서버).
   var state = { status: null, checkout: null, steps: {}, stepMode: false };
@@ -545,12 +546,27 @@
     });
   }
   // 서버가 준 결제자 정보(지난 등록값·로그인 이메일)로 빈 칸만 채운다 — 이미 입력한 값은 덮지 않는다.
+  // 포트원 SDK customer — 비어 있는 선택값(모바일의 휴대폰·이메일)은 싣지 않는다.
+  function sdkCustomer(customerId, v) {
+    var c = { customerId: customerId, fullName: v.fullName };
+    if (v.phoneNumber) c.phoneNumber = v.phoneNumber;
+    if (v.email) c.email = v.email;
+    return c;
+  }
+
   function prefillPayer(c) {
     if (!c) return;
     [['payer-name', c.fullName], ['payer-phone', c.phoneNumber], ['payer-email', c.email]].forEach(function (p) {
       var input = $(p[0]);
       if (input && !input.value && p[1]) input.value = p[1];
     });
+    // 모바일은 이름을 알면 "결제하시는 분" 칸 전체를 숨기고 버튼에서 바로 결제창으로 간다(대표 9/19).
+    // 칸이 숨어도 미리 채운 값(이름·있으면 휴대폰·이메일)은 그대로 결제창 요청에 실린다.
+    var show = C.payerFieldsToShow(IS_MOBILE, c);
+    $('payer-name-row').hidden = !show.name;
+    $('payer-phone-row').hidden = !show.phone;
+    $('payer-email-row').hidden = !show.email;
+    $('payer-card').hidden = !(show.name || show.phone || show.email);
   }
 
   // 결제 준비값(checkout)이 없거나, 있어도 결제 성격(chargeKind)을 서버가 알 수 없는 값으로 줬으면 동의·등록을 막는다 —
@@ -608,11 +624,12 @@
     // 단계 화면이면 이 결제 준비값을 받은 요금제·selection도 함께 붙잡는다(옛 흐름·결제수단만 변경이면 null).
     var sent = co.sent || null;
     var captured = { method: method, consentVersion: consentVersion, plan: sent ? sent.plan : null, selection: sent ? sent.selection : null };
-    var payer = C.normalizePayer({ name: $('payer-name').value, phone: $('payer-phone').value, email: $('payer-email').value });
+    var payer = C.normalizePayer({ name: $('payer-name').value, phone: $('payer-phone').value, email: $('payer-email').value }, { mobile: IS_MOBILE });
     if (!payer.ok) {
       banner(C.errorMessage(payer.error));
       var bad = { payer_name: 'payer-name', payer_phone: 'payer-phone', payer_email: 'payer-email' }[payer.error];
-      if ($(bad)) $(bad).focus();
+      // 숨겨 둔 칸이 틀렸으면(미리 채운 값이 형식에 안 맞음) 칸을 다시 보여 고칠 수 있게 한다.
+      if ($(bad)) { $('payer-card').hidden = false; $(bad + '-row').hidden = false; $(bad).focus(); }
       return;
     }
     busy($('reg-submit'), true);
@@ -637,10 +654,7 @@
       billingKeyMethod: co.billingKeyMethod,
       issueId: co.issueId,
       issueName: co.issueName,
-      customer: {
-        customerId: co.customer.customerId,
-        fullName: payer.value.fullName, phoneNumber: payer.value.phoneNumber, email: payer.value.email,
-      },
+      customer: sdkCustomer(co.customer.customerId, payer.value),
       // KG이니시스 모바일 빌링은 제공 기간(offerPeriod)이 필수다(9/19 실호출: 없으면 INVALID_REQUEST
       // "offerPeriod AT_LEAST_ONE_REQUIRED"). 월 자동결제라 1개월 주기. PC에서도 넣어도 정상 동작 확인.
       offerPeriod: { interval: '1m' },
@@ -988,6 +1002,7 @@
     $('login-naver').onclick = function () { startOAuth('naver'); };
     $('login-kakao').onclick = function () { startOAuth('kakao'); };
     $('payer-form').onsubmit = function (ev) { ev.preventDefault(); }; // 엔터로 페이지가 새로고침되지 않게
+    prefillPayer({}); // 첫 화면부터 모바일은 이름 칸만(결제 준비값이 오면 다시 맞춘다)
     $('email-form').onsubmit = function (ev) {
       ev.preventDefault();
       show('loading');
