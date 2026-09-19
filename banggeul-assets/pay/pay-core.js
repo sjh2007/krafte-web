@@ -1,6 +1,7 @@
 // banggeul-assets/pay/pay-core.js
 // 방글이 웹 결제 화면의 순수 로직 — 브라우저(window.PayCore)와 node --test 양쪽에서 쓴다.
-// 금액은 서버 응답만 쓰고 여기서 계산하지 않는다(요금표를 웹에 두지 않는다).
+// 요금표를 웹에 두지 않는다. 결제·고지 금액은 서버(/checkout) 응답만 쓰고, 단계 화면의 요금제 카드 금액만
+// 서버가 준 priceTable로 표시용 합계를 낸다(displayTotal).
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.PayCore = factory();
@@ -8,7 +9,7 @@
   'use strict';
 
   var KST_MS = 9 * 60 * 60 * 1000;
-  var BILLING_CONSENT_VERSION = '2026-09-18b'; // 4번째 줄 청약철회 (가족당 1회) 문구 반영
+  var BILLING_CONSENT_VERSION = '2026-09-18c'; // 청약철회 문구 삭제, 대표 9/18
   var CS_PHONE = '1877-1979';
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
   var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
@@ -24,7 +25,7 @@
   ];
   // 결제 흐름 측정 — 서버 화이트리스트(PAY_EVENTS)와 같다. 이벤트 이름만 보낸다(개인 정보 없음).
   var PAY_EVENTS = ['pay_view', 'login_view', 'login_success', 'register_view', 'consent_checked', 'pg_open',
-    'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done', 'refund_request'];
+    'register_success', 'register_fail', 'cancel_view', 'cancel_done', 'pause_done'];
   // 탭(세션)당 한 번만 세는 이벤트 — 로그인·결제창 복귀로 페이지가 다시 열려도 방문 한 번으로 센다.
   var ONCE_PER_TAB_EVENTS = ['pay_view', 'login_view', 'consent_checked'];
 
@@ -47,8 +48,27 @@
     return kstParts(iso).day;
   }
 
+  // 환불 기준(대표 9/18) — 고객 요청 환불(청약철회)은 두지 않는다. 첫 결제를 포함해 결제된 요금은 환불하지 않고,
+  // 서비스 장애 등 회사 사정은 고객센터로 안내한다.
   var CANCEL_ANYTIME = '언제든 이 페이지에서 해지할 수 있어요. 해지해도 결제한 기간이 끝날 때까지 이용하실 수 있어요. ';
-  var MONTHLY_NO_REFUND = '매월 결제된 요금은 환불되지 않아요(고객센터 ' + CS_PHONE + ').';
+  var NO_REFUND = '결제된 요금은 환불되지 않아요. 서비스 장애 등 회사 사정이 있을 때는 고객센터(' + CS_PHONE + ')로 연락해 주세요.';
+  var MONTH_END = ' 그 날짜가 없는 달은 말일에 결제돼요.';
+  var EVERY_MONTH = '이후에도 한 달마다 같은 날 자동결제돼요.';
+
+  // 가족의 결제 기준일(1~31, KST) — 서버 billingDay가 우선이고, 없으면(옛 서버) 주어진 결제 예정일의 날짜로 대신한다.
+  function billingDayOf(billingDay, fallbackIso) {
+    var d = Number(billingDay);
+    if (billingDay !== null && billingDay !== undefined && billingDay !== '' && d >= 1 && d <= 31 && Math.floor(d) === d) return d;
+    return fallbackIso ? kstDayOfMonth(fallbackIso) : null;
+  }
+  function monthEndClause(day) { return day >= 29 ? MONTH_END : ''; }
+
+  // 결제수단 등록 완료 화면의 결제 안내 한 줄 — 회사 전체의 정해진 날짜처럼 읽히지 않게 "한 달마다 같은 날"로 쓴다.
+  function doneChargeLine(o) {
+    if (!o || !o.chargeAt) return null;
+    return formatKstDate(o.chargeAt) + '에 ' + formatWon(o.amount) + '이 결제되고, ' + EVERY_MONTH +
+      monthEndClause(billingDayOf(o.billingDay, o.chargeAt));
+  }
 
   // 대장 §8-4 구독 필수 표기 4종: 가격 · 무료 기간 · 자동결제 시점 · 해지 방법.
   // 문구는 서버가 정한 chargeKind로만 정한다(시간차 어림짐작 안 함): none · trial_end · renewal · overdue · immediate.
@@ -66,7 +86,7 @@
         line1,
         '결제수단만 바뀌고, 해지 예약은 그대로예요. 추가로 결제되지 않아요.',
         '해지를 취소하면 다음 결제일부터 이 결제수단으로 자동결제돼요.',
-        CANCEL_ANYTIME + MONTHLY_NO_REFUND,
+        CANCEL_ANYTIME + NO_REFUND,
       ];
     }
 
@@ -78,47 +98,41 @@
 
     var price = formatWon(opts.amount);
     var date = formatKstDate(opts.chargeAt);
-    var day = kstDayOfMonth(opts.chargeAt);
     var nextDate = opts.nextChargeAt ? formatKstDate(opts.nextChargeAt) : null;
-    var nextDay = opts.nextChargeAt ? kstDayOfMonth(opts.nextChargeAt) : null;
     var nextPrice = formatWon(opts.nextAmount);
-    var monthEnd = ' 그 날짜가 없는 달은 마지막 날에 결제돼요.';
+    // 결제일은 가족마다 다르다(첫 결제일 기준). 기준일은 서버 billingDay, 없으면 결제 예정일에서 읽는다.
+    var day = billingDayOf(opts.billingDay, (kind === 'overdue' || kind === 'immediate') ? opts.nextChargeAt : opts.chargeAt);
+    var monthEnd = monthEndClause(day);
 
-    var line2, line3, firstChargeClause;
+    var line2, line3;
+    // 4번째 줄 가운데 — 결제 전에 해지하면 어떻게 되는지.
+    var beforeChargeClause = '다음 결제일 전에 해지하면 다음 결제는 되지 않아요. ';
 
     if (kind === 'pause_end') {
       // 쉬어가기 중(또는 예정)에 결제수단만 바꾸는 경우 — 쉬어가기가 끝나는 날 결제가 다시 시작된다.
       line2 = '쉬어가기가 ' + date + '에 끝나요. 오늘은 결제되지 않아요.';
-      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = date + '에 ' + price + '이 결제되고, ' + EVERY_MONTH + monthEnd;
     } else if (kind === 'renewal') {
       // 이미 결제된 이용 기간 안에서 결제수단만 바꾸는 경우 — 오늘은 결제되지 않는다.
       line2 = '이미 결제한 이용 기간이 ' + date + '까지예요. 오늘은 결제되지 않아요.';
-      line3 = date + '에 ' + price + '이 결제되고, 이후 매월 ' + day + '일에 자동결제돼요.' + (day >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = date + '에 ' + price + '이 결제되고, ' + EVERY_MONTH + monthEnd;
     } else if (kind === 'overdue') {
       // 밀린 결제가 있다 — 등록하는 순간 밀린 금액부터 처리하고, 이후 정기 결제로 돌아간다.
+      // 다음 결제일이 첫 결제일 기준인지 알 수 없으니 "(첫 결제일로부터 한 달 뒤)"는 붙이지 않는다.
       line2 = '결제되지 않은 ' + price + '이 등록 후 바로 결제돼요.';
-      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.' + (nextDay >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, ' + EVERY_MONTH + monthEnd;
     } else if (kind === 'immediate') {
       // 체험이 이미 끝난 뒤의 신규(또는 재)등록 — 등록하는 순간 바로 첫 결제가 일어난다.
       line2 = '등록하면 바로 첫 결제(' + price + ')가 진행돼요.';
-      line3 = '다음 결제는 ' + nextDate + '에 ' + nextPrice + '이고, 이후 매월 ' + nextDay + '일에 자동결제돼요.' + (nextDay >= 29 ? monthEnd : '');
-      firstChargeClause = '';
+      line3 = '다음 결제는 ' + nextDate + '(첫 결제일로부터 한 달 뒤)에 ' + nextPrice + '이고, ' + EVERY_MONTH + monthEnd;
     } else {
       // 'trial_end' — 체험 중 최초 등록. 결제는 체험이 끝나는 날부터 시작된다.
       line2 = '오늘은 결제되지 않아요. ' + date + '까지 무료로 이용하실 수 있어요.';
-      line3 = date + '부터 매월 ' + day + '일에 ' + price + '이 자동결제돼요.' + (day >= 29 ? monthEnd : '');
-      firstChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
+      line3 = date + '에 ' + price + '이 처음 결제되고, ' + EVERY_MONTH + monthEnd;
+      beforeChargeClause = '첫 결제 전에 해지하면 청구되지 않아요. ';
     }
 
-    // 환불 기준(대표 9/18) — 청약철회는 첫 결제만(7일 안 전액), 매월 자동결제 건은 환불하지 않는다.
-    // 이번 결제가 첫 결제인지는 서버(firstCharge)만 안다 — true가 아니면 첫 결제 환불을 약속하지 않는다.
-    // 첫 결제 전 해지 무청구 문구(trial_end만)는 사실이므로 firstCharge 값과 무관하게 둔다.
-    var line4 = opts.firstCharge === true
-      ? CANCEL_ANYTIME + firstChargeClause + '첫 결제 후 7일 안에는 전액 환불을 요청하실 수 있어요(가족당 1회). 그 뒤 ' + MONTHLY_NO_REFUND
-      : CANCEL_ANYTIME + firstChargeClause + MONTHLY_NO_REFUND;
+    var line4 = CANCEL_ANYTIME + beforeChargeClause + NO_REFUND;
     return [line1, line2, line3, line4];
   }
 
@@ -287,28 +301,18 @@
     return '해지하면 더 이상 결제되지 않아요.' + pauseNote + reports;
   }
 
-  // 결제 내역의 환불 요청 버튼 — 서버가 청약철회 대상(첫 결제 후 7일 안)이라고 한 결제이고 아직 요청하지 않았을 때만.
-  // 7일 계산·첫 결제 여부는 서버(withdrawalEligible)가 정한다 — 웹에서 날짜로 어림짐작하지 않는다.
-  function canRequestRefund(p) {
-    return !!p && p.withdrawalEligible === true && !p.refundRequest;
-  }
-
-  // 해지 화면의 환불 안내 한 줄. 첫 결제 7일 안이면 환불 요청 안내, 아니면 이번 달 요금 환불 없음.
-  // 결제된 이번 달 요금이 없는 상태(체험 중 · 밀린 결제 · 쉬는 중)나 이미 환불을 요청한 경우는 빈 문자열(숨김).
+  // 해지 화면의 환불 안내 한 줄 — 결제된 요금은 환불하지 않는다(대표 9/18, 고객 요청 환불 없음).
+  // 결제된 이번 달 요금이 없는 상태(체험 중 · 밀린 결제 · 쉬는 중)나 예전에 보낸 환불 요청이 처리 중이면 빈 문자열(숨김).
   function cancelRefundText(sub, payments) {
     sub = sub || {};
     var list = payments || [];
-    var eligible = list.filter(function (p) { return p && p.withdrawalEligible === true; });
-    if (eligible.some(function (p) { return !p.refundRequest; })) {
-      return "첫 결제 후 7일 안이라 전액 환불을 요청하실 수 있어요(가족당 1회) — 결제 내역의 '환불 요청'을 이용해 주세요.";
-    }
-    if (eligible.length) return '';
+    if (list.some(function (p) { return p && p.refundRequest === 'open'; })) return '';
     var pause = sub.pause || (sub.billing && sub.billing.pause);
     if (sub.status !== 'active' || (pause && pause.state === 'active')) return '';
-    return '이미 결제된 이번 달 요금은 환불되지 않아요.';
+    return '이미 ' + NO_REFUND;
   }
 
-  // 결제 내역 행의 환불 요청 상태 표시. 요청이 없으면 null(그때만 canRequestRefund로 버튼을 판단한다).
+  // 결제 내역 행의 환불 요청 상태 표시 — 셀프 환불 요청은 없앴지만(대표 9/18) 예전에 보낸 요청의 결과는 계속 보여 준다.
   function refundRequestLabel(p) {
     if (!p || !p.refundRequest) return null;
     if (p.refundRequest === 'open') return '환불 요청됨';
@@ -347,6 +351,9 @@
   var PAUSE_UNAVAILABLE = '지금은 쉬어가기를 신청할 수 없어요.';
   var ERROR_MESSAGES = {
     consent_required: '자동결제 동의에 체크해 주세요.',
+    payer_name: '결제하시는 분 이름을 적어 주세요.',
+    payer_phone: '휴대폰 번호를 확인해 주세요(예: 010-1234-5678).',
+    payer_email: '이메일 주소를 확인해 주세요.',
     owner_only: '결제는 대표 보호자만 할 수 있어요.',
     no_family: '방글이 앱에서 먼저 가입해 주세요.',
     billing_disabled: '결제 기능을 준비하고 있어요. 조금만 기다려 주세요.',
@@ -381,12 +388,14 @@
     not_paused: '쉬어가기 예정이 없어요.',
     not_refundable: '환불 요청할 수 없는 결제예요. 서비스 장애 등은 고객센터(' + CS_PHONE + ')로 문의해 주세요.',
     invalid_reason: '해지 이유를 다시 확인해 주세요.',
+    invalid_selection: '부모님 선택을 다시 확인해 주세요.',
+    phone_mode_unavailable: '전화 방식은 아직 준비 중이에요. 앱으로 받기를 골라 주세요.',
+    same_selection: '지금과 같은 방식·인원이에요.',
+    plan_limit: '선택하신 요금제로는 부모님 통화 일정이 맞지 않아요. 더 넉넉한 요금제를 고르거나 앱에서 통화 일정을 바꿔 주세요.',
   };
   // period_ended는 해지 취소(resume)에서도 쓰는 코드라, 쉬어가기 요청에서 받은 경우에만 쉬어가기 문구로 바꾼다.
-  // 환불 요청의 invalid_reason은 해지 이유가 아니라 요청 내용(사유) 문제다.
   var CONTEXT_MESSAGES = {
     pause: { period_ended: PAUSE_UNAVAILABLE },
-    refund: { invalid_reason: '환불 요청 내용을 다시 확인해 주세요.' },
   };
 
   function errorMessage(code, context) {
@@ -436,9 +445,424 @@
     return { billingKey: q.get('billingKey'), code: q.get('code'), message: q.get('message') };
   }
 
+  // 결제자 정보 — KG이니시스 빌링키 발급 필수값(9/19 실호출 확인): PC는 이름·휴대폰·이메일 모두,
+  // 모바일은 이름만(휴대폰·이메일은 있으면 보낸다). 입력값을 다듬어 포트원 SDK customer 형식으로 돌려준다.
+  // 틀리면 { ok:false, error: 오류 코드 }. 비어 있는 선택값은 결과에서 뺀다.
+  function normalizePayer(input, opts) {
+    var i = input || {};
+    var mobile = !!(opts && opts.mobile);
+    var name = String(i.name || '').trim();
+    var phone = String(i.phone || '').replace(/[\s-]/g, '');
+    var email = String(i.email || '').trim();
+    if (!name || name.length > 30) return { ok: false, error: 'payer_name' };
+    if ((!mobile || phone) && !/^01[016789]\d{7,8}$/.test(phone)) return { ok: false, error: 'payer_phone' };
+    if ((!mobile || email) && (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return { ok: false, error: 'payer_email' };
+    var value = { fullName: name };
+    if (phone) value.phoneNumber = phone;
+    if (email) value.email = email;
+    return { ok: true, value: value };
+  }
+
+  // 모바일 판정 — 포트원 SDK가 모바일 결제창(리다이렉트)을 여는 기준과 같게 사용자 에이전트로 본다.
+  // 서버가 준 결제수단 목록(/status methods)으로 보여 줄 버튼을 정한다. 목록이 없거나 비면 옛 서버로 보고 모두 보여 준다.
+  function visibleMethods(all, available) {
+    if (!Array.isArray(available) || available.length === 0) return all.slice();
+    return all.filter(function (m) { return available.indexOf(m) >= 0; });
+  }
+
+  function isMobileUA(ua) {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(String(ua || ''));
+  }
+
+  // "결제하시는 분" 칸 중 보여 줄 것 — 모바일은 이름을 모를 때 이름 칸 하나만(대표 9/19: 모바일은 바로 결제창으로),
+  // PC는 KG이니시스가 세 가지를 모두 요구해 전부 보인다(미리 채운 값은 그대로 두고 고칠 수 있게).
+  function payerFieldsToShow(mobile, prefill, requirement) {
+    var p = prefill || {};
+    // 토스페이먼츠 카드·카카오페이는 회원 번호만으로 결제창이 열린다(9/19 실호출) — 칸을 모두 숨긴다.
+    if (requirement === 'none') return { name: false, phone: false, email: false };
+    if (mobile) return { name: !String(p.fullName || '').trim(), phone: false, email: false };
+    return { name: true, phone: true, email: true };
+  }
+
+  // ── 단계 선택형 결제(대표 확정 v0.26, API 계약 9/19) — ① 이용 방식 → ② 몇 분·누구 → ③ 요금제.
+  // selection = 구독할 부모님만 [{ elderId, mode: 'app'|'phone' }]. 화면의 요금제 금액은 /status의 priceTable로 계산한
+  // "표시용"이고, 버튼·필수 고지·동의는 /checkout 응답 금액만 쓴다.
+  // 단계 상태 st = { sharedMode, perParent, modes: { elderId: mode }, count, chosen: [elderId…] } — 불변으로 다룬다.
+  var COUNT_WORDS = ['한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+  var MODE_CHOICE = { app: '앱으로 받기', phone: '전화로 받기' };
+  var PHONE_MODE_PENDING = '전화 방식 준비 중이에요';
+  var UNPAIRED_NOTE = '부모님 휴대폰에 방글이 앱 설치가 필요해요 — 전화로 받기를 권해요';
+  // 전화 방식을 쓸 수 없는 가족에게는 고를 수 없는 전화를 권하지 않는다.
+  var UNPAIRED_NOTE_NO_PHONE = '부모님 휴대폰에 방글이 앱 설치가 필요해요';
+  var EXCLUDED_NOTE = '선택하지 않은 부모님은 안부전화가 멈춰요. 기록은 그대로 남고, 언제든 다시 추가할 수 있어요.';
+  var SAME_PRICE_HINT = '할머니·할아버지도 같은 요금이에요';
+  var STEP_TEXT = {
+    modeLegend: '이용 방식',
+    perParentOpen: '부모님마다 다르게 할게요',
+    perParentClose: '모두 같은 방식으로 할게요',
+    countLegend: '몇 분께 전화 드릴까요?',
+    planLegend: '요금제',
+    vatNote: '금액은 모두 부가세 포함이에요.',
+  };
+
+  function countWord(n) { return COUNT_WORDS[n - 1] ? COUNT_WORDS[n - 1] + ' 분' : n + '분'; }
+  function normMode(m) { return m === 'phone' ? 'phone' : 'app'; }
+  function idOf(e) { return String(e && e.elderId); }
+
+  // 부모님 이름표 — 호칭만("어머니"). 실명은 결제 화면에 쓰지 않는다(대표 9/19: 특정 이름 노출 금지).
+  // 같은 호칭이 둘 이상이면 등록 순서로 번호를 붙인다("할머니 1"·"할머니 2"), 호칭이 없으면 "부모님 {순번}".
+  // 사용자 입력 그대로다(가공하지 않는다) — 화면에는 textContent로만 넣는다.
+  function elderLabel(e, index, list) {
+    var t = e && e.title ? String(e.title).trim() : '';
+    if (!t) return '부모님 ' + ((index || 0) + 1);
+    var same = (list || []).filter(function (x) { return x && x.title && String(x.title).trim() === t; });
+    if (same.length < 2) return t;
+    return t + ' ' + (same.indexOf(e) + 1);
+  }
+  function labelById(elders, id) {
+    var list = elders || [];
+    for (var i = 0; i < list.length; i++) if (idOf(list[i]) === String(id)) return elderLabel(list[i], i, list);
+    return '부모님';
+  }
+
+  // 새 서버(/status에 elders·priceTable)면 단계 화면, 아니면 옛 요금제 카드로 되돌아간다(화면이 깨지지 않게).
+  function hasSteps(s) {
+    return !!(s && Array.isArray(s.elders) && s.elders.length > 0 && s.priceTable && typeof s.priceTable === 'object');
+  }
+
+  // 기본값 — 서버의 청구 기준 selection(없으면 구독 안 함 표시가 없는 부모님, 그것도 없으면 전원)과 각자의 현재 방식.
+  // 고른 분들의 방식이 모두 같으면 ①에 그 방식, 다르면 "부모님마다 다르게"를 펼친 상태.
+  // 전화 방식을 쓸 수 없는 가족(phoneModeAvailable === false)은 고를 수 없는 값에 갇히지 않게 앱으로 둔다.
+  function defaultStepState(elders, selection, phoneModeAvailable) {
+    elders = elders || [];
+    var ids = elders.map(idOf);
+    var sel = (Array.isArray(selection) ? selection : []).filter(function (x) { return x && ids.indexOf(String(x.elderId)) >= 0; });
+    var selMode = {};
+    sel.forEach(function (x) { selMode[String(x.elderId)] = normMode(x.mode); });
+    var modes = {};
+    elders.forEach(function (e) {
+      var id = idOf(e);
+      var m = selMode[id] || normMode(e.mode);
+      modes[id] = phoneModeAvailable === false ? 'app' : m;
+    });
+    var chosen;
+    if (sel.length) chosen = ids.filter(function (id) { return selMode[id]; });
+    else {
+      chosen = elders.filter(function (e) { return !e.billingExcluded; }).map(idOf);
+      if (!chosen.length) chosen = ids.slice();
+    }
+    var first = modes[chosen[0]] || 'app';
+    var same = chosen.every(function (id) { return modes[id] === first; });
+    return { sharedMode: first, perParent: !same, modes: modes, count: chosen.length, chosen: chosen };
+  }
+
+  function copyState(st) {
+    var modes = {};
+    Object.keys(st.modes || {}).forEach(function (k) { modes[k] = st.modes[k]; });
+    return { sharedMode: st.sharedMode, perParent: !!st.perParent, modes: modes, count: st.count, chosen: (st.chosen || []).slice() };
+  }
+  function effectiveMode(st, id) { return st.perParent ? normMode(st.modes[String(id)]) : normMode(st.sharedMode); }
+
+  // ① 방식 — 모두 같은 방식으로(부모님별 선택은 접는다).
+  function stepsSetShared(st, mode) {
+    var n = copyState(st);
+    n.sharedMode = normMode(mode);
+    n.perParent = false;
+    Object.keys(n.modes).forEach(function (k) { n.modes[k] = n.sharedMode; });
+    return n;
+  }
+  // "부모님마다 다르게" 펼치기/접기. 펼칠 때는 지금 보이는 방식 그대로 시작한다.
+  // 접을 때는 고른 분 가운데 첫 분의 방식으로 모두 맞춘다.
+  function stepsSetPerParent(st, open, elders) {
+    var n = copyState(st);
+    if (open) {
+      if (!n.perParent) Object.keys(n.modes).forEach(function (k) { n.modes[k] = normMode(n.sharedMode); });
+      n.perParent = true;
+      return n;
+    }
+    var ids = n.chosen.length ? n.chosen : (elders || []).map(idOf);
+    if (n.perParent && ids.length) n.sharedMode = normMode(n.modes[ids[0]]);
+    return stepsSetShared(n, n.sharedMode);
+  }
+  function stepsSetElderMode(st, id, mode) {
+    var n = copyState(st);
+    n.modes[String(id)] = normMode(mode);
+    return n;
+  }
+  // ② 몇 분 — 전원이면 모두 고른다. 줄이면 "누구"를 다시 고르게 비운다(이미 고른 분이 그 수 이하면 남긴다).
+  function stepsSetCount(st, count, elders) {
+    var n = copyState(st);
+    var ids = (elders || []).map(idOf);
+    var c = Math.max(1, Math.min(ids.length, Math.floor(Number(count)) || 1));
+    n.count = c;
+    if (c >= ids.length) n.chosen = ids.slice();
+    else if (!(n.chosen.length <= c && n.chosen.length < ids.length)) n.chosen = [];
+    return n;
+  }
+  // "누구" — 한 분이면 그 분만(라디오), 여러 분이면 켜고 끈다(체크박스). 순서는 등록 순서로 맞춘다.
+  function stepsSetChosen(st, id, on, elders) {
+    var n = copyState(st);
+    var key = String(id);
+    var set = n.count === 1 ? (on ? [key] : []) : n.chosen.filter(function (x) { return x !== key; }).concat(on ? [key] : []);
+    n.chosen = (elders || []).map(idOf).filter(function (x) { return set.indexOf(x) >= 0; });
+    return n;
+  }
+
+  // 단계 상태 → selection(등록 순서). 부모님 한 분뿐이면 ②가 없으므로 그 분이다.
+  function stepSelection(st, elders) {
+    var ids = (elders || []).map(idOf);
+    var chosen = st.count >= ids.length ? ids : ids.filter(function (id) { return st.chosen.indexOf(id) >= 0; });
+    return chosen.map(function (id) { return { elderId: id, mode: effectiveMode(st, id) }; });
+  }
+
+  // 등록 순서로 줄 세운 selection — 첫 분이 기본 요금, 나머지가 한 분 더(서버와 같은 규칙).
+  function orderSelection(selection, elders) {
+    var ids = (elders || []).map(idOf);
+    return (selection || []).slice().sort(function (a, b) {
+      var ia = ids.indexOf(String(a.elderId)), ib = ids.indexOf(String(b.elderId));
+      return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib);
+    });
+  }
+
+  // 표시용 월 합계 — priceTable[mode][plan]의 base(첫 분)·extra(나머지). 값이 하나라도 없으면 null(준비 중).
+  function displayTotal(plan, selection, elders, table) {
+    if (!table || !selection || !selection.length) return null;
+    var list = orderSelection(selection, elders);
+    var total = 0;
+    for (var i = 0; i < list.length; i++) {
+      var byMode = table[normMode(list[i].mode)];
+      var row = byMode && byMode[plan];
+      var v = row ? (i === 0 ? row.base : row.extra) : null;
+      if (v === null || v === undefined || v === '' || isNaN(Number(v))) return null;
+      total += Number(v);
+    }
+    return total;
+  }
+  function displayTotals(selection, elders, table) {
+    var out = {};
+    PLAN_KEYS.forEach(function (p) { out[p] = displayTotal(p, selection, elders, table); });
+    return out;
+  }
+
+  // 부모님별 최소 요금제(서버 elders[i].requiredPlan[mode] — 앱에서 정한 통화 일정이 들어가는 가장 싼 요금제).
+  // 그 요금제보다 낮은 요금제는 고를 수 없다. requiredPlan이 없으면(옛 서버)·null이면(일정 없음) 제한 없음.
+  var PLAN_RANK = { lite: 0, standard: 1, plus: 2 };
+  function planBlockers(plan, selection, elders) {
+    var list = elders || [];
+    var out = [];
+    orderSelection(selection, list).forEach(function (x) {
+      var i = -1;
+      for (var k = 0; k < list.length; k++) if (idOf(list[k]) === String(x.elderId)) { i = k; break; }
+      var e = list[i];
+      var req = e && e.requiredPlan && e.requiredPlan[normMode(x.mode)];
+      if (req && PLAN_RANK[req] !== undefined && PLAN_RANK[plan] !== undefined && PLAN_RANK[req] > PLAN_RANK[plan]) {
+        out.push({ elderId: String(x.elderId), label: elderLabel(e, i, list), requiredPlan: req, mode: normMode(x.mode), plan: plan, schedule: e.schedule || null });
+      }
+    });
+    return out;
+  }
+  // 통화 일정 요약 — 서버 elders[i].schedule {frequency, days}. "매일", "주 5회(월~금)", "주 3회(월·수·금)".
+  var DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  var DAY_KO = { mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토', sun: '일' };
+  function scheduleText(s) {
+    if (!s) return null;
+    if (s.frequency === 'daily') return '매일';
+    var days = DAY_ORDER.filter(function (d) { return (s.days || []).indexOf(d) >= 0; });
+    if (!days.length) return null;
+    if (days.length === 7) return '매일';
+    var idx = days.map(function (d) { return DAY_ORDER.indexOf(d); });
+    var consecutive = days.length >= 3 && idx[idx.length - 1] - idx[0] === days.length - 1;
+    var list = consecutive ? DAY_KO[days[0]] + '~' + DAY_KO[days[days.length - 1]] : days.map(function (d) { return DAY_KO[d]; }).join('·');
+    return '주 ' + days.length + '회(' + list + ')';
+  }
+  // 받침 유무로 은/는 — "어머니는", "할아버지는", "부모님 1은".
+  function topicParticle(word) {
+    var c = String(word || '').charCodeAt(String(word || '').length - 1);
+    if (c >= 0xAC00 && c <= 0xD7A3) return (c - 0xAC00) % 28 ? '은' : '는';
+    if (c >= 0x30 && c <= 0x39) return '은';
+    return '는';
+  }
+  // 대표 9/19: 왜 안 되는지(실제 설정·요금제 규칙)와 어떻게 하면 되는지(앱에서 요일 줄이기)를 함께 말한다.
+  function planLimitNote(b) {
+    var sched = scheduleText(b.schedule);
+    var planName = PLAN_NAMES[b.plan] || b.plan;
+    var rule = PLAN_RULE_TEXT[b.mode] && PLAN_RULE_TEXT[b.mode][b.plan];
+    if (!sched || !rule || !planName) {
+      return b.label + '의 통화 일정(앱에서 설정)에는 ' + (PLAN_NAMES[b.requiredPlan] || b.requiredPlan) + ' 이상이 필요해요';
+    }
+    return b.label + topicParticle(b.label) + ' 앱에서 ' + sched + '로 설정돼 있어요. ' + planName + topicParticle(planName) + ' ' + rule
+      + (topicParticle(rule) === '은' ? '이라' : '라') + ', ' + planName + '로 바꾸려면 앱에서 통화 요일을 줄여 주세요.';
+  }
+  // 요금제별 통화 빈도 규칙(대장 §2-1 앱·§2-10 무설치) — 안내 문구에만 쓴다. 판정은 서버(requiredPlan).
+  var PLAN_RULE_TEXT = {
+    app: { lite: '이틀에 한 번', standard: '매일', plus: '매일' },
+    phone: { lite: '이틀에 한 번', standard: '주 5회', plus: '매일' },
+  };
+  function planValid(plan, selection, elders, table) {
+    return PLAN_KEYS.indexOf(plan) >= 0 && displayTotal(plan, selection, elders, table) !== null && !planBlockers(plan, selection, elders).length;
+  }
+  // 조합이 바뀌어 지금 요금제를 고를 수 없게 되면 고를 수 있는 가장 싼 요금제로 조용히 옮긴다(없으면 그대로).
+  function ensureValidPlan(plan, selection, elders, table) {
+    if (planValid(plan, selection, elders, table)) return plan;
+    for (var i = 0; i < PLAN_KEYS.length; i++) if (planValid(PLAN_KEYS[i], selection, elders, table)) return PLAN_KEYS[i];
+    return plan;
+  }
+
+  // ③ 요금제 카드 — 지금 고른 조합의 월 합계 하나 + 방식별 포함 내용(전화는 같은 요금제의 앱과 다른 칸 굵게).
+  // 두 방식이 섞였으면 "앱: …" "전화: …" 두 줄.
+  function stepPlanCardModel(plan, selection, elders, table) {
+    var total = displayTotal(plan, selection, elders, table);
+    var used = ['app', 'phone'].filter(function (m) { return (selection || []).some(function (x) { return normMode(x.mode) === m; }); });
+    var appFeature = table && table.app && table.app[plan] ? table.app[plan].feature : null;
+    var features = used.map(function (m) {
+      var row = table && table[m] && table[m][plan];
+      var segs = featureSegments(row && row.feature, m === 'phone' ? appFeature : null, true);
+      if (segs.length && used.length > 1) segs = [{ text: MODE_SHORT[m] + ': ', strong: false }].concat(segs);
+      return segs;
+    }).filter(function (segs) { return segs.length; });
+    var hasPhone = used.indexOf('phone') >= 0;
+    var blockers = planBlockers(plan, selection, elders);
+    var note = null;
+    if (total === null) note = hasPhone && (selection || []).length > 1 ? PHONE_EXTRA_PENDING : null;
+    else if (blockers.length) note = blockers.map(planLimitNote).join(' ');
+    return {
+      plan: plan,
+      name: PLAN_NAMES[plan] || plan,
+      total: total,
+      priceText: total === null ? '준비 중' : '월 ' + formatWon(total),
+      features: features,
+      note: note,
+      selectable: total !== null && !blockers.length,
+    };
+  }
+
+  // 필수 고지 1번째 줄·확인 문구의 조합 요약 — "전화 · 한 분", 섞이면 "앱 1분 · 전화 1분".
+  function selectionSummary(selection) {
+    var list = selection || [];
+    if (!list.length) return null;
+    var n = { app: 0, phone: 0 };
+    list.forEach(function (x) { n[normMode(x.mode)]++; });
+    if (n.app && n.phone) return '앱 ' + n.app + '분 · 전화 ' + n.phone + '분';
+    return MODE_SHORT[n.phone ? 'phone' : 'app'] + ' · ' + countWord(list.length);
+  }
+
+  // 구독 관리의 "지금"·"다음 결제부터" 표시 — "할머니 (전화) · 할아버지 (앱)"(등록 순서).
+  function selectionDescribe(selection, elders) {
+    if (!selection || !selection.length) return '';
+    return orderSelection(selection, elders).map(function (x) {
+      return labelById(elders, x.elderId) + ' (' + MODE_SHORT[normMode(x.mode)] + ')';
+    }).join(' · ');
+  }
+
+  function sameSelection(a, b) {
+    a = a || []; b = b || [];
+    if (a.length !== b.length) return false;
+    var m = {};
+    a.forEach(function (x) { m[String(x.elderId)] = normMode(x.mode); });
+    return b.every(function (x) { return m[String(x.elderId)] === normMode(x.mode); });
+  }
+
+  // 앱 방식인데 부모님 앱이 연결 안 된(paired === false) 고른 부모님 — 막지 않고 옆에 권유만 붙인다.
+  // phoneModeAvailable === false면 전화 권유는 빼고 설치 안내만.
+  function unpairedNotes(st, elders, phoneModeAvailable) {
+    var note = phoneModeAvailable === false ? UNPAIRED_NOTE_NO_PHONE : UNPAIRED_NOTE;
+    var sel = stepSelection(st, elders);
+    var out = [];
+    (elders || []).forEach(function (e, i) {
+      var x = sel.filter(function (s) { return s.elderId === idOf(e); })[0];
+      if (x && x.mode === 'app' && e.paired === false) out.push({ elderId: idOf(e), label: elderLabel(e, i, elders), text: note });
+    });
+    return out;
+  }
+
+  // 검증 — 부모님 1분 이상, "누구"는 고른 수만큼, 전화를 못 쓰는 가족에 전화 없음, (등록이면) 고를 수 있는 요금제.
+  // opts: { phoneModeAvailable, plan, priceTable, requirePlan }. 성공이면 selection을 함께 돌려준다.
+  // plan이 주어지면(등록·구독 관리 모두) 부모님 통화 일정의 최소 요금제(requiredPlan)도 확인한다 → plan_limit.
+  function validateSteps(st, elders, opts) {
+    opts = opts || {};
+    var ids = (elders || []).map(idOf);
+    if (!ids.length) return { ok: false, error: 'no_elder', message: errorMessage('no_elder') };
+    if (!st || st.count < 1) return { ok: false, error: 'who_required', message: '몇 분께 전화 드릴지 골라 주세요.' };
+    if (st.count < ids.length && st.chosen.length !== st.count) {
+      return { ok: false, error: 'who_required', message: st.count === 1 ? '어느 부모님께 전화 드릴지 골라 주세요.' : '부모님 ' + countWord(st.count) + '을 골라 주세요.' };
+    }
+    var selection = stepSelection(st, elders);
+    if (!selection.length) return { ok: false, error: 'invalid_selection', message: errorMessage('invalid_selection') };
+    if (opts.phoneModeAvailable === false && selection.some(function (x) { return x.mode === 'phone'; })) {
+      return { ok: false, error: 'phone_mode_unavailable', message: errorMessage('phone_mode_unavailable') };
+    }
+    if (opts.requirePlan) {
+      if (!opts.plan || PLAN_KEYS.indexOf(opts.plan) < 0 || displayTotal(opts.plan, selection, elders, opts.priceTable) === null) {
+        return { ok: false, error: 'invalid_plan', message: errorMessage('invalid_plan') };
+      }
+    }
+    if (opts.plan && planBlockers(opts.plan, selection, elders).length) {
+      return { ok: false, error: 'plan_limit', message: errorMessage('plan_limit') };
+    }
+    return { ok: true, selection: selection };
+  }
+
+  function copySelection(selection) {
+    return (selection || []).map(function (x) { return { elderId: String(x.elderId), mode: normMode(x.mode) }; });
+  }
+  // 요청 본문 — 단계 화면이 아니면(옛 서버·결제수단만 변경) plan·selection을 싣지 않는다(서버가 현재 값을 쓴다).
+  function checkoutBody(method, plan, selection) {
+    var body = { method: method };
+    if (plan) body.plan = plan;
+    if (selection && selection.length) body.selection = copySelection(selection);
+    return body;
+  }
+  function billingKeyBody(billingKey, pending) {
+    pending = pending || {};
+    var body = { billingKey: billingKey, method: pending.method, consent: { autoPay: true, version: pending.consentVersion } };
+    if (pending.plan) body.plan = pending.plan;
+    if (pending.selection && pending.selection.length) body.selection = copySelection(pending.selection);
+    return body;
+  }
+  function selectionBody(selection) { return { selection: copySelection(selection) }; }
+
+  // /checkout 응답의 월 금액 — 부모님별 줄(lines) 합계, 줄이 없으면(옛 서버) 이번 청구액(amount).
+  function checkoutMonthly(co) {
+    if (!co) return null;
+    var lines = co.lines;
+    if (Array.isArray(lines) && lines.length && lines.every(function (l) { return l && l.amount !== null && l.amount !== undefined && !isNaN(Number(l.amount)); })) {
+      return lines.reduce(function (a, l) { return a + Number(l.amount); }, 0);
+    }
+    return co.amount === undefined ? null : co.amount;
+  }
+
+  // 구독 관리에서 방식·인원을 바꾼 결과 안내.
+  function selectionAppliedText(resp, fallbackNextIso) {
+    if (resp && resp.appliesAt === 'now') return '바로 적용됐어요.';
+    var next = (resp && resp.nextChargeAt) || fallbackNextIso;
+    return next ? '다음 결제일(' + formatKstDate(next) + ')부터 적용돼요.' : '다음 결제일부터 적용돼요.';
+  }
+  // 바꾸기 전 확인 — 빠지는 부모님이 있으면 안부전화가 멈춘다는 안내를 붙인다.
+  function selectionConfirmText(selection, elders) {
+    var excluded = (elders || []).length > (selection || []).length;
+    return selectionSummary(selection) + '으로 바꿀까요?' + (excluded ? ' ' + EXCLUDED_NOTE : '');
+  }
+  // 구독 관리의 예상 금액 한 줄(표시용).
+  function selectionPriceHint(plan, total) {
+    if (total === null || total === undefined) return '';
+    return '바꾸면 ' + (PLAN_NAMES[plan] || plan) + ' 요금제 월 ' + formatWon(total) + '이에요(부가세 포함).';
+  }
+
   return {
+    COUNT_WORDS: COUNT_WORDS, MODE_CHOICE: MODE_CHOICE, MODE_SHORT: MODE_SHORT, PHONE_MODE_PENDING: PHONE_MODE_PENDING, UNPAIRED_NOTE: UNPAIRED_NOTE,
+    UNPAIRED_NOTE_NO_PHONE: UNPAIRED_NOTE_NO_PHONE,
+    EXCLUDED_NOTE: EXCLUDED_NOTE, SAME_PRICE_HINT: SAME_PRICE_HINT, STEP_TEXT: STEP_TEXT, PLAN_KEYS: PLAN_KEYS,
+    countWord: countWord, elderLabel: elderLabel, hasSteps: hasSteps, defaultStepState: defaultStepState, effectiveMode: effectiveMode,
+    stepsSetShared: stepsSetShared, stepsSetPerParent: stepsSetPerParent, stepsSetElderMode: stepsSetElderMode,
+    stepsSetCount: stepsSetCount, stepsSetChosen: stepsSetChosen, stepSelection: stepSelection,
+    displayTotal: displayTotal, displayTotals: displayTotals, stepPlanCardModel: stepPlanCardModel,
+    selectionSummary: selectionSummary, selectionDescribe: selectionDescribe, sameSelection: sameSelection, unpairedNotes: unpairedNotes,
+    validateSteps: validateSteps, checkoutBody: checkoutBody, billingKeyBody: billingKeyBody, selectionBody: selectionBody,
+    checkoutMonthly: checkoutMonthly, selectionAppliedText: selectionAppliedText, selectionConfirmText: selectionConfirmText,
+    selectionPriceHint: selectionPriceHint, planBlockers: planBlockers, planLimitNote: planLimitNote, ensureValidPlan: ensureValidPlan,
+    normalizePayer: normalizePayer, isMobileUA: isMobileUA, visibleMethods: visibleMethods, payerFieldsToShow: payerFieldsToShow,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
-    formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth,
+    formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,
     errorMessage: errorMessage, paymentStatusLabel: paymentStatusLabel,
     makeOAuthState: makeOAuthState, parseOAuthReturn: parseOAuthReturn,
@@ -449,6 +873,6 @@
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,
     planLineText: planLineText, featureSegments: featureSegments, modeSummary: modeSummary, familyModeChips: familyModeChips, familyLines: familyLines,
     planCardModel: planCardModel, priceTableSections: priceTableSections, readOnlyCompositionLines: readOnlyCompositionLines,
-    cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, canRequestRefund: canRequestRefund, payEventRequest: payEventRequest,
+    cancelKeepText: cancelKeepText, cancelRefundText: cancelRefundText, payEventRequest: payEventRequest,
   };
 });
