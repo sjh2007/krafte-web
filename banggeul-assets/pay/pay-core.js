@@ -656,14 +656,48 @@
       var e = list[i];
       var req = e && e.requiredPlan && e.requiredPlan[normMode(x.mode)];
       if (req && PLAN_RANK[req] !== undefined && PLAN_RANK[plan] !== undefined && PLAN_RANK[req] > PLAN_RANK[plan]) {
-        out.push({ elderId: String(x.elderId), label: elderLabel(e, i, list), requiredPlan: req, mode: normMode(x.mode) });
+        out.push({ elderId: String(x.elderId), label: elderLabel(e, i, list), requiredPlan: req, mode: normMode(x.mode), plan: plan, schedule: e.schedule || null });
       }
     });
     return out;
   }
-  function planLimitNote(b) {
-    return b.label + '의 통화 일정(앱에서 설정)에는 ' + (PLAN_NAMES[b.requiredPlan] || b.requiredPlan) + ' 이상이 필요해요';
+  // 통화 일정 요약 — 서버 elders[i].schedule {frequency, days}. "매일", "주 5회(월~금)", "주 3회(월·수·금)".
+  var DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  var DAY_KO = { mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토', sun: '일' };
+  function scheduleText(s) {
+    if (!s) return null;
+    if (s.frequency === 'daily') return '매일';
+    var days = DAY_ORDER.filter(function (d) { return (s.days || []).indexOf(d) >= 0; });
+    if (!days.length) return null;
+    if (days.length === 7) return '매일';
+    var idx = days.map(function (d) { return DAY_ORDER.indexOf(d); });
+    var consecutive = days.length >= 3 && idx[idx.length - 1] - idx[0] === days.length - 1;
+    var list = consecutive ? DAY_KO[days[0]] + '~' + DAY_KO[days[days.length - 1]] : days.map(function (d) { return DAY_KO[d]; }).join('·');
+    return '주 ' + days.length + '회(' + list + ')';
   }
+  // 받침 유무로 은/는 — "어머니는", "할아버지는", "부모님 1은".
+  function topicParticle(word) {
+    var c = String(word || '').charCodeAt(String(word || '').length - 1);
+    if (c >= 0xAC00 && c <= 0xD7A3) return (c - 0xAC00) % 28 ? '은' : '는';
+    if (c >= 0x30 && c <= 0x39) return '은';
+    return '는';
+  }
+  // 대표 9/19: 왜 안 되는지(실제 설정·요금제 규칙)와 어떻게 하면 되는지(앱에서 요일 줄이기)를 함께 말한다.
+  function planLimitNote(b) {
+    var sched = scheduleText(b.schedule);
+    var planName = PLAN_NAMES[b.plan] || b.plan;
+    var rule = PLAN_RULE_TEXT[b.mode] && PLAN_RULE_TEXT[b.mode][b.plan];
+    if (!sched || !rule || !planName) {
+      return b.label + '의 통화 일정(앱에서 설정)에는 ' + (PLAN_NAMES[b.requiredPlan] || b.requiredPlan) + ' 이상이 필요해요';
+    }
+    return b.label + topicParticle(b.label) + ' 앱에서 ' + sched + '로 설정돼 있어요. ' + planName + topicParticle(planName) + ' ' + rule
+      + (topicParticle(rule) === '은' ? '이라' : '라') + ', ' + planName + '로 바꾸려면 앱에서 통화 요일을 줄여 주세요.';
+  }
+  // 요금제별 통화 빈도 규칙(대장 §2-1 앱·§2-10 무설치) — 안내 문구에만 쓴다. 판정은 서버(requiredPlan).
+  var PLAN_RULE_TEXT = {
+    app: { lite: '이틀에 한 번', standard: '매일', plus: '매일' },
+    phone: { lite: '이틀에 한 번', standard: '주 5회', plus: '매일' },
+  };
   function planValid(plan, selection, elders, table) {
     return PLAN_KEYS.indexOf(plan) >= 0 && displayTotal(plan, selection, elders, table) !== null && !planBlockers(plan, selection, elders).length;
   }

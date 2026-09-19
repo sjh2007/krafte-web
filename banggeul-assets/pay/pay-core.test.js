@@ -916,7 +916,7 @@ const LIMITED = [
 
 test('planBlockers — 고른 방식의 requiredPlan보다 낮은 요금제면 막는다(lite < standard < plus)', () => {
   const app = [{ elderId: 'e1', mode: 'app' }, { elderId: 'e2', mode: 'phone' }];
-  assert.deepEqual(C.planBlockers('lite', app, LIMITED), [{ elderId: 'e1', label: '할머니', requiredPlan: 'standard', mode: 'app' }]);
+  assert.deepEqual(C.planBlockers('lite', app, LIMITED), [{ elderId: 'e1', label: '할머니', requiredPlan: 'standard', mode: 'app', plan: 'lite', schedule: null }]);
   assert.deepEqual(C.planBlockers('standard', app, LIMITED), []);
   const phone = [{ elderId: 'e1', mode: 'phone' }];
   assert.equal(C.planBlockers('standard', phone, LIMITED).length, 1);
@@ -931,7 +931,7 @@ test('stepPlanCardModel — 통화 일정에 모자란 요금제는 고를 수 �
   const lite = C.stepPlanCardModel('lite', sel, LIMITED, TABLE);
   assert.equal(lite.selectable, false);
   assert.equal(lite.priceText, '월 5,900원'); // 금액은 그대로 보인다
-  assert.equal(lite.note, '할머니의 통화 일정(앱에서 설정)에는 스탠다드 이상이 필요해요');
+  assert.equal(lite.note, '할머니의 통화 일정(앱에서 설정)에는 스탠다드 이상이 필요해요'); // 일정 요약이 없는 옛 서버 — 예전 문구
   assert.equal(C.stepPlanCardModel('standard', sel, LIMITED, TABLE).selectable, true);
   assert.equal(C.stepPlanCardModel('standard', sel, LIMITED, TABLE).note, null);
   // 옛 서버(requiredPlan 없음) — 막지 않는다
@@ -985,4 +985,15 @@ test('결제수단·결제자 칸 — 서버가 준 수단만, 토스페이먼�
   assert.deepEqual(C.payerFieldsToShow(false, {}, 'none'), { name: false, phone: false, email: false });
   assert.deepEqual(C.payerFieldsToShow(true, {}, 'none'), { name: false, phone: false, email: false });
   assert.deepEqual(C.payerFieldsToShow(false, {}, 'inicis'), { name: true, phone: true, email: true });
+});
+
+test('planLimitNote — 실제 설정·요금제 규칙·해결 방법을 함께(대표 9/19)', () => {
+  const T = { app: { lite: { base: 5900, extra: 4900, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 8900, extra: 7900, feature: '매일 · 하루 3분' }, plus: { base: 14900, extra: 13900, feature: '매일 · 하루 5분' } },
+    phone: { lite: { base: 19900, extra: 18900, feature: '이틀에 한 번 · 하루 3분' }, standard: { base: 24900, extra: 23900, feature: '주 5회 · 하루 3분' }, plus: { base: 29900, extra: 28900, feature: '매일 · 하루 3분' } } };
+  const E = [{ elderId: 'm', title: '어머니', mode: 'app', requiredPlan: { app: 'standard', phone: 'standard' }, schedule: { frequency: 'days', days: ['mon', 'tue', 'wed', 'thu', 'fri'] } },
+    { elderId: 'f', title: '할아버지', mode: 'phone', requiredPlan: { app: 'standard', phone: 'plus' }, schedule: { frequency: 'daily', days: [] } }];
+  assert.equal(C.stepPlanCardModel('lite', [{ elderId: 'm', mode: 'app' }], E, T).note,
+    '어머니는 앱에서 주 5회(월~금)로 설정돼 있어요. 라이트는 이틀에 한 번이라, 라이트로 바꾸려면 앱에서 통화 요일을 줄여 주세요.');
+  assert.equal(C.stepPlanCardModel('standard', [{ elderId: 'f', mode: 'phone' }], E, T).note,
+    '할아버지는 앱에서 매일로 설정돼 있어요. 스탠다드는 주 5회라, 스탠다드로 바꾸려면 앱에서 통화 요일을 줄여 주세요.');
 });
