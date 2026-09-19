@@ -641,6 +641,9 @@
         customerId: co.customer.customerId,
         fullName: payer.value.fullName, phoneNumber: payer.value.phoneNumber, email: payer.value.email,
       },
+      // KG이니시스 모바일 빌링은 제공 기간(offerPeriod)이 필수다(9/19 실호출: 없으면 INVALID_REQUEST
+      // "offerPeriod AT_LEAST_ONE_REQUIRED"). 월 자동결제라 1개월 주기. PC에서도 넣어도 정상 동작 확인.
+      offerPeriod: { interval: '1m' },
       redirectUrl: CFG.redirectUri + '?pgReturn=1',
     }).then(function (resp) {
       settled = true;
