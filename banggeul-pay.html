@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="favicon-banggeul.ico" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260918f" />
+<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20260919a" />
 </head>
 <body>
 <header class="top">
@@ -47,6 +47,8 @@
       <li>통화 내용은 보호자 앱에 요약 리포트로 와요</li>
       <li>부모님은 따로 가입·결제하지 않으셔도 돼요. 가족 보호자 3명까지 함께 봐요.</li>
     </ul>
+    <!-- 단계 선택(① 이용 방식 → ② 몇 분·누구 → ③ 요금제) — 새 서버(/status에 elders)일 때 pay-app.js가 채운다. 아니면 아래 요금제 카드. -->
+    <div id="reg-steps" class="steps" hidden></div>
     <div class="card" id="reg-plan-card">
       <h2>요금제</h2>
       <p class="muted small" id="reg-elders"></p>
@@ -100,6 +102,18 @@
         <button type="button" class="btn" id="mg-resume" hidden>해지 취소</button>
         <button type="button" class="btn danger" id="mg-cancel" hidden>구독 해지</button>
       </div>
+    </div>
+    <div class="card" id="mg-selection-card" hidden>
+      <h2>방식·인원</h2>
+      <dl class="facts" id="mg-selection-facts"></dl>
+      <button type="button" class="btn" id="mg-selection-open" aria-expanded="false" aria-controls="mg-steps">방식·인원 바꾸기</button>
+      <div id="mg-steps" class="steps" hidden></div>
+      <p class="step-error" id="mg-selection-msg" role="status"></p>
+      <div class="actions" id="mg-selection-actions" hidden>
+        <button type="button" class="btn" id="mg-selection-cancel">그대로 두기</button>
+        <button type="button" class="btn primary" id="mg-selection-submit">이대로 바꾸기</button>
+      </div>
+      <p class="step-hint">결제 중에는 다음 결제일부터 적용돼요(무료 체험 중에는 바로 적용).</p>
     </div>
     <div class="card">
       <h2>요금제 변경</h2>
@@ -159,9 +173,9 @@
 
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="banggeul-assets/pay/pay-config.js?v=20260918f"></script>
-<script src="banggeul-assets/pay/pay-core.js?v=20260918f"></script>
-<script src="banggeul-assets/pay/pay-auth.js?v=20260918f"></script>
-<script src="banggeul-assets/pay/pay-app.js?v=20260918f"></script>
+<script src="banggeul-assets/pay/pay-config.js?v=20260919a"></script>
+<script src="banggeul-assets/pay/pay-core.js?v=20260919a"></script>
+<script src="banggeul-assets/pay/pay-auth.js?v=20260919a"></script>
+<script src="banggeul-assets/pay/pay-app.js?v=20260919a"></script>
 </body>
 </html>

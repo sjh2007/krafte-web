@@ -7,7 +7,8 @@
   var OAUTH_STATE_KEY = 'banggeulPayOAuthState';
   var PENDING_KEY = 'banggeulPayPending';
   var VIEWS = ['loading', 'login', 'register', 'done', 'manage', 'message'];
-  var state = { status: null, checkout: null };
+  // steps — 단계 선택 상태(등록 'reg' · 구독 관리 'mg'). stepMode — 등록 화면이 단계 선택으로 그려졌는지(새 서버).
+  var state = { status: null, checkout: null, steps: {}, stepMode: false };
   var checkoutSeq = 0; // 요금제·결제수단을 빠르게 바꿀 때 오래된 /checkout 응답을 무시하기 위한 순번
   var googleInitTries = 0;
   var CONSENT_LABEL_DEFAULT = '위 내용을 확인했고, 매월 자동결제에 동의합니다.';
@@ -245,16 +246,229 @@
     return el ? el.value : null;
   }
 
+  // ── 단계 선택(① 이용 방식 → ② 몇 분·누구 → ③ 요금제) — 등록('reg')과 구독 관리('mg', ①②만)가 같이 쓴다.
+  // 선택이 바뀔 때마다 통째로 다시 그리고, 초점은 같은 id의 입력으로 되돌린다(키보드·화면 낭독 사용자).
+  // 호칭·이름 등 서버 문자열은 전부 textContent로만 넣는다(innerHTML 금지).
+  function phoneOk() { return state.status.phoneModeAvailable !== false; }
+  function choiceInput(type, id, name, value, labelText, checked, disabled, data) {
+    var label = el('label', 'choice');
+    label.htmlFor = id;
+    var input = document.createElement('input');
+    input.type = type; input.id = id; input.name = name; input.value = value;
+    input.checked = !!checked; input.disabled = !!disabled;
+    Object.keys(data || {}).forEach(function (k) { input.dataset[k] = data[k]; });
+    label.appendChild(input);
+    label.appendChild(el('span', 'choice-text', labelText));
+    return label;
+  }
+  function stepFieldset(prefix, key, no, legendText) {
+    var f = el('fieldset', 'card step');
+    f.id = prefix + '-step-' + key;
+    var lg = el('legend');
+    var num = el('span', 'step-no', String(no));
+    num.setAttribute('aria-hidden', 'true');
+    lg.appendChild(num);
+    lg.appendChild(document.createTextNode(legendText));
+    f.appendChild(lg);
+    return f;
+  }
+  // ③ 요금제 카드(단계 화면·구독 관리 공용) — 고른 조합의 월 합계 하나(표시용, priceTable로 계산)와 방식별 포함 내용.
+  function stepPlanCards(container, name, selected, selection) {
+    var s = state.status;
+    C.PLAN_KEYS.forEach(function (p) {
+      var m = C.stepPlanCardModel(p, selection, s.elders, s.priceTable);
+      var card = el('div', 'plan-card');
+      var head = el('label', 'plan-head');
+      var input = document.createElement('input');
+      input.type = 'radio'; input.name = name; input.value = p; input.id = name + '-' + p;
+      input.checked = p === selected;
+      input.disabled = !m.selectable;
+      input.dataset.act = 'plan';
+      head.htmlFor = input.id;
+      head.appendChild(input);
+      head.appendChild(el('span', 'plan-name', m.name));
+      head.appendChild(el('span', 'price', m.priceText));
+      card.appendChild(head);
+      var ids = [];
+      m.features.forEach(function (segs, i) {
+        var f = appendSegments(el('p', 'plan-summary'), segs);
+        f.id = name + '-' + p + '-f' + i;
+        card.appendChild(f);
+        ids.push(f.id);
+      });
+      if (m.note) {
+        var note = el('p', 'plan-note', m.note);
+        note.id = name + '-' + p + '-note';
+        card.appendChild(note);
+        ids.push(note.id);
+      }
+      if (ids.length) input.setAttribute('aria-describedby', ids.join(' '));
+      container.appendChild(card);
+    });
+  }
+  // 금액 표시에 쓸 조합 — "누구"를 다 고르기 전에는 등록 순서 앞의 {몇 분}으로 어림한다(표시용일 뿐, 결제 금액은 /checkout).
+  function displaySelection(st, elders) {
+    var v = C.validateSteps(st, elders, {});
+    if (v.ok) return v.selection;
+    var ids = elders.map(function (e) { return String(e.elderId); });
+    var pick = st.chosen.slice();
+    ids.forEach(function (id) { if (pick.length < st.count && pick.indexOf(id) < 0) pick.push(id); });
+    return ids.filter(function (id) { return pick.indexOf(id) >= 0; }).map(function (id) { return { elderId: id, mode: C.effectiveMode(st, id) }; });
+  }
+  function renderSteps(prefix) {
+    var ctx = state.steps[prefix];
+    var s = state.status;
+    var elders = s.elders;
+    var st = ctx.st;
+    var T = C.STEP_TEXT;
+    var box = $(prefix + '-steps');
+    var active = document.activeElement;
+    var focusId = active && box.contains(active) ? active.id : null;
+    box.innerHTML = '';
+    var no = 1;
+    var notes = {};
+    C.unpairedNotes(st, elders, s.phoneModeAvailable).forEach(function (n) { notes[n.elderId] = n; });
+
+    // ① 이용 방식 — 모두 같은 방식(기본) 또는 부모님마다 다르게.
+    var f1 = stepFieldset(prefix, 'mode', no++, T.modeLegend);
+    var seg = el('div', 'seg');
+    ['app', 'phone'].forEach(function (m) {
+      seg.appendChild(choiceInput('radio', prefix + '-mode-' + m, prefix + 'Mode', m, C.MODE_CHOICE[m],
+        !st.perParent && st.sharedMode === m, m === 'phone' && !phoneOk(), { act: 'mode' }));
+    });
+    f1.appendChild(seg);
+    if (!phoneOk()) {
+      var pending = el('p', 'step-text muted', C.PHONE_MODE_PENDING);
+      pending.id = prefix + '-phone-pending';
+      f1.appendChild(pending);
+      seg.querySelector('input[value="phone"]').setAttribute('aria-describedby', pending.id);
+    }
+    if (elders.length > 1) {
+      var link = el('button', 'link step-link', st.perParent ? T.perParentClose : T.perParentOpen);
+      link.type = 'button';
+      link.id = prefix + '-per-parent';
+      link.dataset.act = 'perParent';
+      link.setAttribute('aria-expanded', st.perParent ? 'true' : 'false');
+      f1.appendChild(link);
+    }
+    if (st.perParent) {
+      var pp = el('div', 'per-parent');
+      pp.id = prefix + '-per-parent-box';
+      f1.querySelector('#' + prefix + '-per-parent').setAttribute('aria-controls', pp.id);
+      elders.forEach(function (e, i) {
+        var row = el('fieldset', 'per-row');
+        row.appendChild(el('legend', '', C.elderLabel(e, i)));
+        var rs = el('div', 'seg');
+        ['app', 'phone'].forEach(function (m) {
+          rs.appendChild(choiceInput('radio', prefix + '-elder-' + i + '-' + m, prefix + 'Elder' + i, m, C.MODE_CHOICE[m],
+            C.effectiveMode(st, e.elderId) === m, m === 'phone' && !phoneOk(), { act: 'elderMode', elder: String(e.elderId) }));
+        });
+        row.appendChild(rs);
+        var n = notes[String(e.elderId)];
+        if (n) row.appendChild(el('p', 'step-note', n.text));
+        pp.appendChild(row);
+      });
+      f1.appendChild(pp);
+    } else {
+      Object.keys(notes).forEach(function (id) { f1.appendChild(el('p', 'step-note', notes[id].label + ': ' + notes[id].text)); });
+    }
+    box.appendChild(f1);
+
+    // ② 몇 분·누구 — 부모님이 한 분뿐이면 통째로 숨긴다.
+    if (elders.length > 1) {
+      var f2 = stepFieldset(prefix, 'count', no++, T.countLegend);
+      f2.appendChild(el('p', 'step-hint', C.SAME_PRICE_HINT));
+      var cs = el('div', 'seg');
+      for (var c = 1; c <= elders.length; c++) {
+        cs.appendChild(choiceInput('radio', prefix + '-count-' + c, prefix + 'Count', String(c), C.countWord(c), st.count === c, false, { act: 'count' }));
+      }
+      f2.appendChild(cs);
+      if (st.count < elders.length) {
+        var who = el('fieldset', 'who');
+        who.appendChild(el('legend', '', st.count === 1 ? '어느 분께 드릴까요?' : '어느 분들께 드릴까요? (' + C.countWord(st.count) + ')'));
+        var wl = el('div', 'choices');
+        elders.forEach(function (e, i) {
+          var on = st.chosen.indexOf(String(e.elderId)) >= 0;
+          var full = st.count > 1 && !on && st.chosen.length >= st.count; // 이미 {몇 분}만큼 골랐으면 나머지는 잠근다
+          var item = choiceInput(st.count === 1 ? 'radio' : 'checkbox', prefix + '-who-' + i, prefix + 'Who', String(e.elderId),
+            C.elderLabel(e, i), on, full, { act: 'who', elder: String(e.elderId) });
+          if (st.count === 1) item.querySelector('input').required = true;
+          wl.appendChild(item);
+        });
+        who.appendChild(wl);
+        var check = C.validateSteps(st, elders, {});
+        if (!check.ok && check.error === 'who_required') {
+          var msg = el('p', 'step-error', check.message);
+          msg.id = prefix + '-who-msg';
+          who.appendChild(msg);
+          who.setAttribute('aria-describedby', msg.id);
+        }
+        f2.appendChild(who);
+        f2.appendChild(el('p', 'step-text', C.EXCLUDED_NOTE));
+      }
+      box.appendChild(f2);
+    }
+
+    var selection = displaySelection(st, elders);
+    if (ctx.withPlans) {
+      // ③ 요금제 — 고른 조합의 월 금액 하나씩.
+      var f3 = stepFieldset(prefix, 'plan', no++, T.planLegend);
+      f3.appendChild(el('p', 'step-hint', T.vatNote));
+      var pc = el('div', 'choices');
+      stepPlanCards(pc, prefix + 'Plan', ctx.plan, selection);
+      f3.appendChild(pc);
+      box.appendChild(f3);
+    } else {
+      var hint = C.selectionPriceHint(ctx.plan, C.displayTotal(ctx.plan, selection, elders, s.priceTable));
+      if (hint) {
+        var est = el('p', 'step-text', hint);
+        est.id = prefix + '-estimate';
+        box.appendChild(est);
+      }
+    }
+    if (focusId && $(focusId)) $(focusId).focus();
+  }
+  function onStepEvent(prefix, ev) {
+    var t = ev.target;
+    var act = t && t.dataset && t.dataset.act;
+    var ctx = state.steps[prefix];
+    if (!act || !ctx) return;
+    // 링크(버튼)는 click, 입력은 change로만 받는다.
+    if ((act === 'perParent') !== (ev.type === 'click')) return;
+    var elders = state.status.elders;
+    if (act === 'perParent') ctx.st = C.stepsSetPerParent(ctx.st, !ctx.st.perParent, elders);
+    else if (act === 'mode') ctx.st = C.stepsSetShared(ctx.st, t.value);
+    else if (act === 'elderMode') ctx.st = C.stepsSetElderMode(ctx.st, t.dataset.elder, t.value);
+    else if (act === 'count') ctx.st = C.stepsSetCount(ctx.st, Number(t.value), elders);
+    else if (act === 'who') ctx.st = C.stepsSetChosen(ctx.st, t.dataset.elder, t.checked, elders);
+    else if (act === 'plan') ctx.plan = t.value;
+    else return;
+    renderSteps(prefix);
+    if (prefix === 'reg') refreshCheckout(); // 바뀔 때마다 서버 금액을 다시 받고 동의를 풀어 둔다
+    else $('mg-selection-msg').textContent = '';
+  }
+
   function renderRegister(fromManage) {
     var s = state.status;
-    text($('reg-elders'), s.planDetails ? '금액은 모두 부가세 포함이에요.' : '부모님 ' + s.elderCount + '분 기준 금액이에요(부가세 포함).');
-    planChoices($('reg-plans'), 'regPlan', s.plan);
+    // 새 서버(/status에 elders·priceTable)면 단계 선택, 아니면(옛 서버) 지금까지의 요금제 카드. 결제수단만 바꾸러 온
+    // 경우엔 방식·인원·요금제를 여기서 고르지 않는다(구독 관리에서 바꾼다) — 둘 다 숨긴다.
+    state.stepMode = !fromManage && C.hasSteps(s);
+    $('reg-steps').innerHTML = '';
+    $('reg-steps').hidden = !state.stepMode;
+    if (state.stepMode) {
+      state.steps.reg = { st: C.defaultStepState(s.elders, s.selection, s.phoneModeAvailable), plan: s.plan, withPlans: true };
+      renderSteps('reg');
+      $('reg-plans').innerHTML = '';
+    } else {
+      state.steps.reg = null;
+      text($('reg-elders'), s.planDetails ? '금액은 모두 부가세 포함이에요.' : '부모님 ' + s.elderCount + '분 기준 금액이에요(부가세 포함).');
+      planChoices($('reg-plans'), 'regPlan', s.plan);
+    }
     $('reg-consent').checked = false;
     $('reg-submit').disabled = true;
     $('reg-submit').setAttribute('aria-busy', 'false');
     $('reg-back-manage').hidden = !fromManage;
-    // 이미 등록된 가족이 결제수단만 바꾸러 온 경우엔 요금제는 구독 관리 화면에서 바꾼다 — 여기선 숨긴다.
-    $('reg-plan-card').hidden = !!fromManage;
+    $('reg-plan-card').hidden = !!fromManage || state.stepMode;
     text($('reg-submit'), C.submitLabel(null));
     show('register');
     track('register_view');
@@ -272,23 +486,45 @@
     text($('reg-submit'), C.submitLabel(null));
     updateSubmit();
     var seq = ++checkoutSeq;
-    return auth.api('/family/billing/checkout', { method: 'POST', body: { method: method } }).then(function (r) {
+    // 단계 화면 — 고른 요금제·부모님(selection)으로 미리보기를 받는다. 다 고르기 전이면 서버에 묻지 않고 안내만 한다
+    // (seq는 이미 올렸다 — 진행 중이던 이전 응답은 버려진다).
+    var sent = null;
+    if (state.stepMode && state.steps.reg) {
+      var ctx = state.steps.reg;
+      var v = C.validateSteps(ctx.st, state.status.elders, {
+        phoneModeAvailable: state.status.phoneModeAvailable, plan: ctx.plan, priceTable: state.status.priceTable, requirePlan: true,
+      });
+      if (!v.ok) { list.appendChild(li(v.message)); return Promise.resolve(); }
+      sent = { plan: ctx.plan, selection: v.selection };
+    }
+    var body = sent ? C.checkoutBody(method, sent.plan, sent.selection) : { method: method };
+    return auth.api('/family/billing/checkout', { method: 'POST', body: body }).then(function (r) {
       if (seq !== checkoutSeq) return; // 그 사이 더 최신 요청이 있었다 — 이 응답은 버린다
       if (r.status !== 200) throw r;
-      state.checkout = Object.assign({}, r.data, { method: method });
+      // sent — 이 응답을 받은 요금제·selection. 등록(billing-key)은 화면이 아니라 이 값을 그대로 보낸다.
+      state.checkout = Object.assign({}, r.data, { method: method, sent: sent });
       prefillPayer(r.data.customer);
       // 해지 예약 중 결제수단만 바꾸는 경우(chargeKind: 'none')는 동의 문구도 달라진다.
       text($('reg-consent-label'), r.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
-      // 1번째 줄의 월 가격은 이 결제가 속한 요금제(r.data.plan) 기준이다 — 밀린 결제 중 요금제를 바꿨다면
-      // state.status.amount(가족의 현재 요금제 가격)와 다를 수 있다. amounts 맵에 없으면(구버전 호환) 그 값을 쓴다.
-      var monthlyAmount = state.status.amounts[r.data.plan];
-      if (monthlyAmount === null || monthlyAmount === undefined) monthlyAmount = state.status.amount;
+      var planKey = r.data.plan || (sent && sent.plan);
+      var monthlyAmount, summary;
+      if (sent) {
+        // 단계 화면 — 1번째 줄·버튼 금액은 /checkout 응답만 쓴다(부모님별 줄 합계, 없으면 amount). 요약은 서버가 정규화한 selection.
+        monthlyAmount = C.checkoutMonthly(r.data);
+        summary = C.selectionSummary(r.data.selection || sent.selection);
+      } else {
+        // 1번째 줄의 월 가격은 이 결제가 속한 요금제(r.data.plan) 기준이다 — 밀린 결제 중 요금제를 바꿨다면
+        // state.status.amount(가족의 현재 요금제 가격)와 다를 수 있다. amounts 맵에 없으면(구버전 호환) 그 값을 쓴다.
+        monthlyAmount = state.status.amounts[planKey];
+        if (monthlyAmount === null || monthlyAmount === undefined) monthlyAmount = state.status.amount;
+        summary = C.modeSummary(state.status.planDetails && state.status.planDetails[planKey] && state.status.planDetails[planKey].lines);
+      }
       C.noticeLines({
-        planName: C.PLAN_NAMES[r.data.plan], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
+        planName: C.PLAN_NAMES[planKey], amount: r.data.amount, chargeAt: r.data.chargeAt, chargeKind: r.data.chargeKind,
         nextChargeAt: r.data.nextChargeAt, nextAmount: r.data.nextAmount, monthlyAmount: monthlyAmount,
         // 결제 기준일 — /checkout의 billingDay, 없으면 /status의 값. 둘 다 없으면(옛 서버) PayCore가 결제 예정일에서 읽는다.
         billingDay: r.data.billingDay !== undefined ? r.data.billingDay : state.status.billingDay, now: new Date(),
-        modeSummary: C.modeSummary(state.status.planDetails && state.status.planDetails[r.data.plan] && state.status.planDetails[r.data.plan].lines),
+        modeSummary: summary,
       }).forEach(function (line) { list.appendChild(li(line)); });
       // A-1 — 누르면 무엇이 일어나는지(금액)를 버튼에 적는다. 필수 고지 4종 바로 아래 버튼이다.
       text($('reg-submit'), C.submitLabel({ chargeKind: r.data.chargeKind, amount: r.data.amount, monthlyAmount: monthlyAmount }));
@@ -297,7 +533,9 @@
       if (seq !== checkoutSeq) return;
       state.checkout = null;
       updateSubmit();
-      fail(e);
+      var loggedOut = fail(e);
+      // 위쪽 배너는 스크롤 밖일 수 있다 — 단계 화면이면 버튼 바로 위 안내에도 같은 문구를 둔다.
+      if (!loggedOut && state.stepMode) list.appendChild(li(C.errorMessage((e && e.data && e.data.error) || (e && e.code))));
     });
   }
   // 서버가 준 결제자 정보(지난 등록값·로그인 이메일)로 빈 칸만 채운다 — 이미 입력한 값은 덮지 않는다.
@@ -357,10 +595,13 @@
     var co = state.checkout;
     if (!co || !$('reg-consent').checked) return banner(C.errorMessage('consent_required'));
     // 결제 준비값을 받아온 그 결제수단으로 등록한다 — 그 사이 라디오를 다시 바꿨을 가능성을 배제한다.
-    // method·동의 버전은 여기서 지역 변수로 붙잡아 둔다 — PC 경로는 이 값을 그대로 쓰고 PENDING을 다시 읽지 않는다
+    // method·동의 버전(단계 화면이면 요금제·selection까지)은 여기서 지역 변수로 붙잡아 둔다 — PC 경로는 이 값을 그대로 쓰고 PENDING을 다시 읽지 않는다
     // (그 사이 PENDING이 지워지거나 바뀌어도 이미 열린 결제창의 결과는 안전하게 등록으로 이어진다).
     var method = co.method;
     var consentVersion = C.BILLING_CONSENT_VERSION;
+    // 단계 화면이면 이 결제 준비값을 받은 요금제·selection도 함께 붙잡는다(옛 흐름·결제수단만 변경이면 null).
+    var sent = co.sent || null;
+    var captured = { method: method, consentVersion: consentVersion, plan: sent ? sent.plan : null, selection: sent ? sent.selection : null };
     var payer = C.normalizePayer({ name: $('payer-name').value, phone: $('payer-phone').value, email: $('payer-email').value });
     if (!payer.ok) {
       banner(C.errorMessage(payer.error));
@@ -370,7 +611,7 @@
     }
     busy($('reg-submit'), true);
     // 모바일은 결제창이 페이지를 떠났다 돌아온다(새로고침으로 지역 변수가 사라진다) — 그때 쓸 값만 여기 보관한다.
-    sessionStorage.setItem(PENDING_KEY, JSON.stringify({ method: method, consentVersion: consentVersion }));
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(captured));
     if (!window.PortOne) {
       // SDK가 아직 로드되지 않았거나 차단됐다 — 새 창을 열지 않고 바로 안내한다.
       sessionStorage.removeItem(PENDING_KEY);
@@ -414,7 +655,7 @@
       }
       busy($('reg-submit'), false);
       // PENDING을 다시 읽지 않고 클릭 시점에 붙잡아 둔 값을 그대로 쓴다.
-      return submitBillingKey(resp.billingKey, { method: method, consentVersion: consentVersion });
+      return submitBillingKey(resp.billingKey, captured);
     }).catch(function (e) {
       settled = true;
       clearTimeout(stuckTimer);
@@ -436,7 +677,7 @@
     show('loading');
     return auth.api('/family/billing/billing-key', {
       method: 'POST',
-      body: { billingKey: billingKey, method: pending.method, consent: { autoPay: true, version: pending.consentVersion } },
+      body: C.billingKeyBody(billingKey, pending), // plan·selection은 있을 때만(단계 화면)
     }).then(function (r) {
       if (r.status !== 200) throw r;
       renderDone(r.data);
@@ -486,7 +727,14 @@
     $('mg-cancel').hidden = !b.nextPaymentAt;
     $('mg-resume').hidden = !b.cancelAtPeriodEnd || periodEnded;
     text($('mg-method'), sub.expired ? '결제수단 등록하고 다시 구독하기' : '결제수단 변경');
-    planChoices($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan);
+    if (C.hasSteps(s)) {
+      // 새 서버 — 요금제 카드 금액은 다음 청구 기준 조합(pendingSelection, 없으면 selection)으로 보인다(표시용).
+      $('mg-plans').innerHTML = '';
+      stepPlanCards($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan, nextSelection(s));
+    } else {
+      planChoices($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan);
+    }
+    renderManageSelection();
 
     // 한 달 쉬어가기 — 예정이면 취소 버튼, 쉬는 중이면 고객센터 안내 한 줄.
     var resumeAmount = s.amounts[b.pendingPlan || s.currentPlan];
@@ -516,6 +764,74 @@
     });
     $('mg-history-empty').hidden = rows.length > 0;
     show('manage');
+  }
+
+  // 다음 청구 기준 조합 — 바꿔 둔 것(pendingSelection)이 있으면 그것, 없으면 지금 청구 기준(selection).
+  // 서버가 selection을 안 주면(과도기) 부모님 목록의 기본값으로 대신한다.
+  function nextSelection(s) {
+    if (s.pendingSelection && s.pendingSelection.length) return s.pendingSelection;
+    if (s.selection && s.selection.length) return s.selection;
+    return C.stepSelection(C.defaultStepState(s.elders, null, s.phoneModeAvailable), s.elders);
+  }
+
+  // 방식·인원 — 지금 청구 기준과 다음 결제부터 바뀔 조합을 보여 주고, "방식·인원 바꾸기"로 단계 선택(①②)을 연다.
+  function renderManageSelection() {
+    var s = state.status;
+    var on = C.hasSteps(s);
+    $('mg-selection-card').hidden = !on;
+    state.steps.mg = null;
+    $('mg-steps').innerHTML = '';
+    $('mg-steps').hidden = true;
+    $('mg-selection-actions').hidden = true;
+    $('mg-selection-open').hidden = false;
+    $('mg-selection-open').setAttribute('aria-expanded', 'false');
+    text($('mg-selection-msg'), '');
+    busy($('mg-selection-submit'), false);
+    if (!on) return;
+    var dl = $('mg-selection-facts');
+    dl.innerHTML = '';
+    fact(dl, '지금', C.selectionDescribe(s.selection, s.elders));
+    fact(dl, '다음 결제부터', s.pendingSelection && s.pendingSelection.length ? C.selectionDescribe(s.pendingSelection, s.elders) : '');
+  }
+  function openManageSelection() {
+    var s = state.status;
+    var b = s.subscription.billing || {};
+    state.steps.mg = {
+      st: C.defaultStepState(s.elders, s.pendingSelection && s.pendingSelection.length ? s.pendingSelection : s.selection, s.phoneModeAvailable),
+      plan: b.pendingPlan || s.currentPlan, withPlans: false,
+    };
+    $('mg-steps').hidden = false;
+    renderSteps('mg');
+    $('mg-selection-open').hidden = true;
+    $('mg-selection-open').setAttribute('aria-expanded', 'true');
+    $('mg-selection-actions').hidden = false;
+    var first = $('mg-steps').querySelector('input:not([disabled])');
+    if (first) first.focus();
+  }
+  function submitManageSelection() {
+    var s = state.status;
+    var ctx = state.steps.mg;
+    if (!ctx) return;
+    var msgEl = $('mg-selection-msg');
+    var v = C.validateSteps(ctx.st, s.elders, { phoneModeAvailable: s.phoneModeAvailable });
+    if (!v.ok) return text(msgEl, v.message);
+    if (C.sameSelection(v.selection, nextSelection(s))) return text(msgEl, C.errorMessage('same_selection'));
+    text(msgEl, '');
+    confirmDialog(C.selectionConfirmText(v.selection, s.elders)).then(function (yes) {
+      if (!yes) return;
+      var btn = $('mg-selection-submit');
+      busy(btn, true);
+      var nextAt = (s.subscription.billing || {}).nextPaymentAt;
+      auth.api('/family/billing/selection', { method: 'POST', body: C.selectionBody(v.selection) }).then(function (r) {
+        if (r.status !== 200) throw r;
+        var done = C.selectionAppliedText(r.data, nextAt);
+        return load().then(function () { banner(done, true); });
+      }).catch(function (e) {
+        busy(btn, false);
+        if (fail(e)) return;
+        text(msgEl, C.errorMessage((e && e.data && e.data.error) || (e && e.code)));
+      });
+    });
   }
 
   function postAndReload(path, body, okText) {
@@ -677,7 +993,14 @@
     };
     $('reg-submit').onclick = onRegister;
     Array.prototype.forEach.call(document.querySelectorAll('input[name="method"]'), function (el) { el.onchange = refreshCheckout; });
-    $('reg-plans').onchange = onPlanChange;
+    $('reg-plans').onchange = onPlanChange; // 옛 서버(단계 화면 아님)에서만 쓰인다
+    ['reg', 'mg'].forEach(function (prefix) {
+      $(prefix + '-steps').addEventListener('change', function (ev) { onStepEvent(prefix, ev); });
+      $(prefix + '-steps').addEventListener('click', function (ev) { onStepEvent(prefix, ev); });
+    });
+    $('mg-selection-open').onclick = openManageSelection;
+    $('mg-selection-cancel').onclick = renderManageSelection;
+    $('mg-selection-submit').onclick = submitManageSelection;
     $('done-manage').onclick = function () { load(); };
     $('mg-method').onclick = function () { renderRegister(true); };
     $('reg-back-manage').onclick = renderManage;

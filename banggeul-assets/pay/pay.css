@@ -86,3 +86,34 @@ dialog{max-height:calc(100% - 40px);overflow:auto}
 #msg-plans{margin-top:16px}
 .price-table summary{cursor:pointer;color:var(--gray);margin:4px 0}
 .price-table h3{font-size:.95rem;margin:10px 0 4px}
+/* 단계 선택(9/19) — ① 이용 방식 → ② 몇 분·누구 → ③ 요금제. 40~60대 보호자: 글자 16px 이상, 누르는 곳 52px 이상, 360px에서 가로 스크롤 없음. */
+.step{display:block;min-width:0;margin:0 0 14px}
+.step>legend{display:flex;align-items:center;gap:10px;float:left;width:100%;padding:0;margin:0 0 12px;font-size:1.15rem;font-weight:800}
+.step>legend+*{clear:both}
+.step-no{display:inline-flex;justify-content:center;align-items:center;flex:none;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-size:1rem}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+.step .choice{min-height:56px;padding:8px 12px;gap:8px;font-size:1.05rem;font-weight:700;min-width:0;line-height:1.35}
+.step .choice input{flex:none;width:22px;height:22px}
+.choice-text{min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.step .choice:has(input:checked){border-color:var(--blue);background:var(--blue-bg);color:var(--blue-deep)}
+.step .choice:has(input:disabled){background:#FAFBFC;color:var(--gray);cursor:not-allowed}
+.step .choice:has(input:focus-visible),.plan-head:has(input:focus-visible){outline:3px solid var(--blue);outline-offset:2px}
+.step-link{display:inline-flex;align-items:center;min-height:48px;margin:6px 0 0;padding:0;color:var(--blue);font-size:1rem;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.step-text{margin:10px 0 0;font-size:1rem}
+.step-hint{margin:0 0 10px;font-size:1rem;color:var(--gray)}
+.step-note{margin:10px 0 0;padding:10px 12px;border-radius:10px;border:1px solid var(--phone-line);background:var(--phone-bg);color:var(--phone-ink);font-size:1rem;overflow-wrap:anywhere}
+.step-error{margin:10px 0 0;font-size:1rem;font-weight:700;color:var(--danger)}
+.step-error:empty{display:none}
+.per-parent{display:grid;gap:12px;margin-top:10px}
+.per-row{min-width:0;margin:0;padding:8px 10px 10px;border:1px solid var(--line);border-radius:12px}
+.per-row>legend{padding:0 6px;font-size:1rem;font-weight:700;overflow-wrap:anywhere;max-width:100%}
+.who{min-width:0;margin:16px 0 0;padding:0;border:0}
+.who>legend{padding:0;margin:0 0 8px;font-size:1.05rem;font-weight:800}
+.step .plan-card{padding:14px}
+.step .plan-head,#mg-plans .plan-head{min-height:48px}
+.step .plan-head input,#mg-plans .plan-head input{flex:none;width:22px;height:22px}
+.step .plan-name,.step .plan-head .price{font-size:1.1rem}
+.step .plan-note{font-size:1rem}
+#mg-selection-card .btn{min-height:52px}
+#mg-steps{margin-top:12px}
+#mg-steps .step{border-color:var(--line);padding:14px}
