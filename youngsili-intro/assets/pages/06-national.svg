@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="white"/>
+<g font-family="Malgun Gothic, sans-serif">
+<text x="85" y="67" font-size="23" font-weight="700" fill="#273040">AI 영실이</text><text x="1410" y="67" font-size="24" font-weight="700" fill="#273040">KRAFT</text><path d="M85 95H1515" stroke="#e8e6ef"/>
+<text x="85" y="164" font-size="23" fill="#7652c9">전국 65세 이상 노인인구 · 2025년 기준</text>
+<text x="85" y="254" font-size="57" font-weight="700" fill="#222735">전국 인구의 약 5명 중 1명이</text>
+<text x="85" y="331" font-size="57" font-weight="700" fill="#7652c9">65세 이상 어르신입니다</text>
+<text x="85" y="426" font-size="25" fill="#687082">65세 이상 인구 비중</text>
+<text x="80" y="544" font-size="110" font-weight="700" fill="#7652c9">20.3%</text>
+<path d="M740 408V598" stroke="#e8e6ef" stroke-width="2"/>
+<text x="820" y="426" font-size="25" fill="#687082">전국 65세 이상 인구</text>
+<text x="815" y="525" font-size="66" font-weight="700" fill="#252b3b">1,051만 4천 명</text>
+<text x="820" y="580" font-size="25" fill="#687082">전국 단위의 안부 돌봄을 생각할 때입니다</text>
+<rect x="85" y="647" width="1430" height="42" rx="9" fill="#eeedf3"/><rect x="85" y="647" width="290.29" height="42" rx="9" fill="#9474df"/>
+<text x="85" y="730" font-size="23" fill="#7652c9">65세 이상 20.3%</text><text x="1515" y="730" text-anchor="end" font-size="23" fill="#687082">65세 미만 79.7%</text>
+<text x="85" y="823" font-size="18" fill="#727888">출처: 통계청 「2025 고령자 통계」 (2025.09.29.) · 장래인구추계 기반, 2025년 기준</text>
+<text x="85" y="855" font-size="17" fill="#727888">65세 이상 전체 인구 기준입니다. 65세 미만 비중은 100%에서 20.3%를 차감했습니다.</text>
+</g></svg>
