@@ -193,7 +193,27 @@ h1,h2,h3{margin:0;font-family:var(--display);letter-spacing:-.035em;line-height:
 .hero-trust b{color:#fff}
 .hero-trust .ic{color:var(--green)}
 .hero-form-ok{background:var(--green-soft);color:#9DECC6;border:1px solid rgba(31,169,113,.45);
-  padding:16px 22px;border-radius:999px;font-weight:800;max-width:440px;text-align:center}
+  padding:18px 20px;border-radius:18px;font-weight:800;max-width:500px;text-align:left}
+.hero-call-card{max-width:500px;padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:22px;
+  background:rgba(255,255,255,.075);box-shadow:0 18px 44px rgba(0,0,0,.16);backdrop-filter:blur(12px)}
+.hero-call-title{display:flex;align-items:center;gap:10px;margin-bottom:13px;color:#fff;font-size:.98rem;font-weight:850}
+.hero-call-title span{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--green);color:#071812}
+.hero-call-fields{display:grid;grid-template-columns:.72fr 1.28fr;gap:10px}
+.hero-call-card input[type=text],.hero-call-card input[type=tel]{width:100%;min-width:0;padding:13px 14px;border:1px solid rgba(255,255,255,.18);border-radius:12px;
+  background:rgba(4,14,10,.5);color:#fff;font:inherit;outline:none}
+.hero-call-card input::placeholder{color:#91A5B9}
+.hero-call-card input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(31,169,113,.18)}
+.hero-call-scenarios{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.hero-call-scenario{position:relative;cursor:pointer}
+.hero-call-scenario input{position:absolute;opacity:0;pointer-events:none}
+.hero-call-scenario span{display:flex;align-items:center;justify-content:center;min-height:42px;padding:8px 6px;border:1px solid rgba(255,255,255,.16);border-radius:11px;color:#B8C7D9;font-size:.78rem;font-weight:750;text-align:center;transition:.18s ease}
+.hero-call-scenario input:checked+span{border-color:var(--green);background:rgba(31,169,113,.18);color:#fff;box-shadow:0 0 0 2px rgba(31,169,113,.12)}
+.hero-call-scenario input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}
+.hero-call-card .btn{width:100%;margin-top:10px;border:0}
+.hero-call-card .btn:disabled{cursor:wait;opacity:.72}
+.hero-call-note,.hero-call-error{margin:10px 2px 0;font-size:.76rem;line-height:1.55}
+.hero-call-note{color:#90A2BD}.hero-call-error{color:#FFB3B7;font-weight:700}
+@media(max-width:560px){.hero-call-fields{grid-template-columns:1fr}.hero-call-scenarios{grid-template-columns:1fr}.hero-call-scenario span{justify-content:flex-start;padding-left:13px}}
 
 /* ---------- SIGNATURE ANIMATION: care network ---------- */
 .scene{position:relative;width:100%;max-width:560px;margin:0 auto;aspect-ratio:1/1}
@@ -601,9 +621,20 @@ body{overflow-x:hidden}
       <span class="hero-badge"><span class="live"></span>어르신 AI 안부전화 서비스</span>
       <h1><span class="hero-title-line">어르신을 위한</span><span class="hero-title-line">AI 안부전화</span></h1>
       <p class="lead">AI 영실이는 어르신을 위한 AI 안부전화 서비스입니다. 매일 전화를 걸어 대화 속 위험 신호를 감지하고, 보호자·119·복지사에게 즉시 연결합니다.</p>
-      <form class="hero-form" id="heroForm">
-        <input type="email" placeholder="이메일을 입력하세요…" aria-label="이메일" />
-        <button class="btn btn-primary" type="submit">도입 상담받기</button>
+      <form class="hero-call-card" id="heroCallForm">
+        <div class="hero-call-title"><span aria-hidden="true">☎</span>지금 영실이 체험 전화를 받아보세요</div>
+        <div class="hero-call-fields">
+          <input id="heroCallName" type="text" maxlength="20" autocomplete="name" placeholder="이름" aria-label="체험자 이름" required />
+          <input id="heroCallPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="010-0000-0000" aria-label="체험 전화번호" required />
+        </div>
+        <div class="hero-call-scenarios" role="radiogroup" aria-label="체험 전화 내용 선택">
+          <label class="hero-call-scenario"><input type="radio" name="scenario" value="care" checked /><span>💬 일상 안부</span></label>
+          <label class="hero-call-scenario"><input type="radio" name="scenario" value="weather" /><span>☀️ 날씨 안전</span></label>
+          <label class="hero-call-scenario"><input type="radio" name="scenario" value="risk" /><span>🩺 건강 확인</span></label>
+        </div>
+        <button class="btn btn-primary" type="submit">1분 체험 전화 받기</button>
+        <p class="hero-call-note">평일 09~18시 발신 · 휴대폰 번호당 1회 · 입력 정보는 체험 전화에만 사용됩니다.</p>
+        <p class="hero-call-error" id="heroCallError" role="alert" hidden></p>
       </form>
       <a class="clear-link" href="#service-film">실제 업무 화면 살펴보기</a>
       <div class="hero-trust">
@@ -1403,6 +1434,45 @@ body{overflow-x:hidden}
     });
   })();
 
+})();
+</script>
+<script>
+(function(){
+  var form=document.getElementById('heroCallForm');
+  if(!form) return;
+  var nameInput=document.getElementById('heroCallName');
+  var phoneInput=document.getElementById('heroCallPhone');
+  var errorBox=document.getElementById('heroCallError');
+  phoneInput.addEventListener('input',function(){
+    var value=phoneInput.value.replace(/\D/g,'').slice(0,11);
+    phoneInput.value=value.length>7?value.replace(/(\d{3})(\d{4})(\d{0,4})/,'$1-$2-$3'):
+      value.length>3?value.replace(/(\d{3})(\d{0,4})/,'$1-$2'):value;
+  });
+  form.addEventListener('submit',function(event){
+    event.preventDefault();
+    var name=(nameInput.value||'').trim();
+    var phone=(phoneInput.value||'').replace(/\D/g,'');
+    var selected=form.querySelector('input[name=scenario]:checked');
+    var scenario=selected?selected.value:'care';
+    var button=form.querySelector('button[type=submit]');
+    var original=button.textContent;
+    errorBox.hidden=true;
+    if(!name){nameInput.focus();return;}
+    if(!/^01[016789]\d{7,8}$/.test(phone)){phoneInput.focus();errorBox.textContent='휴대폰 번호를 정확히 입력해 주세요.';errorBox.hidden=false;return;}
+    button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
+    fetch('https://api.krafte.net/demo/call',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name,phone:phone,scenario:scenario})
+    }).then(function(response){return response.json().catch(function(){return {};}).then(function(body){if(!response.ok)throw body;return body;});})
+      .then(function(result){
+        var message=result.called?'곧 '+phoneInput.value+' 번호로 영실이가 전화드릴게요.':'신청이 접수되었습니다. 운영 시간에 순서대로 전화드릴게요.';
+        form.innerHTML='<div class="hero-form-ok">✓ '+message+'</div>';
+      })
+      .catch(function(error){
+        errorBox.textContent=(error&&error.message)||'지금은 체험 전화를 신청할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+        errorBox.hidden=false;button.disabled=false;button.textContent=original;
+      });
+  });
 })();
 </script>
 <script>
