@@ -634,7 +634,7 @@ body{overflow-x:hidden}
         </div>
         <label class="hero-call-consent" for="heroCallConsent">
           <input id="heroCallConsent" type="checkbox" required />
-          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호의 개인정보 수집·이용에 동의합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
+          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호의 개인정보 수집·이용에 동의합니다. 신청 정보와 동의 기록은 신청일부터 30일간 보관 후 삭제합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
         </label>
         <button class="btn btn-primary" type="submit">3분 체험 전화 받기</button>
         <p class="hero-call-note">평일 09~18시 발신 · 통화 최대 3분 · 동의를 거부할 수 있으며, 미동의 시 체험 전화 신청이 제한됩니다.</p>
@@ -1468,7 +1468,7 @@ body{overflow-x:hidden}
     button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
     fetch('https://api.krafte.net/demo/call',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:name,phone:phone,scenario:scenario})
+      body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-09-21-v1'})
     }).then(function(response){return response.json().catch(function(){return {};}).then(function(body){if(!response.ok)throw body;return body;});})
       .then(function(result){
         var message=result.called?'곧 '+phoneInput.value+' 번호로 영실이가 전화드릴게요.':'신청이 접수되었습니다. 운영 시간에 순서대로 전화드릴게요.';
