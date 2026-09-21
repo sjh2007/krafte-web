@@ -212,7 +212,7 @@ h1,h2,h3{margin:0;font-family:var(--display);letter-spacing:-.035em;line-height:
 .hero-call-card .btn{width:100%;margin-top:10px;border:0}
 .hero-call-card .btn:disabled{cursor:wait;opacity:.72}
 .hero-call-note,.hero-call-error{margin:10px 2px 0;font-size:.76rem;line-height:1.55}
-.hero-call-note{color:#90A2BD}.hero-call-error{color:#FFB3B7;font-weight:700}
+.hero-call-consent{display:flex;align-items:flex-start;gap:10px;margin:14px 0;color:#DCE6F5;font-size:.82rem;line-height:1.6;cursor:pointer}.hero-call-consent input{width:18px;height:18px;flex:0 0 18px;margin:4px 0 0;accent-color:var(--green)}.hero-call-consent input:focus-visible{outline:2px solid #fff;outline-offset:3px}.hero-call-consent a{color:#B4EBD7;text-decoration:underline;text-underline-offset:3px}.hero-call-note{color:#90A2BD}.hero-call-error{color:#FFB3B7;font-weight:700}
 @media(max-width:560px){.hero-call-fields{grid-template-columns:1fr}.hero-call-scenarios{grid-template-columns:1fr}.hero-call-scenario span{justify-content:flex-start;padding-left:13px}}
 
 /* ---------- SIGNATURE ANIMATION: care network ---------- */
@@ -632,8 +632,12 @@ body{overflow-x:hidden}
           <label class="hero-call-scenario"><input type="radio" name="scenario" value="weather" /><span>☀️ 날씨 안전</span></label>
           <label class="hero-call-scenario"><input type="radio" name="scenario" value="risk" /><span>🩺 건강 확인</span></label>
         </div>
+        <label class="hero-call-consent" for="heroCallConsent">
+          <input id="heroCallConsent" type="checkbox" required />
+          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호의 개인정보 수집·이용에 동의합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
+        </label>
         <button class="btn btn-primary" type="submit">3분 체험 전화 받기</button>
-        <p class="hero-call-note">평일 09~18시 발신 · 휴대폰 번호당 1회 · 입력 정보는 체험 전화에만 사용됩니다.</p>
+        <p class="hero-call-note">평일 09~18시 발신 · 통화 최대 3분 · 동의를 거부할 수 있으며, 미동의 시 체험 전화 신청이 제한됩니다.</p>
         <p class="hero-call-error" id="heroCallError" role="alert" hidden></p>
       </form>
       <a class="clear-link" href="#service-film">실제 업무 화면 살펴보기</a>
@@ -1442,6 +1446,7 @@ body{overflow-x:hidden}
   if(!form) return;
   var nameInput=document.getElementById('heroCallName');
   var phoneInput=document.getElementById('heroCallPhone');
+  var consentInput=document.getElementById('heroCallConsent');
   var errorBox=document.getElementById('heroCallError');
   phoneInput.addEventListener('input',function(){
     var value=phoneInput.value.replace(/\D/g,'').slice(0,11);
@@ -1457,6 +1462,7 @@ body{overflow-x:hidden}
     var button=form.querySelector('button[type=submit]');
     var original=button.textContent;
     errorBox.hidden=true;
+    if(!consentInput.checked){consentInput.focus();errorBox.textContent='개인정보 수집·이용에 동의해 주세요.';errorBox.hidden=false;return;}
     if(!name){nameInput.focus();return;}
     if(!/^01[016789]\d{7,8}$/.test(phone)){phoneInput.focus();errorBox.textContent='휴대폰 번호를 정확히 입력해 주세요.';errorBox.hidden=false;return;}
     button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
