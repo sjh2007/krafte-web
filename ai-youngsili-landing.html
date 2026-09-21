@@ -1468,7 +1468,7 @@ body{overflow-x:hidden}
     button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
     fetch('https://api.krafte.net/demo/call',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:name,phone:phone,scenario:scenario})
+      body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-09-21-v1'})
     }).then(function(response){return response.json().catch(function(){return {};}).then(function(body){if(!response.ok)throw body;return body;});})
       .then(function(result){
         var message=result.called?'곧 '+phoneInput.value+' 번호로 영실이가 전화드릴게요.':'신청이 접수되었습니다. 운영 시간에 순서대로 전화드릴게요.';
