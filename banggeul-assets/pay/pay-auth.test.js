@@ -106,3 +106,13 @@ test('signOut — 세션 삭제', async () => {
   auth.signOut();
   assert.equal(auth.getSession(), null);
 });
+
+test('Google — 우리 버튼의 액세스 토큰을 signInWithIdp로(9/21 버튼 크기 통일)', async () => {
+  const { auth, calls } = setup([reply(200, { idToken: 'id3', refreshToken: 'r3', expiresIn: '3600' })]);
+  await auth.signInWithGoogleAccessToken('ya29.token');
+  assert.equal(calls[0].url, 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=fb-key');
+  assert.deepEqual(JSON.parse(calls[0].opts.body), {
+    postBody: 'access_token=ya29.token&providerId=google.com', requestUri: 'https://www.krafte.net', returnSecureToken: true, returnIdpCredential: true,
+  });
+  assert.equal(auth.getSession().idToken, 'id3');
+});

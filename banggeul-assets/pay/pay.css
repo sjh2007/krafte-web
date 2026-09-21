@@ -23,7 +23,8 @@ h2{font-size:1.05rem;margin:0 0 10px}
 .btn.kakao{background:#FEE500;border-color:#FEE500;color:rgba(0,0,0,.85);width:100%}
 .link{background:none;border:0;color:var(--gray);font:inherit;cursor:pointer}
 .social{display:grid;gap:10px;margin-bottom:16px}
-.google-slot{display:flex;justify-content:center;min-height:44px}
+.btn.google{background:#fff;border-color:#DADCE0;color:#1F1F1F;width:100%}
+.btn.google .g-logo{width:20px;height:20px;flex:none}
 .email-login summary{cursor:pointer;color:var(--gray);margin:8px 0}
 form label{display:block;margin:10px 0;font-size:.92rem}
 form input{display:block;width:100%;min-height:46px;margin-top:4px;padding:0 12px;border:1px solid var(--line);border-radius:10px;font:inherit}

@@ -70,6 +70,15 @@
       });
     }
 
+    // 우리 버튼(네이버·카카오와 같은 크기)에서 받은 Google 액세스 토큰으로 로그인한다(대표 9/21).
+    // 구글이 그려 주는 버튼은 폭 400px·높이 40px로 고정이라 다른 간편 로그인과 크기를 맞출 수 없다.
+    function signInWithGoogleAccessToken(accessToken) {
+      return firebaseSignIn('signInWithIdp', {
+        postBody: 'access_token=' + accessToken + '&providerId=google.com',
+        requestUri: config.origin, returnSecureToken: true, returnIdpCredential: true,
+      });
+    }
+
     function signInWithWebCode(p) {
       return postJson(config.apiBase + '/auth/social/web-code', {
         provider: p.provider, code: p.code, state: p.state, redirectUri: p.redirectUri,
@@ -111,7 +120,7 @@
 
     return {
       getSession: readSession, signOut: signOut,
-      signInWithEmail: signInWithEmail, signInWithGoogleIdToken: signInWithGoogleIdToken, signInWithWebCode: signInWithWebCode,
+      signInWithEmail: signInWithEmail, signInWithGoogleIdToken: signInWithGoogleIdToken, signInWithGoogleAccessToken: signInWithGoogleAccessToken, signInWithWebCode: signInWithWebCode,
       getIdToken: getIdToken, api: api,
     };
   }

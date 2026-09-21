@@ -1011,14 +1011,21 @@
       if (googleInitTries > 20) { $('login-google').hidden = true; return; } // 약 6초 — SDK가 안 뜨면 포기하고 숨긴다
       return setTimeout(initGoogle, 300);
     }
-    window.google.accounts.id.initialize({
+    // 대표 9/21: 구글 버튼을 네이버·카카오와 같은 크기로 — 구글이 그리는 버튼(폭·높이 고정) 대신 우리 버튼을 두고,
+    // 누르면 구글 로그인 창(토큰 클라이언트)을 연다. 받은 액세스 토큰으로 Firebase에 로그인한다.
+    var client = window.google.accounts.oauth2 && window.google.accounts.oauth2.initTokenClient({
       client_id: CFG.googleWebClientId,
+      scope: 'openid email profile',
       callback: function (resp) {
+        if (!resp || resp.error || !resp.access_token) { show('login'); if (resp && resp.error !== 'popup_closed') fail({ status: 0, data: { error: 'invalid_social_token' } }); return; }
         show('loading');
-        auth.signInWithGoogleIdToken(resp.credential).then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
+        auth.signInWithGoogleAccessToken(resp.access_token).then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
       },
+      error_callback: function () { show('login'); },
     });
-    window.google.accounts.id.renderButton($('login-google'), { theme: 'outline', size: 'large', text: 'signin_with', width: 320, locale: 'ko' });
+    if (!client) { $('login-google').hidden = true; return; }
+    $('login-google').hidden = false;
+    $('login-google').onclick = function () { client.requestAccessToken({ prompt: '' }); };
   }
 
   function bind() {
