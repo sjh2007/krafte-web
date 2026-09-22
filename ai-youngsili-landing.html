@@ -637,7 +637,7 @@ body{overflow-x:hidden}
           <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호의 개인정보 수집·이용에 동의합니다. 신청 정보와 동의 기록은 신청일부터 30일간 보관 후 삭제합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
         </label>
         <button class="btn btn-primary" type="submit">3분 체험 전화 받기</button>
-        <p class="hero-call-note">평일 09~18시 발신 · 통화 최대 3분 · 동의를 거부할 수 있으며, 미동의 시 체험 전화 신청이 제한됩니다.</p>
+        <p class="hero-call-note">신청하면 바로 발신 · 통화 최대 3분 · 동의를 거부할 수 있으며, 미동의 시 체험 전화 신청이 제한됩니다.</p>
         <p class="hero-call-error" id="heroCallError" role="alert" hidden></p>
       </form>
       <a class="clear-link" href="#service-film">실제 업무 화면 살펴보기</a>
@@ -1471,11 +1471,12 @@ body{overflow-x:hidden}
       body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-09-21-v1'})
     }).then(function(response){return response.json().catch(function(){return {};}).then(function(body){if(!response.ok)throw body;return body;});})
       .then(function(result){
-        var message=result.called?'곧 '+phoneInput.value+' 번호로 영실이가 전화드릴게요.':'신청이 접수되었습니다. 운영 시간에 순서대로 전화드릴게요.';
+        if(!result.called)throw {message:'지금은 체험 전화를 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'};
+        var message='곧 '+phoneInput.value+' 번호로 영실이가 전화드릴게요.';
         form.innerHTML='<div class="hero-form-ok">✓ '+message+'</div>';
       })
       .catch(function(error){
-        errorBox.textContent=(error&&error.message)||'지금은 체험 전화를 신청할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+        errorBox.textContent=(error&&((error.error&&error.error.message)||error.message))||'지금은 체험 전화를 신청할 수 없습니다. 잠시 후 다시 시도해 주세요.';
         errorBox.hidden=false;button.disabled=false;button.textContent=original;
       });
   });
