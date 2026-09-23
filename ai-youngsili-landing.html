@@ -209,7 +209,7 @@ h1,h2,h3{margin:0;font-family:var(--display);letter-spacing:-.035em;line-height:
 .hero-call-scenario span{display:flex;align-items:center;justify-content:center;min-height:42px;padding:8px 6px;border:1px solid rgba(255,255,255,.16);border-radius:11px;color:#B8C7D9;font-size:.78rem;font-weight:750;text-align:center;transition:.18s ease}
 .hero-call-scenario input:checked+span{border-color:var(--green);background:rgba(31,169,113,.18);color:#fff;box-shadow:0 0 0 2px rgba(31,169,113,.12)}
 .hero-call-scenario input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}
-.hero-call-card .btn{width:100%;margin-top:10px;border:0}
+.hero-call-card .btn{width:100%;margin-top:10px;border:0;justify-content:center;text-align:center}
 .hero-call-card .btn:disabled{cursor:wait;opacity:.72}
 .hero-call-note,.hero-call-error{margin:10px 2px 0;font-size:.76rem;line-height:1.55}
 .hero-call-consent{display:flex;align-items:flex-start;gap:10px;margin:14px 0;color:#DCE6F5;font-size:.82rem;line-height:1.6;cursor:pointer}.hero-call-consent input{width:18px;height:18px;flex:0 0 18px;margin:4px 0 0;accent-color:var(--green)}.hero-call-consent input:focus-visible{outline:2px solid #fff;outline-offset:3px}.hero-call-consent a{color:#B4EBD7;text-decoration:underline;text-underline-offset:3px}.hero-call-note{color:#90A2BD}.hero-call-error{color:#FFB3B7;font-weight:700}
@@ -558,6 +558,11 @@ body{overflow-x:hidden}
 .clear-foot p{margin:0}.clear-foot button{border:0;background:transparent;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:5px;cursor:pointer;padding:8px}
 .clear-foot button:focus-visible{outline:2px solid #6ed6ab;outline-offset:3px}
 .clear-link{display:inline-block;color:#c3f6df;margin-top:16px;text-underline-offset:5px}
+.hero-call-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-top:8px}
+.hero-call-actions .clear-link{margin-top:0;min-height:44px;display:inline-flex;align-items:center}
+button.clear-link{padding:0;border:0;background:none;font:inherit;cursor:pointer}
+.hero-call-actions .clear-link:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:3px}
+.hero-call-actions [hidden],.hero-call-card[hidden]{display:none}
 @media(max-width:680px){.clear-showcase{padding:42px 16px 24px}.clear-intro{display:block;margin-bottom:24px}.clear-intro h2{font-size:30px}.clear-intro p{margin-top:18px;max-width:none;font-size:14px}.clear-foot{font-size:12px;gap:10px}.clear-screen{border-radius:7px}}
 </style>
 <style>@media(max-width:680px){.nav-cta{gap:6px}.nav-cta .btn{display:inline-flex;min-height:44px;font-size:11px;padding:9px 10px}.home-btn{display:none}.nav .wrap{padding-left:14px;padding-right:14px}}</style></head>
@@ -634,13 +639,20 @@ body{overflow-x:hidden}
         </div>
         <label class="hero-call-consent" for="heroCallConsent">
           <input id="heroCallConsent" type="checkbox" required />
-          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호의 개인정보 수집·이용에 동의합니다. 신청 정보와 동의 기록은 신청일부터 30일간 보관 후 삭제합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
+          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호의 개인정보 수집·이용에 동의합니다. 신청 정보와 동의 기록은 신청일로부터 1일간 보관 후 삭제합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
         </label>
         <button class="btn btn-primary" type="submit">3분 체험 전화 받기</button>
         <p class="hero-call-note">신청하면 바로 발신 · 통화 최대 3분 · 동의를 거부할 수 있으며, 미동의 시 체험 전화 신청이 제한됩니다.</p>
         <p class="hero-call-error" id="heroCallError" role="alert" hidden></p>
       </form>
-      <a class="clear-link" href="#service-film">실제 업무 화면 살펴보기</a>
+      <div class="hero-call-card" id="heroCallSuccess" role="status" hidden>
+        <div class="hero-form-ok" id="heroCallSuccessMessage"></div>
+        <p class="hero-call-note">통화가 끝나면 ‘다시 전화 테스트 하기’를 눌러 날씨 안전·건강 확인도 체험해 보세요.</p>
+      </div>
+      <div class="hero-call-actions">
+        <a class="clear-link" href="#service-film">실제 업무 화면 살펴보기</a>
+        <button class="clear-link" id="heroCallRetry" type="button" aria-controls="heroCallForm" hidden>다시 전화 테스트 하기</button>
+      </div>
       <div class="hero-trust">
         <div><span class="ic">●</span> <b>실시간</b> 위험 감지</div>
         <div><span class="ic">●</span> <b>무제한</b> 안부 전화</div>
@@ -1448,6 +1460,20 @@ body{overflow-x:hidden}
   var phoneInput=document.getElementById('heroCallPhone');
   var consentInput=document.getElementById('heroCallConsent');
   var errorBox=document.getElementById('heroCallError');
+  var successBox=document.getElementById('heroCallSuccess');
+  var successMessage=document.getElementById('heroCallSuccessMessage');
+  var retryButton=document.getElementById('heroCallRetry');
+  var pending=false;
+  retryButton.addEventListener('click',function(){
+    if(pending||!form.hidden)return;
+    successBox.hidden=true;
+    form.hidden=false;
+    retryButton.hidden=true;
+    errorBox.hidden=true;
+    consentInput.checked=false;
+    var selected=form.querySelector('input[name=scenario]:checked');
+    if(selected)selected.focus();
+  });
   phoneInput.addEventListener('input',function(){
     var value=phoneInput.value.replace(/\D/g,'').slice(0,11);
     phoneInput.value=value.length>7?value.replace(/(\d{3})(\d{4})(\d{0,4})/,'$1-$2-$3'):
@@ -1455,6 +1481,7 @@ body{overflow-x:hidden}
   });
   form.addEventListener('submit',function(event){
     event.preventDefault();
+    if(pending||form.hidden)return;
     var name=(nameInput.value||'').trim();
     var phone=(phoneInput.value||'').replace(/\D/g,'');
     var selected=form.querySelector('input[name=scenario]:checked');
@@ -1465,19 +1492,24 @@ body{overflow-x:hidden}
     if(!consentInput.checked){consentInput.focus();errorBox.textContent='개인정보 수집·이용에 동의해 주세요.';errorBox.hidden=false;return;}
     if(!name){nameInput.focus();return;}
     if(!/^01[016789]\d{7,8}$/.test(phone)){phoneInput.focus();errorBox.textContent='휴대폰 번호를 정확히 입력해 주세요.';errorBox.hidden=false;return;}
-    button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
+    pending=true;button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
     fetch('https://api.krafte.net/demo/call',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-09-21-v1'})
+      body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-09-23-v1'})
     }).then(function(response){return response.json().catch(function(){return {};}).then(function(body){if(!response.ok)throw body;return body;});})
       .then(function(result){
         if(!result.called)throw {message:'지금은 체험 전화를 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'};
         var message='곧 '+phoneInput.value+' 번호로 영실이가 전화드릴게요.';
-        form.innerHTML='<div class="hero-form-ok">✓ '+message+'</div>';
+        successMessage.textContent='✓ '+message;
+        form.hidden=true;
+        successBox.hidden=false;
+        retryButton.hidden=false;
+        pending=false;button.disabled=false;button.textContent=original;
+        retryButton.focus();
       })
       .catch(function(error){
         errorBox.textContent=(error&&((error.error&&error.error.message)||error.message))||'지금은 체험 전화를 신청할 수 없습니다. 잠시 후 다시 시도해 주세요.';
-        errorBox.hidden=false;button.disabled=false;button.textContent=original;
+        errorBox.hidden=false;pending=false;button.disabled=false;button.textContent=original;
       });
   });
 })();
