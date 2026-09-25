@@ -73,6 +73,76 @@
         "priceCurrency": "KRW",
         "description": "월 정액형, 무제한 발신, 통화비 0원"
       }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://www.krafte.net/ai-youngsili-landing.html#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "AI 안부전화란 무엇인가요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AI가 어르신께 직접 전화를 걸어 대화로 안부를 확인하는 비대면 돌봄 서비스입니다. AI 영실이는 매일 안부전화를 드리고, 대화 속 위험 신호를 감지하면 보호자·119·복지사에게 즉시 연결합니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "AI 안부전화 비용은 얼마인가요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "앱 설치 없는 정량제는 월 21,000원(부가세 별도, 포함 통화 25통)부터이며, 처음 도입하는 기관은 7,000원(부가세 포함)으로 30일 체험할 수 있습니다. 앱 설치 버전은 1인 월 11,000원(부가세 포함)부터이고, 30일 무료 시범사업으로 먼저 운영해 볼 수 있습니다. 지자체·복지기관 단체 도입은 별도 요금을 안내해 드립니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "지자체·복지기관은 어떻게 도입하나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "도입 문의를 남기시면 담당자가 영업일 1~2일 안에 연락드립니다. 30일 체험이나 시범사업으로 먼저 운영해 보고 본 도입을 결정할 수 있으며, 담당자는 관리자 대시보드 한 화면에서 여러 어르신의 통화 결과와 위험 알림을 확인합니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "먼저 체험해 볼 수 있나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "네. 페이지 맨 위에서 이름과 휴대폰 번호를 입력하고 개인정보 수집·이용에 동의하시면 바로 체험 전화가 걸려 옵니다(통화 최대 3분). 신청 정보와 동의 기록은 신청일부터 30일간 보관 후 삭제하며, 자세한 기준은 개인정보처리방침에서 확인할 수 있습니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "어르신이 앱을 설치하거나 기기를 다뤄야 하나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "아니요. 어르신은 평소처럼 걸려 오는 전화를 받기만 하시면 되며, 앱 설치 없이 이용하는 정량제 요금제가 있습니다. 앱 설치 버전을 쓰면 전화가 부담스러운 날에는 앱에서 버튼 하나(좋아요·그럭저럭·안 좋아요)로 오늘 상태를 알려 줄 수 있습니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "위험 신호는 어떻게 감지하나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "대화 속 키워드와 말투를 분석해 정상·관찰·위험 3단계로 자동 분류하고 기록합니다. \"숨이 차\", \"쓰러질 것 같아\"처럼 위험한 표현이 나오면 즉시 보호자와 119에 연결합니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "폭염·한파 같은 날씨에도 도움이 되나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "네. 기상청 정보와 연동해 폭염·한파 등 특보가 발령되면 안부 멘트에 안전 안내를 더해 전화드립니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "보호자가 부모님을 위해 신청할 수도 있나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "도입 문의에서 문의 유형을 '보호자(개인) 신청'으로 선택해 남겨 주세요. 담당자가 신청 가능 여부와 이용 방법을 안내해 드립니다."
+          }
+        }
+      ]
     }
   ]
 }
@@ -471,6 +541,20 @@ svg[data-state="danger"] .pulse-ring{stroke:var(--red)}
 .cmp-details>summary:hover{border-color:var(--blue);color:var(--blue)}
 .cmp-details[open]>summary{margin-bottom:18px}
 .cmp-wrap{overflow-x:auto;text-align:left}
+.plans-note a{color:var(--blue);font-weight:700;white-space:nowrap}
+@media(max-width:1100px){.nav-links a[href="#faq"]{display:none}}
+.faq-list{max-width:820px;margin:0 auto;display:grid;gap:12px}
+.faq-item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-sm);transition:border-color .2s}
+.faq-item[open]{border-color:var(--blue)}
+.faq-item>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;padding:20px 24px;font-weight:800;font-size:1.02rem;color:var(--ink)}
+.faq-item>summary::-webkit-details-marker{display:none}
+.faq-item>summary::after{content:"+";flex:none;font-size:1.4rem;font-weight:700;color:var(--ink-3);transition:transform .2s}
+.faq-item[open]>summary::after{transform:rotate(45deg);color:var(--blue)}
+.faq-item h3{font-size:inherit;font-weight:inherit;margin:0}
+.faq-a{padding:0 24px 22px;color:var(--ink-2);font-size:.95rem;line-height:1.75}
+.faq-a p{margin:0}
+.faq-a a{color:var(--blue);font-weight:700}
+@media(max-width:560px){.faq-item>summary{padding:17px 18px;font-size:.96rem}.faq-a{padding:0 18px 18px}}
 table.cmp{width:100%;border-collapse:collapse;min-width:660px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .cmp th,.cmp td{padding:13px 14px;text-align:center;border-bottom:1px solid var(--line);font-size:.9rem}
 .cmp tbody tr:last-child th,.cmp tbody tr:last-child td{border-bottom:0}
@@ -602,6 +686,7 @@ body{overflow-x:hidden}
       <a href="#weather">기상청 연동</a>
       <a href="#dashboard">대시보드</a>
       <a href="#metered-pricing">요금</a>
+      <a href="#faq">FAQ</a>
     </nav>
     <div class="nav-cta">
       <a class="btn btn-ghost" href="/youngsili-intro/">소개서 보기</a>
@@ -610,7 +695,7 @@ body{overflow-x:hidden}
     </div>
   </div>
   <div class="mob" id="mob">
-    <a href="#how">작동 원리</a><a href="#features">기능</a><a href="#demo">대화 예시</a><a href="#weather">기상청 연동</a><a href="#dashboard">대시보드</a><a href="#metered-pricing">요금</a><a href="#contact">도입 문의</a>
+    <a href="#how">작동 원리</a><a href="#features">기능</a><a href="#demo">대화 예시</a><a href="#weather">기상청 연동</a><a href="#dashboard">대시보드</a><a href="#metered-pricing">요금</a><a href="#faq">자주 묻는 질문</a><a href="#contact">도입 문의</a>
   </div>
 </header>
 
@@ -1158,7 +1243,7 @@ body{overflow-x:hidden}
         <a class="btn btn-out" href="https://www.krafte.net/youngsili-login.html#signup">구독하기</a>
       </div>
     </div>
-    <p class="plans-note reveal">지자체·복지기관 단체 도입 시 별도 요금을 안내해 드립니다.</p>
+    <p class="plans-note reveal">지자체·복지기관 단체 도입 시 별도 요금을 안내해 드립니다. <a href="#faq">요금·도입 자주 묻는 질문 →</a></p>
 
     <details class="cmp-details reveal">
       <summary>전체 기능 비교표 보기</summary>
@@ -1182,6 +1267,50 @@ body{overflow-x:hidden}
         </table>
       </div>
     </details>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="background:#fff" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow"><span class="dot"></span>자주 묻는 질문</span>
+      <h2 id="faq-title">AI 안부전화,<br>궁금한 점을 모았습니다.</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item reveal" open>
+        <summary><h3>AI 안부전화란 무엇인가요?</h3></summary>
+        <div class="faq-a"><p>AI가 어르신께 직접 전화를 걸어 대화로 안부를 확인하는 비대면 돌봄 서비스입니다. AI 영실이는 매일 안부전화를 드리고, 대화 속 위험 신호를 감지하면 보호자·119·복지사에게 즉시 연결합니다.</p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>AI 안부전화 비용은 얼마인가요?</h3></summary>
+        <div class="faq-a"><p>앱 설치 없는 정량제는 월 21,000원(부가세 별도, 포함 통화 25통)부터이며, 처음 도입하는 기관은 7,000원(부가세 포함)으로 30일 체험할 수 있습니다. 앱 설치 버전은 1인 월 11,000원(부가세 포함)부터이고, 30일 무료 시범사업으로 먼저 운영해 볼 수 있습니다. 지자체·복지기관 단체 도입은 별도 요금을 안내해 드립니다. <a href="#metered-pricing">요금 자세히 보기</a></p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>지자체·복지기관은 어떻게 도입하나요?</h3></summary>
+        <div class="faq-a"><p>도입 문의를 남기시면 담당자가 영업일 1~2일 안에 연락드립니다. 30일 체험이나 시범사업으로 먼저 운영해 보고 본 도입을 결정할 수 있으며, 담당자는 관리자 대시보드 한 화면에서 여러 어르신의 통화 결과와 위험 알림을 확인합니다. <a href="#contact">도입 문의하기</a></p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>먼저 체험해 볼 수 있나요?</h3></summary>
+        <div class="faq-a"><p>네. 페이지 맨 위에서 이름과 휴대폰 번호를 입력하고 개인정보 수집·이용에 동의하시면 바로 체험 전화가 걸려 옵니다(통화 최대 3분). 신청 정보와 동의 기록은 신청일부터 30일간 보관 후 삭제하며, 자세한 기준은 <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에서 확인할 수 있습니다.</p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>어르신이 앱을 설치하거나 기기를 다뤄야 하나요?</h3></summary>
+        <div class="faq-a"><p>아니요. 어르신은 평소처럼 걸려 오는 전화를 받기만 하시면 되며, 앱 설치 없이 이용하는 정량제 요금제가 있습니다. 앱 설치 버전을 쓰면 전화가 부담스러운 날에는 앱에서 버튼 하나(좋아요·그럭저럭·안 좋아요)로 오늘 상태를 알려 줄 수 있습니다.</p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>위험 신호는 어떻게 감지하나요?</h3></summary>
+        <div class="faq-a"><p>대화 속 키워드와 말투를 분석해 정상·관찰·위험 3단계로 자동 분류하고 기록합니다. "숨이 차", "쓰러질 것 같아"처럼 위험한 표현이 나오면 즉시 보호자와 119에 연결합니다.</p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>폭염·한파 같은 날씨에도 도움이 되나요?</h3></summary>
+        <div class="faq-a"><p>네. 기상청 정보와 연동해 폭염·한파 등 특보가 발령되면 안부 멘트에 안전 안내를 더해 전화드립니다. <a href="#weather">기상청 연동 보기</a></p></div>
+      </details>
+      <details class="faq-item reveal">
+        <summary><h3>보호자가 부모님을 위해 신청할 수도 있나요?</h3></summary>
+        <div class="faq-a"><p>도입 문의에서 문의 유형을 '보호자(개인) 신청'으로 선택해 남겨 주세요. 담당자가 신청 가능 여부와 이용 방법을 안내해 드립니다. <a href="#contact">문의 남기기</a></p></div>
+      </details>
+    </div>
   </div>
 </section>
 
@@ -1229,7 +1358,7 @@ body{overflow-x:hidden}
         <p>(주)크래프트 · The Greatest ICT Platform Partner. 매일의 안부로 어르신의 하루를 지킵니다.</p>
       </div>
       <div class="foot-cols">
-        <div><h4>서비스</h4><a href="#how">작동 원리</a><a href="#features">기능</a><a href="#metered-pricing">요금</a></div>
+        <div><h4>서비스</h4><a href="#how">작동 원리</a><a href="#features">기능</a><a href="#metered-pricing">요금</a><a href="#faq">자주 묻는 질문</a></div>
         <div><h4>회사</h4><a href="#">회사소개</a><a href="#">채용</a><a href="#contact">도입 문의</a></div>
         <div><h4>연락처</h4><a href="mailto:kraft@krafte.net">kraft@krafte.net</a><a href="tel:1877-1979">1877-1979</a></div>
       </div>
