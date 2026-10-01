@@ -123,7 +123,7 @@
           "name": "먼저 체험해 볼 수 있나요?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "네. 페이지 맨 위에서 이름과 휴대폰 번호를 입력하고 개인정보 수집·이용에 동의하시면 바로 체험 전화가 걸려 옵니다(통화 최대 3분). 신청 정보·동의 기록·대화 텍스트와 선택 동의한 녹음은 신청일로부터 1일간 보관 후 삭제하며, 자세한 기준은 개인정보처리방침에서 확인할 수 있습니다."
+            "text": "네. 페이지 맨 위에서 이름과 휴대폰 번호를 입력하고 개인정보 수집·이용에 동의하시면 바로 체험 전화가 걸려 옵니다(통화 최대 3분). 신청 정보·동의 기록·대화 텍스트와 선택 동의한 녹음은 신청일로부터 14일(2주)간 보관 후 삭제하며, 자세한 기준은 개인정보처리방침에서 확인할 수 있습니다."
           }
         },
         {
@@ -747,11 +747,11 @@ body{overflow-x:hidden}
         </div>
         <label class="hero-call-consent" for="heroCallConsent">
           <input id="heroCallConsent" type="checkbox" required />
-          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호와 체험 대화의 텍스트 전환·저장에 동의합니다. 운영관리자가 체험 확인 목적으로 조회하며, 신청 정보·동의 기록·대화 텍스트는 신청일로부터 1일간 보관 후 삭제합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
+          <span>[필수] 체험 전화 신청을 위한 이름·휴대폰 번호와 체험 대화의 텍스트 전환·저장에 동의합니다. 운영관리자가 체험 확인 목적으로 조회하며, 신청 정보·동의 기록·대화 텍스트는 신청일로부터 14일(2주)간 보관 후 삭제합니다. <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침 보기 (새 창)</a></span>
         </label>
         <label class="hero-call-consent" for="heroCallRecordingConsent">
           <input id="heroCallRecordingConsent" type="checkbox" />
-          <span>[선택] 체험 확인을 위한 통화 녹음과 운영관리자의 재생·다운로드에 동의합니다. 녹음은 신청일로부터 1일간 보관 후 삭제합니다. 동의하지 않아도 체험 전화와 대화 텍스트 전환은 이용할 수 있습니다.</span>
+          <span>[선택] 체험 확인을 위한 통화 녹음과 운영관리자의 재생·다운로드에 동의합니다. 녹음은 신청일로부터 14일(2주)간 보관 후 삭제합니다. 동의하지 않아도 체험 전화와 대화 텍스트 전환은 이용할 수 있습니다.</span>
         </label>
         <button class="btn btn-primary" type="submit">3분 체험 전화 받기</button>
         <p class="hero-call-note">신청하면 바로 발신 · 통화 최대 3분 · 동의를 거부할 수 있으며, 미동의 시 체험 전화 신청이 제한됩니다.</p>
@@ -1315,7 +1315,7 @@ body{overflow-x:hidden}
       </details>
       <details class="faq-item reveal">
         <summary><h3>먼저 체험해 볼 수 있나요?</h3></summary>
-        <div class="faq-a"><p>네. 페이지 맨 위에서 이름과 휴대폰 번호를 입력하고 개인정보 수집·이용에 동의하시면 바로 체험 전화가 걸려 옵니다(통화 최대 3분). 신청 정보·동의 기록·대화 텍스트와 선택 동의한 녹음은 신청일로부터 1일간 보관 후 삭제하며, 자세한 기준은 <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에서 확인할 수 있습니다.</p></div>
+        <div class="faq-a"><p>네. 페이지 맨 위에서 이름과 휴대폰 번호를 입력하고 개인정보 수집·이용에 동의하시면 바로 체험 전화가 걸려 옵니다(통화 최대 3분). 신청 정보·동의 기록·대화 텍스트와 선택 동의한 녹음은 신청일로부터 14일(2주)간 보관 후 삭제하며, 자세한 기준은 <a href="/youngsili-privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에서 확인할 수 있습니다.</p></div>
       </details>
       <details class="faq-item reveal">
         <summary><h3>어르신이 앱을 설치하거나 기기를 다뤄야 하나요?</h3></summary>
@@ -1637,7 +1637,7 @@ body{overflow-x:hidden}
     pending=true;button.disabled=true;button.textContent='전화 연결을 준비하고 있어요…';
     fetch('https://api.krafte.net/demo/call',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-09-28-v1',recordingConsent:recordingConsentInput.checked,recordingConsentVersion:'demo-recording-2026-09-28-v1'})
+      body:JSON.stringify({name:name,phone:phone,scenario:scenario,privacyConsent:true,privacyConsentVersion:'2026-10-01-v2',recordingConsent:recordingConsentInput.checked,recordingConsentVersion:'demo-recording-2026-10-01-v2'})
     }).then(function(response){return response.json().catch(function(){return {};}).then(function(body){if(!response.ok)throw body;return body;});})
       .then(function(result){
         if(!result.called)throw {message:'지금은 체험 전화를 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'};
