@@ -1018,7 +1018,21 @@
         auth.signInWithGoogleIdToken(resp.credential).then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
       },
     });
-    window.google.accounts.id.renderButton($('login-google'), { theme: 'outline', size: 'large', text: 'signin_with', width: 320, locale: 'ko' });
+    // GIS supports up to 400px. Match the other providers and redraw on resize.
+    var slot = $('login-google');
+    var renderedWidth = 0;
+    function renderGoogleButton() {
+      var width = Math.min(400, Math.floor(slot.getBoundingClientRect().width));
+      if (!width || width === renderedWidth) return;
+      renderedWidth = width;
+      window.google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', text: 'signin_with', width: width, locale: 'ko' });
+    }
+    renderGoogleButton();
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { requestAnimationFrame(renderGoogleButton); }).observe(slot);
+    } else {
+      window.addEventListener('resize', renderGoogleButton);
+    }
   }
 
   function bind() {
