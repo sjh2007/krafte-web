@@ -11,6 +11,11 @@
   ],
   "redirects": [
     {
+      "source": "/banggeul-ops/",
+      "destination": "https://family-banggeul-293810095616.asia-northeast3.run.app/ops",
+      "permanent": false
+    },
+    {
       "source": "/banggeul-ops",
       "destination": "https://family-banggeul-293810095616.asia-northeast3.run.app/ops",
       "permanent": false
