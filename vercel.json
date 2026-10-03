@@ -11,6 +11,11 @@
   ],
   "redirects": [
     {
+      "source": "/banggeul-ops",
+      "destination": "https://family-banggeul-293810095616.asia-northeast3.run.app/ops",
+      "permanent": false
+    },
+    {
       "source": "/banggeul-pay.html",
       "has": [{ "type": "host", "value": "krafte.net" }],
       "destination": "https://www.krafte.net/banggeul-pay.html",
