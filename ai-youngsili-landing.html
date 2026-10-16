@@ -708,6 +708,14 @@ select option{color:#111}
  .dm-filter{gap:6px}.dm-filter button{padding:8px 12px;min-height:44px}
  .seg{flex-wrap:wrap;max-width:100%}.seg button{min-height:44px}
 }
+/* Mobile audit fixes: weather layout, form readability and touch targets. */
+.wx-grid>*,.wx-panel{min-width:0}
+#clear-motion{min-width:44px;min-height:44px;flex-shrink:0}
+@media(max-width:768px){
+ .wx-grid{grid-template-columns:minmax(0,1fr)}
+ .wx-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #contact input,#contact select,#contact textarea{font-size:16px}
+}
 </style>
   <link rel="icon" href="/favicon-youngsili.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-youngsili-32.png">
@@ -1431,18 +1439,18 @@ html,body{overflow-x:hidden}
     <div class="form reveal">
       <form id="inquiryForm">
         <div class="field">
-          <label>문의 유형 <span class="req">*</span></label>
-          <select name="type" required><option value="">선택해 주세요</option><option>지자체·공공기관 도입</option><option>복지기관·시설 도입</option><option>보호자(개인) 신청</option><option>제휴·투자 문의</option></select>
+          <label for="inquiry-type">문의 유형 <span class="req">*</span></label>
+          <select id="inquiry-type" name="type" required><option value="">선택해 주세요</option><option>지자체·공공기관 도입</option><option>복지기관·시설 도입</option><option>보호자(개인) 신청</option><option>제휴·투자 문의</option></select>
         </div>
         <div class="row2">
-          <div class="field"><label>이름 <span class="req">*</span></label><input name="name" type="text" placeholder="홍길동" required></div>
-          <div class="field"><label>소속·기관명 <span class="req">*</span></label><input name="org" type="text" placeholder="○○구청 / ○○복지관" required></div>
+          <div class="field"><label for="inquiry-name">이름 <span class="req">*</span></label><input id="inquiry-name" name="name" type="text" placeholder="홍길동" required></div>
+          <div class="field"><label for="inquiry-org">소속·기관명 <span class="req">*</span></label><input id="inquiry-org" name="org" type="text" placeholder="○○구청 / ○○복지관" required></div>
         </div>
         <div class="row2">
-          <div class="field"><label>연락처 <span class="req">*</span></label><input name="phone" type="tel" placeholder="010-1234-5678" required></div>
-          <div class="field"><label>이메일 <span class="req">*</span></label><input name="email" type="email" placeholder="name@example.com" required></div>
+          <div class="field"><label for="inquiry-phone">연락처 <span class="req">*</span></label><input id="inquiry-phone" name="phone" type="tel" placeholder="010-1234-5678" required></div>
+          <div class="field"><label for="inquiry-email">이메일 <span class="req">*</span></label><input id="inquiry-email" name="email" type="email" placeholder="name@example.com" required></div>
         </div>
-        <div class="field"><label>문의 내용 <span class="req">*</span></label><textarea name="message" placeholder="도입 배경, 예산·일정, 궁금한 점 등을 자유롭게 적어 주세요." required></textarea></div>
+        <div class="field"><label for="inquiry-message">문의 내용 <span class="req">*</span></label><textarea id="inquiry-message" name="message" placeholder="도입 배경, 예산·일정, 궁금한 점 등을 자유롭게 적어 주세요." required></textarea></div>
         <button class="btn btn-primary" type="submit">문의 보내기 →</button>
         <p class="form-foot">또는 이메일로 직접: <a href="mailto:kraft@krafte.net">kraft@krafte.net</a></p>
       </form>
@@ -1480,7 +1488,7 @@ html,body{overflow-x:hidden}
   /* mobile menu */
   var t=document.getElementById('navToggle'), m=document.getElementById('mob');
   t.addEventListener('click',function(){var o=m.classList.toggle('open');t.setAttribute('aria-expanded',o);});
-  m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){m.classList.remove('open');});});
+  m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){m.classList.remove('open');t.setAttribute('aria-expanded','false');});});
 
   /* reveal on scroll */
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.16});
