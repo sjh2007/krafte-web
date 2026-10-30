@@ -57,6 +57,18 @@ test('카카오·네이버 — 서버 코드 교환 → 커스텀 토큰 로그�
   assert.equal(auth.getSession().idToken, 'id3');
 });
 
+test('앱 로그인 인계 — URL의 1회용 코드만 서버에서 교환한다', async () => {
+  const { auth, calls } = setup([
+    reply(200, { customToken: 'handoff-custom-token' }),
+    reply(200, { idToken: 'id-handoff', refreshToken: 'r-handoff', expiresIn: '3600' }),
+  ]);
+  await auth.signInWithAppHandoff('opaque-one-time-code');
+  assert.equal(calls[0].url, 'https://api.test/auth/web-handoff/redeem');
+  assert.deepEqual(JSON.parse(calls[0].opts.body), { code: 'opaque-one-time-code' });
+  assert.deepEqual(JSON.parse(calls[1].opts.body), { token: 'handoff-custom-token', returnSecureToken: true });
+  assert.equal(auth.getSession().idToken, 'id-handoff');
+});
+
 test('idToken 없이 200 응답(다른 방법으로 가입된 계정) → account_link_required', async () => {
   const { auth } = setup([reply(200, { needConfirmation: true })]);
   await assert.rejects(auth.signInWithGoogleIdToken('google-jwt'), (e) => e instanceof PayAuthError && e.code === 'account_link_required');
