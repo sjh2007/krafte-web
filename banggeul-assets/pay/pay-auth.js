@@ -79,6 +79,14 @@
       });
     }
 
+    // 앱 ID 토큰을 URL에 노출하지 않고, 서버가 발급한 단회용 코드만 교환한다.
+    function signInWithAppHandoff(code) {
+      return postJson(config.apiBase + '/auth/web-handoff/redeem', { code: code }).then(function (r) {
+        if (!r.res.ok || !r.data.customToken) throw PayAuthError((r.data && r.data.error) || 'invalid_web_handoff');
+        return firebaseSignIn('signInWithCustomToken', { token: r.data.customToken, returnSecureToken: true });
+      });
+    }
+
     function getIdToken() {
       var s = readSession();
       if (!s) return Promise.reject(PayAuthError('session_expired'));
@@ -111,7 +119,7 @@
 
     return {
       getSession: readSession, signOut: signOut,
-      signInWithEmail: signInWithEmail, signInWithGoogleIdToken: signInWithGoogleIdToken, signInWithWebCode: signInWithWebCode,
+      signInWithEmail: signInWithEmail, signInWithGoogleIdToken: signInWithGoogleIdToken, signInWithWebCode: signInWithWebCode, signInWithAppHandoff: signInWithAppHandoff,
       getIdToken: getIdToken, api: api,
     };
   }

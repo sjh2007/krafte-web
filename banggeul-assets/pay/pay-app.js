@@ -964,6 +964,16 @@
 
   // ── 시작 ──
   function handleReturns() {
+    var appHandoff = new URLSearchParams(location.search).get('appHandoff');
+    if (appHandoff) {
+      // 외부 리소스 요청 전에 주소에서 지워 방문 기록·Referer 노출을 막는다.
+      clearUrl();
+      show('loading');
+      return auth.signInWithAppHandoff(appHandoff).then(onLoginSuccess).catch(function () {
+        show('login');
+        banner('앱 로그인 연결이 만료되었어요. 앱에서 구독/결제를 다시 열어 주세요.');
+      });
+    }
     var oauth = C.parseOAuthReturn(location.search);
     if (oauth) {
       var expected = sessionStorage.getItem(OAUTH_STATE_KEY);
