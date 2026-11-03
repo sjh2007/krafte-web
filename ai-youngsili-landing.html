@@ -716,6 +716,11 @@ select option{color:#111}
  .wx-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
  #contact input,#contact select,#contact textarea{font-size:16px}
 }
+
+.business-info{border-top:1px solid rgba(255,255,255,.14);padding:24px 0;color:#bdcadd;font-size:14px;line-height:1.9;word-break:keep-all;overflow-wrap:anywhere}
+.business-info p{margin:0 0 6px}.business-info strong{color:#fff;font-weight:700}.business-info a{text-decoration:underline;text-underline-offset:3px}.business-info a:hover{color:#fff}
+.business-info .business-row{display:flex;flex-wrap:wrap;gap:4px 20px}
+@media(max-width:600px){.business-info{font-size:13px;padding:22px 0}.business-info .business-row{display:block}.business-info .business-row span{display:block;margin-bottom:4px}}
 </style>
   <link rel="icon" href="/favicon-youngsili.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-youngsili-32.png">
@@ -1477,6 +1482,12 @@ html,body{overflow-x:hidden}
         <div><h4>연락처</h4><a href="mailto:kraft@krafte.net">kraft@krafte.net</a><a href="tel:1877-1979">1877-1979</a></div>
       </div>
     </div>
+    <section class="business-info" id="business-info" aria-label="사업자 및 개인정보 보호책임자 정보">
+      <p><strong>주식회사 크래프트</strong></p>
+      <p class="business-row"><span>대표 신주환</span><span>사업자등록번호 884-81-02216</span><span>통신판매업신고 제2021-대구동구-1233호</span></p>
+      <p>대구광역시 동구 동대구로 465, 712호(신천동, 스케일업허브)</p>
+      <p>개인정보 보호책임자 주희영 (<a href="mailto:kraft@krafte.net">kraft@krafte.net</a>)</p>
+    </section>
     <div class="foot-bot"><span>© 2026 KRAFT (주)크래프트. All rights reserved.</span><span>The Greatest ICT Platform Partner</span></div>
   </div>
 </footer>
