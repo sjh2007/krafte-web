@@ -119,3 +119,18 @@ dialog{max-height:calc(100% - 40px);overflow:auto}
 #mg-selection-card .btn{min-height:52px}
 #mg-steps{margin-top:12px}
 #mg-steps .step{border-color:var(--line);padding:14px}
+
+/* Shared plan-change CTA: all accounts, existing eligibility rules preserved. */
+.btn.plan-change-primary,.btn.plan-confirm-primary{min-height:56px;height:auto;padding:16px 20px;font-size:1.125rem;line-height:1.5;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;text-align:center}
+.btn.plan-change-primary{width:100%;margin-top:16px}
+#mg-plan-submit:disabled{background:#E5E5E5;border-color:#E5E5E5;color:#5A6480;opacity:1;cursor:not-allowed}
+.plan-change-primary:focus-visible,.plan-confirm-primary:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.plan-change-hint{margin:16px 0 0;color:var(--blue-deep);font-size:1rem;word-break:keep-all;overflow-wrap:anywhere}
+.plan-change-primary[aria-busy="true"]::before{content:"";width:18px;height:18px;flex:0 0 auto;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:plan-spin 1s linear infinite}
+@keyframes plan-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.plan-change-primary[aria-busy="true"]::before{animation:none}}
+#mg-plans .plan-head{flex-wrap:wrap;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+#mg-plans .plan-head .price{max-width:100%}
+#mg-plans .choice{flex-wrap:wrap;padding-top:10px;padding-bottom:10px;word-break:keep-all;overflow-wrap:anywhere}
+#confirm-dialog .actions:has(.plan-confirm-primary){display:flex;flex-direction:column-reverse}
+#confirm-dialog .plan-confirm-primary{width:100%}

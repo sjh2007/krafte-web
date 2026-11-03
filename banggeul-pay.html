@@ -8,7 +8,7 @@
 <meta name="referrer" content="no-referrer" />
 <link rel="icon" href="favicon-banggeul.ico" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
-<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20261003a" />
+<link rel="stylesheet" href="banggeul-assets/pay/pay.css?v=20261103-plan-cta-r2" />
 </head>
 <body>
 <header class="top">
@@ -121,7 +121,9 @@
       <h2>요금제 변경</h2>
       <p class="muted small">바꾼 요금제는 다음 결제일부터 적용돼요(무료 체험 중에는 바로 적용).</p>
       <div id="mg-plans" class="choices"></div>
-      <button type="button" class="btn" id="mg-plan-submit">요금제 변경</button>
+      <p class="plan-change-hint" id="mg-plan-hint" aria-live="polite"></p>
+      <button type="button" class="btn primary block plan-change-primary" id="mg-plan-submit" aria-describedby="mg-plan-hint" disabled>변경할 요금제를 선택해 주세요</button>
+      <button type="button" class="btn block" id="mg-plan-retry" hidden>요금 다시 불러오기</button>
     </div>
     <div class="card">
       <h2>결제 내역</h2>
@@ -178,6 +180,6 @@
 <script src="banggeul-assets/pay/pay-config.js?v=20260919g"></script>
 <script src="banggeul-assets/pay/pay-core.js?v=20260919g"></script>
 <script src="banggeul-assets/pay/pay-auth.js?v=20261030-handoff"></script>
-<script src="banggeul-assets/pay/pay-app.js?v=20261030-handoff"></script>
+<script src="banggeul-assets/pay/pay-app.js?v=20261103-plan-cta-r2"></script>
 </body>
 </html>

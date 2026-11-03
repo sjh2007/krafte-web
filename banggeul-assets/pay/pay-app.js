@@ -58,11 +58,17 @@
   function text(el, value) { el.textContent = value; return el; }
   function li(value) { return text(document.createElement('li'), value); }
   function busy(btn, on) { btn.disabled = on; btn.setAttribute('aria-busy', on ? 'true' : 'false'); }
-  function confirmDialog(message) {
+  function confirmDialog(message, options) {
     return new Promise(function (resolve) {
       var d = $('confirm-dialog');
       $('confirm-text').textContent = message;
+      var yesButton = $('confirm-yes');
+      var previousClass = yesButton.className;
+      var previousText = yesButton.textContent;
+      if (options) { yesButton.className = 'btn primary plan-confirm-primary'; yesButton.textContent = options.label; }
       function cleanup() {
+        yesButton.className = previousClass;
+        yesButton.textContent = previousText;
         $('confirm-yes').onclick = null;
         $('confirm-no').onclick = null;
         d.removeEventListener('cancel', onCancel);
@@ -165,7 +171,7 @@
       var label = document.createElement('label');
       label.className = 'choice';
       var input = document.createElement('input');
-      input.type = 'radio'; input.name = name; input.value = p; input.checked = p === selected; input.disabled = amount === null;
+      input.type = 'radio'; input.name = name; input.value = p; input.checked = p === selected; input.disabled = !validPlanAmount(amount);
       label.appendChild(input);
       label.appendChild(document.createTextNode(' ' + C.PLAN_NAMES[p]));
       label.appendChild(text(Object.assign(document.createElement('span'), { className: 'price' }), amount === null ? '준비 중' : '월 ' + C.formatWon(amount)));
@@ -754,6 +760,32 @@
     dl.appendChild(text(document.createElement('dd'), value));
   }
 
+  var planChangeBusy = false;
+  var planConfirmOpen = false;
+  function validPlanAmount(amount) {
+    return typeof amount === 'number' && isFinite(amount) && amount >= 0;
+  }
+  function planChangeView(s, plan, inputDisabled) {
+    var billing = s.subscription.billing || {};
+    if (!s.isOwner) return { disabled: true, label: '대표 보호자만 변경할 수 있어요', hint: '대표 보호자 계정에서 변경해 주세요.' };
+    if (!plan) return { disabled: true, label: '변경할 요금제를 선택해 주세요', hint: '위에서 변경할 요금제를 선택해 주세요.' };
+    if (!validPlanAmount((s.amounts || {})[plan])) return { disabled: true, label: '요금 확인 후 변경할 수 있어요', hint: '요금 정보를 확인하지 못했어요. 다시 불러와 주세요.', retry: true };
+    if (inputDisabled) return { disabled: true, label: '현재 조건으로는 변경할 수 없어요', hint: '요금제 카드의 이용 조건 안내를 확인해 주세요.' };
+    if (plan === (billing.pendingPlan || s.currentPlan)) return { disabled: true, label: billing.pendingPlan ? '변경 예약된 요금제예요' : '현재 이용 중인 요금제예요', hint: '다른 요금제를 선택하면 변경 내용을 확인할 수 있어요.' };
+    return { disabled: false, label: C.PLAN_NAMES[plan] + '로 변경하기', hint: C.PLAN_NAMES[plan] + ' 선택 · 적용 시점과 요금을 확인한 뒤 변경할 수 있어요.' };
+  }
+  function updatePlanChangeButton() {
+    var input = document.querySelector('input[name="mgPlan"]:checked');
+    var view = planChangeView(state.status, input && input.value, !!input && input.disabled);
+    var button = $('mg-plan-submit');
+    button.disabled = view.disabled || planChangeBusy || planConfirmOpen;
+    button.setAttribute('aria-busy', String(planChangeBusy));
+    text(button, planChangeBusy ? '변경 처리 중…' : planConfirmOpen ? '변경 내용 확인 중' : view.label);
+    text($('mg-plan-hint'), planChangeBusy ? '잠시만 기다려 주세요.' : planConfirmOpen ? '확인창에서 변경 내용을 확인해 주세요.' : view.hint);
+    $('mg-plan-retry').hidden = !view.retry;
+    $('mg-plan-retry').disabled = planChangeBusy || planConfirmOpen;
+  }
+
   function renderManage() {
     var s = state.status;
     var sub = s.subscription;
@@ -780,6 +812,7 @@
     } else {
       planChoices($('mg-plans'), 'mgPlan', b.pendingPlan || s.currentPlan);
     }
+    updatePlanChangeButton();
     renderManageSelection();
 
     // 한 달 쉬어가기 — 예정이면 취소 버튼, 쉬는 중이면 고객센터 안내 한 줄.
@@ -1102,7 +1135,12 @@
       });
     };
     $('mg-resume').onclick = function () { postAndReload('/family/billing/resume', undefined, '해지를 취소했어요. 다음 결제일에 자동결제돼요.'); };
+    $('mg-plans').addEventListener('change', updatePlanChangeButton);
+    $('mg-plan-retry').onclick = load;
     $('mg-plan-submit').onclick = function () {
+      if (planChangeBusy || planConfirmOpen) return;
+      var input = document.querySelector('input[name="mgPlan"]:checked');
+      if (planChangeView(state.status, input && input.value, !!input && input.disabled).disabled) return;
       var plan = selectedValue('mgPlan');
       var sub = state.status.subscription;
       var b = sub.billing || {};
@@ -1125,8 +1163,19 @@
           ? '다음 결제일(' + C.formatKstDate(b.nextPaymentAt) + ')부터 ' + name + ' 월 ' + amount + '으로 바뀌어요.'
           : '다음 결제부터 ' + name + ' 월 ' + amount + '으로 바뀌어요.';
       }
-      confirmDialog(msg).then(function (yes) {
-        if (yes) postAndReload('/family/billing/plan', { plan: plan }, '요금제를 바꿨어요.');
+      planConfirmOpen = true;
+      updatePlanChangeButton();
+      var label = name + (sub.status === 'trial' || b.cancelAtPeriodEnd ? '로 변경하기' : '로 변경 예약하기');
+      confirmDialog(msg, { label: label }).then(function (yes) {
+        planConfirmOpen = false;
+        if (!yes) return;
+        planChangeBusy = true;
+        updatePlanChangeButton();
+        return postAndReload('/family/billing/plan', { plan: plan }, '요금제를 바꿨어요.');
+      }).finally(function () {
+        planConfirmOpen = false;
+        planChangeBusy = false;
+        updatePlanChangeButton();
       });
     };
   }
