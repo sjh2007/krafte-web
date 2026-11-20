@@ -104,6 +104,12 @@
     var day = billingDayOf(opts.billingDay, (kind === 'overdue' || kind === 'immediate') ? opts.nextChargeAt : opts.chargeAt);
     var monthEnd = monthEndClause(day);
 
+    if (opts.couponCode && Number(opts.amount) === 0) {
+      return [line1,
+        date + '부터 한 회차는 쿠폰으로 무료 이용해요. 이 회차에는 결제되지 않아요.',
+        (nextDate ? nextDate + '부터 ' + nextPrice + '이 자동결제돼요. ' : '') + EVERY_MONTH + monthEnd,
+        CANCEL_ANYTIME + NO_REFUND];
+    }
     var line2, line3;
     // 4번째 줄 가운데 — 결제 전에 해지하면 어떻게 되는지.
     var beforeChargeClause = '다음 결제일 전에 해지하면 다음 결제는 되지 않아요. ';
@@ -247,6 +253,7 @@
   function submitLabel(o) {
     o = o || {};
     var kind = o.chargeKind;
+    if (o.couponCode && Number(o.amount) === 0) return '한 회차 무료 적용 후 자동결제 등록';
     if (kind === 'trial_end') {
       var monthly = (o.monthlyAmount !== null && o.monthlyAmount !== undefined) ? o.monthlyAmount : o.amount;
       return '무료 체험 후 월 ' + formatWon(monthly) + ' 자동결제 등록';
@@ -330,7 +337,7 @@
 
   // 로그인(카카오·네이버) 또는 모바일 결제창에서 돌아와 페이지가 다시 열린 경우.
   function isReturnLoad(search) {
-    return !!(parseOAuthReturn(search) || parsePortoneReturn(search));
+    return !!(parseOAuthReturn(search) || /[?&]tossReturn=(success|fail)(?:&|$)/.test(search || ''));
   }
 
   function decideView(s) {
@@ -351,14 +358,9 @@
   var PAUSE_UNAVAILABLE = '지금은 쉬어가기를 신청할 수 없어요.';
   var ERROR_MESSAGES = {
     consent_required: '자동결제 동의에 체크해 주세요.',
-    payer_name: '결제하시는 분 이름을 적어 주세요.',
-    payer_phone: '휴대폰 번호를 확인해 주세요(예: 010-1234-5678).',
-    payer_email: '이메일 주소를 확인해 주세요.',
     owner_only: '결제는 대표 보호자만 할 수 있어요.',
     no_family: '방글이 앱에서 먼저 가입해 주세요.',
     billing_disabled: '결제 기능을 준비하고 있어요. 조금만 기다려 주세요.',
-    portone_not_configured: '결제 기능을 준비하고 있어요. 조금만 기다려 주세요.',
-    portone_error: '결제사 연결이 잠시 원활하지 않아요. 잠시 후 다시 시도해 주세요.',
     method_unavailable: '선택하신 결제수단은 지금 쓸 수 없어요. 다른 결제수단을 골라 주세요.',
     invalid_billing_key: '결제수단 등록을 확인하지 못했어요. 다시 시도해 주세요.',
     free_family: '무료로 이용 중인 가족이라 결제할 것이 없어요.',
@@ -377,6 +379,7 @@
     session_expired: '다시 로그인해 주세요.',
     unauthorized: '다시 로그인해 주세요.',
     oauth_state_mismatch: '로그인 확인에 실패했어요. 다시 시도해 주세요.',
+    legacy_provider_retired: '이전 결제 내역은 고객센터에서 확인해 드려요. 새 카드 등록이나 재결제는 진행하지 마세요.',
     payment_window_failed: '결제수단 등록이 완료되지 않았어요. 다시 시도해 주세요.',
     not_active: PAUSE_UNAVAILABLE,
     canceled: PAUSE_UNAVAILABLE,
@@ -438,32 +441,9 @@
     return authorizeUrl('https://nid.naver.com/oauth2.0/authorize', o.clientId, o.redirectUri, o.state);
   }
 
-  // 모바일에서는 포트원 결제창이 redirectUrl로 돌아온다. 우리 표식 pgReturn=1이 붙은 복귀만 처리한다.
-  function parsePortoneReturn(search) {
-    var q = new URLSearchParams(search || '');
-    if (q.get('pgReturn') !== '1') return null;
-    return { billingKey: q.get('billingKey'), code: q.get('code'), message: q.get('message') };
-  }
 
-  // 결제자 정보 — KG이니시스 빌링키 발급 필수값(9/19 실호출 확인): PC는 이름·휴대폰·이메일 모두,
-  // 모바일은 이름만(휴대폰·이메일은 있으면 보낸다). 입력값을 다듬어 포트원 SDK customer 형식으로 돌려준다.
   // 틀리면 { ok:false, error: 오류 코드 }. 비어 있는 선택값은 결과에서 뺀다.
-  function normalizePayer(input, opts) {
-    var i = input || {};
-    var mobile = !!(opts && opts.mobile);
-    var name = String(i.name || '').trim();
-    var phone = String(i.phone || '').replace(/[\s-]/g, '');
-    var email = String(i.email || '').trim();
-    if (!name || name.length > 30) return { ok: false, error: 'payer_name' };
-    if ((!mobile || phone) && !/^01[016789]\d{7,8}$/.test(phone)) return { ok: false, error: 'payer_phone' };
-    if ((!mobile || email) && (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return { ok: false, error: 'payer_email' };
-    var value = { fullName: name };
-    if (phone) value.phoneNumber = phone;
-    if (email) value.email = email;
-    return { ok: true, value: value };
-  }
 
-  // 모바일 판정 — 포트원 SDK가 모바일 결제창(리다이렉트)을 여는 기준과 같게 사용자 에이전트로 본다.
   // 서버가 준 결제수단 목록(/status methods)으로 보여 줄 버튼을 정한다. 목록이 없거나 비면 옛 서버로 보고 모두 보여 준다.
   function visibleMethods(all, available) {
     if (!Array.isArray(available) || available.length === 0) return all.slice();
@@ -475,14 +455,6 @@
   }
 
   // "결제하시는 분" 칸 중 보여 줄 것 — 모바일은 이름을 모를 때 이름 칸 하나만(대표 9/19: 모바일은 바로 결제창으로),
-  // PC는 KG이니시스가 세 가지를 모두 요구해 전부 보인다(미리 채운 값은 그대로 두고 고칠 수 있게).
-  function payerFieldsToShow(mobile, prefill, requirement) {
-    var p = prefill || {};
-    // 토스페이먼츠 카드·카카오페이는 회원 번호만으로 결제창이 열린다(9/19 실호출) — 칸을 모두 숨긴다.
-    if (requirement === 'none') return { name: false, phone: false, email: false };
-    if (mobile) return { name: !String(p.fullName || '').trim(), phone: false, email: false };
-    return { name: true, phone: true, email: true };
-  }
 
   // ── 단계 선택형 결제(대표 확정 v0.26, API 계약 9/19) — ① 이용 방식 → ② 몇 분·누구 → ③ 요금제.
   // selection = 구독할 부모님만 [{ elderId, mode: 'app'|'phone' }]. 화면의 요금제 금액은 /status의 priceTable로 계산한
@@ -812,13 +784,6 @@
     if (selection && selection.length) body.selection = copySelection(selection);
     return body;
   }
-  function billingKeyBody(billingKey, pending) {
-    pending = pending || {};
-    var body = { billingKey: billingKey, method: pending.method, consent: { autoPay: true, version: pending.consentVersion } };
-    if (pending.plan) body.plan = pending.plan;
-    if (pending.selection && pending.selection.length) body.selection = copySelection(pending.selection);
-    return body;
-  }
   function selectionBody(selection) { return { selection: copySelection(selection) }; }
 
   // /checkout 응답의 월 금액 — 부모님별 줄(lines) 합계, 줄이 없으면(옛 서버) 이번 청구액(amount).
@@ -857,17 +822,17 @@
     stepsSetCount: stepsSetCount, stepsSetChosen: stepsSetChosen, stepSelection: stepSelection,
     displayTotal: displayTotal, displayTotals: displayTotals, stepPlanCardModel: stepPlanCardModel,
     selectionSummary: selectionSummary, selectionDescribe: selectionDescribe, sameSelection: sameSelection, unpairedNotes: unpairedNotes,
-    validateSteps: validateSteps, checkoutBody: checkoutBody, billingKeyBody: billingKeyBody, selectionBody: selectionBody,
+    validateSteps: validateSteps, checkoutBody: checkoutBody, selectionBody: selectionBody,
     checkoutMonthly: checkoutMonthly, selectionAppliedText: selectionAppliedText, selectionConfirmText: selectionConfirmText,
     selectionPriceHint: selectionPriceHint, planBlockers: planBlockers, planLimitNote: planLimitNote, ensureValidPlan: ensureValidPlan,
-    normalizePayer: normalizePayer, isMobileUA: isMobileUA, visibleMethods: visibleMethods, payerFieldsToShow: payerFieldsToShow,
+    isMobileUA: isMobileUA, visibleMethods: visibleMethods,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,
     errorMessage: errorMessage, paymentStatusLabel: paymentStatusLabel,
     makeOAuthState: makeOAuthState, parseOAuthReturn: parseOAuthReturn,
     kakaoAuthorizeUrl: kakaoAuthorizeUrl, naverAuthorizeUrl: naverAuthorizeUrl,
-    parsePortoneReturn: parsePortoneReturn,
+
     CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
     isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,

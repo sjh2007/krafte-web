@@ -118,3 +118,27 @@ test('signOut — 세션 삭제', async () => {
   auth.signOut();
   assert.equal(auth.getSession(), null);
 });
+
+test('앱 인계 교환 실패 뒤 다른 보호자의 웹 세션이 복구되지 않는다', async () => {
+  const {auth, storage} = setup([reply(401,{error:'invalid_web_handoff'})]);
+  storage.setItem('banggeulPaySession', JSON.stringify({idToken:'previous-user'}));
+  await assert.rejects(auth.signInWithAppHandoff('expired'), /invalid_web_handoff/);
+  assert.equal(auth.getSession(),null);
+});
+
+
+test('app return capability survives refresh only after successful native handoff', async () => {
+ const {auth,advance}=setup([reply(200,{customToken:'ct'}),reply(200,{idToken:'id',refreshToken:'r',expiresIn:3600}),reply(200,{id_token:'id2',refresh_token:'r2',expires_in:3600})]);
+ await auth.signInWithAppHandoff('one-time',1);
+ assert.equal(auth.getSession().appReturnVersion,1);
+ advance(3600000);
+ await auth.getIdToken();
+ assert.equal(auth.getSession().appReturnVersion,1);
+ auth.signOut();assert.equal(auth.getSession(),null);
+});
+test('legacy app handoff does not enable native return capability', async () => {
+ const {auth}=setup([reply(200,{customToken:'ct'}),reply(200,{idToken:'id',refreshToken:'r',expiresIn:3600})]);
+ await auth.signInWithAppHandoff('one-time');
+ assert.equal(auth.getSession().appEntry,true);
+ assert.equal(auth.getSession().appReturnVersion,undefined);
+});

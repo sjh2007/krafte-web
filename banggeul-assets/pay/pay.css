@@ -134,3 +134,9 @@ dialog{max-height:calc(100% - 40px);overflow:auto}
 #mg-plans .choice{flex-wrap:wrap;padding-top:10px;padding-bottom:10px;word-break:keep-all;overflow-wrap:anywhere}
 #confirm-dialog .actions:has(.plan-confirm-primary){display:flex;flex-direction:column-reverse}
 #confirm-dialog .plan-confirm-primary{width:100%}
+
+/* Keep prices intact and allow metadata to stack at narrow/zoomed widths. */
+.plan-head{flex-wrap:wrap;min-width:0}
+.plan-head .price{max-width:100%}
+.facts dd{min-width:0;overflow-wrap:anywhere}
+@media(max-width:480px){.facts{grid-template-columns:minmax(0,1fr);gap:4px}.facts dd{margin-bottom:10px}}

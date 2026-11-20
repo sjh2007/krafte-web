@@ -38,8 +38,10 @@
     function readSession() {
       try { return JSON.parse(storage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; }
     }
-    function writeSession(idToken, refreshToken, expiresInSec) {
+    function writeSession(idToken, refreshToken, expiresInSec, appEntry, appReturnVersion) {
       var s = { idToken: idToken, refreshToken: refreshToken, expiresAt: now() + Number(expiresInSec) * 1000 };
+      if (appEntry) s.appEntry = true;
+      if (appEntry && appReturnVersion === 1) s.appReturnVersion = 1;
       storage.setItem(SESSION_KEY, JSON.stringify(s));
       return s;
     }
@@ -50,12 +52,12 @@
         .then(function (res) { return res.json().catch(function () { return {}; }).then(function (data) { return { res: res, data: data }; }); });
     }
 
-    function firebaseSignIn(method, body) {
+    function firebaseSignIn(method, body, appEntry, appReturnVersion) {
       return postJson(IDENTITY + method + '?key=' + config.firebaseApiKey, body).then(function (r) {
         if (!r.res.ok) throw PayAuthError(firebaseErrorCode(r.data));
         // 200이어도 idToken이 없을 수 있다(예: needConfirmation — 이 이메일이 이미 다른 방법으로 가입돼 있음).
         if (!r.data.idToken) throw PayAuthError('account_link_required');
-        writeSession(r.data.idToken, r.data.refreshToken, r.data.expiresIn);
+        writeSession(r.data.idToken, r.data.refreshToken, r.data.expiresIn, appEntry, appReturnVersion);
       });
     }
 
@@ -80,10 +82,11 @@
     }
 
     // 앱 ID 토큰을 URL에 노출하지 않고, 서버가 발급한 단회용 코드만 교환한다.
-    function signInWithAppHandoff(code) {
+    function signInWithAppHandoff(code, appReturnVersion) {
+      signOut();
       return postJson(config.apiBase + '/auth/web-handoff/redeem', { code: code }).then(function (r) {
         if (!r.res.ok || !r.data.customToken) throw PayAuthError((r.data && r.data.error) || 'invalid_web_handoff');
-        return firebaseSignIn('signInWithCustomToken', { token: r.data.customToken, returnSecureToken: true });
+        return firebaseSignIn('signInWithCustomToken', { token: r.data.customToken, returnSecureToken: true }, true, appReturnVersion);
       });
     }
 
@@ -98,7 +101,7 @@
       }).then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (data) {
           if (!res.ok || !data.id_token) { signOut(); throw PayAuthError('session_expired'); }
-          return writeSession(data.id_token, data.refresh_token, data.expires_in).idToken;
+          return writeSession(data.id_token, data.refresh_token, data.expires_in, s.appEntry, s.appReturnVersion).idToken;
         });
       });
     }
