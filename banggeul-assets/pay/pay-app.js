@@ -718,6 +718,7 @@
       verification_failed:['구매 내역 확인이 필요해요','Google Play 구매 내역은 확인했지만, 방글이 이용권 연결을 완료하지 못했어요. 구매 내역을 다시 확인해 주세요.'],
       pending:['결제 승인을 기다리고 있어요','Google Play에서 결제 진행 상태를 확인해 주세요.'],
       empty:['이 Google Play 계정에서 복원할 구매를 찾지 못했어요','구매에 사용한 Google Play 계정을 확인해 주세요.'],
+      empty_disabled:['복원할 Google Play 구매가 없어요','기존 구매 조회를 완료했어요. 신규 결제는 준비 중이며, 현재 이용 상태는 앱의 요금제 관리에서 확인할 수 있어요.'],
       unknown:['결제 결과를 확인해 주세요','기존 구매 내역을 먼저 확인해 주세요. 응답이 없으면 앱을 업데이트한 뒤 다시 확인해 주세요.']
     }[phase] || ['이용권 정보를 불러오지 못했어요','잠시 후 다시 확인해 주세요.'];
     message(copy[0],copy[1],phase === 'checking' ? null :
@@ -800,6 +801,11 @@
         var allowed = eligibility.status === 200 && decision.allowed === true && fresh &&
           evidence.owner === true && evidence.activeSubscription === false &&
           evidence.pendingPayment === false && evidence.unresolvedPurchase === false;
+        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
+            decision.reason === 'billing_disabled' && r.data.billingEnabled === false) {
+          purchaseHelp('empty_disabled');
+          return;
+        }
         if (allowed && (!r.data.subscription || r.data.subscription.status !== 'active')) {
           if (r.data.billingEnabled !== true) {
             purchaseHelp('empty');
