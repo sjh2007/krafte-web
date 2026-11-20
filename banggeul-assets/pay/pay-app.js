@@ -745,6 +745,12 @@
       });
       panel.hidden = false;
     }
+    if (phase === 'empty_disabled' && state.status && state.status.subscription) {
+      var sub = state.status.subscription;
+      if (sub.status === 'trial' && sub.trialEndsAt && Number.isFinite(Date.parse(sub.trialEndsAt))) {
+        $('msg-body').appendChild(el('p', '', '무료 체험 종료일: ' + C.formatKstDate(sub.trialEndsAt)));
+      }
+    }
     var old = $('play-support');
     if (old) old.remove();
     var link = el('a','btn','고객센터');
