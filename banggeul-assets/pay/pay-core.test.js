@@ -1,5 +1,3 @@
-const EVERY_MONTH = '이후에도 한 달마다 같은 날 자동결제돼요.';
-const MONTH_END = ' 그 날짜가 없는 달은 말일에 결제돼요.';
 // banggeul-assets/pay/pay-core.test.js — 실행: node --test banggeul-assets/pay/
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -138,7 +136,7 @@ test('decideView — 화면 결정 순서', () => {
 
 test('decideErrorView — 가족 없음은 앱 가입 안내', () => {
   assert.equal(C.decideErrorView('no_family'), 'no_family');
-  assert.equal(C.decideErrorView('payment_window_failed'), null);
+  assert.equal(C.decideErrorView('toss_direct_disabled'), null);
 });
 
 test('errorMessage — 서버 오류 코드별 문구, 모르는 코드는 기본 문구', () => {
@@ -184,6 +182,13 @@ test('OAuth 인가 URL', () => {
   assert.equal(n.origin + n.pathname, 'https://nid.naver.com/oauth2.0/authorize');
   assert.deepEqual(Object.fromEntries(n.searchParams), { response_type: 'code', client_id: 'ci', redirect_uri: redirectUri, state: 'naver.s' });
 });
+
+test('결제 제공자 복귀 파라미터는 공개 후보에서 처리하지 않는다', () => {
+  assert.equal(C.isReturnLoad('?pgReturn=1&billingKey=bk_1'), false);
+  assert.equal(C.isReturnLoad('?tossBillingReturn=1'), false);
+});
+
+// ── 결제 2차(Task 4): 버튼 금액·쉬어가기·해지·환불 요청·흐름 측정 ──
 
 test('submitLabel — 결제 성격별 등록 버튼 문구(금액은 서버 값)', () => {
   assert.equal(C.submitLabel({ chargeKind: 'trial_end', amount: 8900, monthlyAmount: 8900 }), '무료 체험 후 월 8,900원 자동결제 등록');
@@ -370,7 +375,7 @@ test('ONCE_PER_TAB_EVENTS · isReturnLoad — 방문당 1회 측정', () => {
   assert.deepEqual(C.ONCE_PER_TAB_EVENTS, ['pay_view', 'login_view', 'consent_checked']);
   assert.equal(C.isReturnLoad('?code=c1&state=naver.ab'), true);
   assert.equal(C.isReturnLoad('?error=access_denied&state=kakao.x'), true);
-  assert.equal(C.isReturnLoad('?tossReturn=success&attempt=fixture'), true);
+  assert.equal(C.isReturnLoad('?pgReturn=1&billingKey=bk'), false);
   assert.equal(C.isReturnLoad(''), false);
   assert.equal(C.isReturnLoad('?utm_source=kakao'), false);
 });
@@ -546,6 +551,21 @@ test('readOnlyCompositionLines — 준비 중(amount_error · phone_extra_price_
   assert.equal(C.readOnlyCompositionLines(Object.assign({}, s, { planDetails: { lite: { amount: null, error: 'x', lines: [] } } })), null);
   assert.equal(C.readOnlyCompositionLines(null), null);
 });
+
+test('normalizePayer — 직접연동 검수용 결제자 정보(이름·휴대폰·이메일)를 다듬는다', () => {
+  assert.deepEqual(C.normalizePayer({ name: ' 신보호 ', phone: '010-1234-5678', email: ' p@x.com ' }),
+    { ok: true, value: { fullName: '신보호', phoneNumber: '01012345678', email: 'p@x.com' } });
+  assert.equal(C.normalizePayer({ name: '', phone: '01012345678', email: 'p@x.com' }).error, 'payer_name');
+  assert.equal(C.normalizePayer({ name: '신', phone: '0212345678', email: 'p@x.com' }).error, 'payer_phone');
+  assert.equal(C.normalizePayer({ name: '신', phone: '010123', email: 'p@x.com' }).error, 'payer_phone');
+  assert.equal(C.normalizePayer({ name: '신', phone: '01012345678', email: 'px.com' }).error, 'payer_email');
+  assert.equal(C.normalizePayer(null).error, 'payer_name');
+  ['payer_name', 'payer_phone', 'payer_email'].forEach((code) => assert.notEqual(C.errorMessage(code), C.errorMessage('없는코드')));
+});
+
+// ── 대표 9/18 3차: 청약철회 삭제 · 결제일 문구(가족별 첫 결제일 기준) ──
+const EVERY_MONTH = '이후에도 한 달마다 같은 날 자동결제돼요.';
+const MONTH_END = ' 그 날짜가 없는 달은 말일에 결제돼요.';
 
 test('결제 기준일 billingDay — 서버 값이 우선, 29일 이상이면 말일 안내', () => {
   const imm = (billingDay) => C.noticeLines({ planName: '스탠다드', amount: 10800, chargeKind: 'immediate', chargeAt: '2026-09-18T03:00:00.000Z',
@@ -838,10 +858,17 @@ test('요청 본문 — checkout {method, plan, selection} · billing-key · sel
   const sel = [{ elderId: 'e2', mode: 'phone', extra: 'x' }];
   assert.deepEqual(C.checkoutBody('CARD', 'lite', sel), { method: 'CARD', plan: 'lite', selection: [{ elderId: 'e2', mode: 'phone' }] });
   assert.deepEqual(C.checkoutBody('CARD', null, null), { method: 'CARD' });
+  assert.deepEqual(C.billingKeyBody('bk', { method: 'CARD', consentVersion: 'v1', plan: 'plus', selection: sel }),
+    { billingKey: 'bk', method: 'CARD', consent: { autoPay: true, version: 'v1' }, plan: 'plus', selection: [{ elderId: 'e2', mode: 'phone' }] });
   // 옛 형식 PENDING·결제수단만 변경에는 plan·selection이 없다 — 싣지 않는다
+  assert.deepEqual(C.billingKeyBody('bk', { method: 'CARD', consentVersion: 'v1', plan: null, selection: null }),
+    { billingKey: 'bk', method: 'CARD', consent: { autoPay: true, version: 'v1' } });
+  assert.deepEqual(C.billingKeyBody('bk', { method: 'CARD', consentVersion: 'v1' }), { billingKey: 'bk', method: 'CARD', consent: { autoPay: true, version: 'v1' } });
   assert.deepEqual(C.selectionBody(sel), { selection: [{ elderId: 'e2', mode: 'phone' }] });
   // 모바일 복귀 — sessionStorage JSON 왕복 뒤에도 같은 본문
   const pending = JSON.parse(JSON.stringify({ method: 'CARD', consentVersion: C.BILLING_CONSENT_VERSION, plan: 'lite', selection: sel }));
+  assert.deepEqual(C.billingKeyBody('bk', pending), { billingKey: 'bk', method: 'CARD', consent: { autoPay: true, version: C.BILLING_CONSENT_VERSION },
+    plan: 'lite', selection: [{ elderId: 'e2', mode: 'phone' }] });
 });
 
 test('checkoutMonthly — 버튼·고지 금액은 /checkout 응답만(줄 합계, 없으면 amount)', () => {
@@ -877,7 +904,7 @@ test('단계 화면 문구 — 확정 문구 그대로, 금칙어 검사가 새 
   assert.deepEqual(C.MODE_CHOICE, { app: '앱으로 받기', phone: '전화로 받기' });
   const all = allScreenStrings();
   ['부모님마다 다르게 할게요', '전화 방식 준비 중이에요', '할머니', '앱 1분 · 전화 1분', '다음 결제일(10월 25일)부터 적용돼요.',
-    '앱 설치 · 무설치 전화 방식 선택하기', '어느 분께 전화 드릴까요?'].forEach((t) => assert.ok(all.includes(t), t));
+    '방식·인원 바꾸기', '어느 분께 전화 드릴까요?'].forEach((t) => assert.ok(all.includes(t), t));
 });
 
 // ── 부모님 통화 일정의 최소 요금제(requiredPlan, 9/19 추가) ──
@@ -933,16 +960,30 @@ test('validateSteps — plan이 주어지면 통화 일정 최소 요금제 확�
   assert.doesNotMatch(C.planLimitNote({ label: '엄마', requiredPlan: 'plus' }) + v.message, /위험|감지|부가세 별도/);
 });
 
-test('isMobileUA — 모바일은 이름을 알면 칸 없음, 모르면 이름만 / PC는 세 칸', () => {
+test('normalizePayer · 모바일 — 이름만 필수(휴대폰·이메일은 있으면 검사), PC는 세 가지 필수', () => {
+  assert.deepEqual(C.normalizePayer({ name: '신보호' }, { mobile: true }), { ok: true, value: { fullName: '신보호' } });
+  assert.deepEqual(C.normalizePayer({ name: '신보호', email: 'p@x.com' }, { mobile: true }), { ok: true, value: { fullName: '신보호', email: 'p@x.com' } });
+  assert.equal(C.normalizePayer({ name: '', phone: '01012345678' }, { mobile: true }).error, 'payer_name');
+  assert.equal(C.normalizePayer({ name: '신', phone: '0212' }, { mobile: true }).error, 'payer_phone');
+  assert.equal(C.normalizePayer({ name: '신보호' }).error, 'payer_phone');
+});
+
+test('payerFieldsToShow · isMobileUA — 모바일은 이름을 알면 칸 없음, 모르면 이름만 / PC는 세 칸', () => {
+  assert.deepEqual(C.payerFieldsToShow(true, { fullName: '신보호' }), { name: false, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(true, {}), { name: true, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(false, { fullName: '신보호' }), { name: true, phone: true, email: true });
   assert.equal(C.isMobileUA('Mozilla/5.0 (Linux; Android 14; SM-S918N) Mobile Safari'), true);
   assert.equal(C.isMobileUA('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'), true);
   assert.equal(C.isMobileUA('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140'), false);
 });
 
-test('결제수단·결제자 칸 — 서버가 준 수단만, 토스페이먼츠 카드·카카오페이는 결제자 칸 없음(9/19)', () => {
-  assert.deepEqual(C.visibleMethods(['CARD', 'KAKAOPAY', 'NAVERPAY'], ['CARD', 'KAKAOPAY']), ['CARD', 'KAKAOPAY']);
-  assert.deepEqual(C.visibleMethods(['CARD', 'KAKAOPAY', 'NAVERPAY'], undefined), ['CARD', 'KAKAOPAY', 'NAVERPAY']);
-  assert.deepEqual(C.visibleMethods(['CARD', 'KAKAOPAY', 'NAVERPAY'], []), ['CARD', 'KAKAOPAY', 'NAVERPAY']);
+test('결제수단·결제자 칸 — Toss 직접연동 후보에서는 카드만 노출한다', () => {
+  assert.deepEqual(C.visibleMethods(['CARD', 'LEGACY_WALLET', 'OTHER_PG'], ['CARD', 'LEGACY_WALLET']), ['CARD']);
+  assert.deepEqual(C.visibleMethods(['CARD', 'LEGACY_WALLET', 'OTHER_PG'], undefined), ['CARD']);
+  assert.deepEqual(C.visibleMethods(['CARD', 'LEGACY_WALLET', 'OTHER_PG'], []), ['CARD']);
+  assert.deepEqual(C.payerFieldsToShow(false, {}, 'none'), { name: false, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(true, {}, 'none'), { name: false, phone: false, email: false });
+  assert.deepEqual(C.payerFieldsToShow(false, {}, 'toss'), { name: true, phone: true, email: true });
 });
 
 test('planLimitNote — 실제 설정·요금제 규칙·해결 방법을 함께(대표 9/19)', () => {
@@ -954,12 +995,4 @@ test('planLimitNote — 실제 설정·요금제 규칙·해결 방법을 함께
     '어머니는 앱에서 주 5회(월~금)로 설정돼 있어요. 라이트는 이틀에 한 번이라, 라이트로 바꾸려면 앱에서 통화 요일을 줄여 주세요.');
   assert.equal(C.stepPlanCardModel('standard', [{ elderId: 'f', mode: 'phone' }], E, T).note,
     '할아버지는 앱에서 매일로 설정돼 있어요. 스탠다드는 주 5회라, 스탠다드로 바꾸려면 앱에서 통화 요일을 줄여 주세요.');
-});
-
-
-test('coupon checkout discloses free cycle and paid renewal', () => {
- const o={ planName:'라이트',amount:0,monthlyAmount:5900,chargeKind:'trial_end',chargeAt:'2027-01-31T03:00:00Z',nextChargeAt:'2027-02-28T03:00:00Z',nextAmount:5900,couponCode:'AUTO_FIRST_MONTH_2026',billingDay:31 };
- assert.match(C.noticeLines(o).join(' '),/쿠폰으로 무료/);
- assert.match(C.noticeLines(o).join(' '),/5,900원/);
- assert.match(C.submitLabel(o),/한 회차 무료/);
 });

@@ -7,3 +7,34 @@ test('missing/null/non-finite/negative prices block; valid zero stays valid',()=
 test('current and pending plan blocked, other selection allowed',()=>{const s=make();assert.equal(ctx.planChangeView(s,'lite',false).disabled,true);s.subscription.billing.pendingPlan='standard';assert.equal(ctx.planChangeView(s,'standard',false).disabled,true);assert.equal(ctx.planChangeView(s,'lite',false).disabled,false);});
 test('non-owner and schedule disabled cannot submit',()=>{const s=make();assert.equal(ctx.planChangeView(s,'standard',true).disabled,true);s.isOwner=false;assert.equal(ctx.planChangeView(s,'standard',false).disabled,true);});
 test('eligible CTA identifies selected plan',()=>assert.equal(ctx.planChangeView(make(),'standard',false).label,'스탠다드로 변경하기'));
+
+test('공개 전환 차단 — 정책 URL은 영구 주소이고 PG SDK·공개 결제는 페이지에서 열리지 않는다',()=>{
+  const root=__dirname+'/../..';
+  const config=fs.readFileSync(__dirname+'/pay-config.js','utf8');
+  const app=fs.readFileSync(__dirname+'/pay-app.js','utf8');
+  const returns=fs.readFileSync(__dirname+'/pay-return.js','utf8');
+  const page=fs.readFileSync(root+'/banggeul-pay.html','utf8');
+  const terms=fs.readFileSync(root+'/terms.html','utf8');
+  const refund=fs.readFileSync(root+'/refund.html','utf8');
+  assert.match(config,/publicCheckoutEnabled:\s*false/);
+  assert.match(config,/tossDirectEnabled:\s*false/);
+  assert.match(config,/environment:\s*'production-candidate'/);
+  assert.match(config,/allowedWebReturnOrigins:\s*\['https:\/\/www\.krafte\.net'\]/);
+  assert.match(config,/appHandoffReturnUri:\s*'banggeul:\/\/payment-return'/);
+  assert.match(app,/CFG\.publicCheckoutEnabled !== true/);
+  assert.match(app,/returnToApp\('handoff_expired'\)/);
+  assert.match(app,/returnToApp\('cancelled'\)/);
+  assert.match(returns,/PRODUCTION_WEB_ORIGIN = 'https:\/\/www\.krafte\.net'/);
+  assert.match(returns,/USER_CANCEL/);
+  assert.match(returns,/status', status/);
+  assert.doesNotMatch(page,/cdn\.portone\.io/);
+  assert.doesNotMatch(page,/PortOne|아임포트|KG이니시스/i);
+  assert.match(page,/https:\/\/www\.krafte\.net\/terms\.html/);
+  assert.match(page,/https:\/\/www\.krafte\.net\/refund\.html/);
+  assert.match(terms,/rel="canonical" href="https:\/\/www\.krafte\.net\/terms\.html"/);
+  assert.match(refund,/rel="canonical" href="https:\/\/www\.krafte\.net\/refund\.html"/);
+  assert.doesNotMatch(terms,/PortOne|아임포트|KG이니시스/i);
+  assert.doesNotMatch(refund,/PortOne|아임포트|KG이니시스/i);
+  assert.match(terms,/Google Play는 방글이 앱의 배포 경로/);
+  assert.match(refund,/Google Play는 앱 배포 경로/);
+});

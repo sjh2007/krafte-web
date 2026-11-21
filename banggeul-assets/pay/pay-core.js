@@ -12,7 +12,7 @@
   var BILLING_CONSENT_VERSION = '2026-09-18c'; // 청약철회 문구 삭제, 대표 9/18
   var CS_PHONE = '1877-1979';
   var PLAN_NAMES = { lite: '라이트', standard: '스탠다드', plus: '플러스' };
-  var METHOD_LABELS = { CARD: '카드', KAKAOPAY: '카카오페이', NAVERPAY: '네이버페이' };
+  var METHOD_LABELS = { CARD: '카드' };
   var OAUTH_PROVIDERS = { kakao: true, naver: true };
   var CHARGE_KINDS = { none: true, trial_end: true, renewal: true, overdue: true, immediate: true, pause_end: true };
   // 해지 이유 — 서버 화이트리스트(CANCEL_REASONS)와 같은 순서·값. 라벨은 운영 콘솔과 같다.
@@ -104,12 +104,6 @@
     var day = billingDayOf(opts.billingDay, (kind === 'overdue' || kind === 'immediate') ? opts.nextChargeAt : opts.chargeAt);
     var monthEnd = monthEndClause(day);
 
-    if (opts.couponCode && Number(opts.amount) === 0) {
-      return [line1,
-        date + '부터 한 회차는 쿠폰으로 무료 이용해요. 이 회차에는 결제되지 않아요.',
-        (nextDate ? nextDate + '부터 ' + nextPrice + '이 자동결제돼요. ' : '') + EVERY_MONTH + monthEnd,
-        CANCEL_ANYTIME + NO_REFUND];
-    }
     var line2, line3;
     // 4번째 줄 가운데 — 결제 전에 해지하면 어떻게 되는지.
     var beforeChargeClause = '다음 결제일 전에 해지하면 다음 결제는 되지 않아요. ';
@@ -253,7 +247,6 @@
   function submitLabel(o) {
     o = o || {};
     var kind = o.chargeKind;
-    if (o.couponCode && Number(o.amount) === 0) return '한 회차 무료 적용 후 자동결제 등록';
     if (kind === 'trial_end') {
       var monthly = (o.monthlyAmount !== null && o.monthlyAmount !== undefined) ? o.monthlyAmount : o.amount;
       return '무료 체험 후 월 ' + formatWon(monthly) + ' 자동결제 등록';
@@ -335,9 +328,9 @@
     return { url: apiBase + '/web/pay-events', body: JSON.stringify({ events: [{ name: name }] }), contentType: 'text/plain;charset=UTF-8' };
   }
 
-  // 로그인(카카오·네이버) 또는 모바일 결제창에서 돌아와 페이지가 다시 열린 경우.
+  // 로그인 인계에서 돌아와 페이지가 다시 열린 경우. PG 복귀 경로는 공개 전환 전 만들지 않는다.
   function isReturnLoad(search) {
-    return !!(parseOAuthReturn(search) || /[?&]tossReturn=(success|fail)(?:&|$)/.test(search || ''));
+    return !!parseOAuthReturn(search);
   }
 
   function decideView(s) {
@@ -358,11 +351,15 @@
   var PAUSE_UNAVAILABLE = '지금은 쉬어가기를 신청할 수 없어요.';
   var ERROR_MESSAGES = {
     consent_required: '자동결제 동의에 체크해 주세요.',
+    payer_name: '결제하시는 분 이름을 적어 주세요.',
+    payer_phone: '휴대폰 번호를 확인해 주세요(예: 010-1234-5678).',
+    payer_email: '이메일 주소를 확인해 주세요.',
     owner_only: '결제는 대표 보호자만 할 수 있어요.',
     no_family: '방글이 앱에서 먼저 가입해 주세요.',
     billing_disabled: '결제 기능을 준비하고 있어요. 조금만 기다려 주세요.',
-    method_unavailable: '선택하신 결제수단은 지금 쓸 수 없어요. 다른 결제수단을 골라 주세요.',
-    invalid_billing_key: '결제수단 등록을 확인하지 못했어요. 다시 시도해 주세요.',
+    toss_direct_disabled: '결제 기능을 준비하고 있어요. 카드 등록이나 결제를 다시 시도하지 말고 고객센터로 문의해 주세요.',
+    toss_sdk_unavailable: '결제 기능을 준비하고 있어요. 다른 결제수단으로 우회하지 말고 고객센터로 문의해 주세요.',
+    toss_direct_failed: '결제 결과를 확인하지 못했어요. 중복 결제를 막기 위해 다시 시도하지 말고 고객센터로 문의해 주세요.',
     free_family: '무료로 이용 중인 가족이라 결제할 것이 없어요.',
     no_elder: '등록된 부모님이 없어요. 방글이 앱에서 부모님을 먼저 등록해 주세요.',
     phone_extra_price_undecided: PHONE_EXTRA_PENDING,
@@ -379,7 +376,6 @@
     session_expired: '다시 로그인해 주세요.',
     unauthorized: '다시 로그인해 주세요.',
     oauth_state_mismatch: '로그인 확인에 실패했어요. 다시 시도해 주세요.',
-    legacy_provider_retired: '이전 결제 내역은 고객센터에서 확인해 드려요. 새 카드 등록이나 재결제는 진행하지 마세요.',
     payment_window_failed: '결제수단 등록이 완료되지 않았어요. 다시 시도해 주세요.',
     not_active: PAUSE_UNAVAILABLE,
     canceled: PAUSE_UNAVAILABLE,
@@ -441,20 +437,40 @@
     return authorizeUrl('https://nid.naver.com/oauth2.0/authorize', o.clientId, o.redirectUri, o.state);
   }
 
-
+  // 결제자 정보는 Toss 직접연동 전환 검수용으로만 유지한다. 공개 후보에서는 카드 등록을 시작하지 않는다.
   // 틀리면 { ok:false, error: 오류 코드 }. 비어 있는 선택값은 결과에서 뺀다.
+  function normalizePayer(input, opts) {
+    var i = input || {};
+    var mobile = !!(opts && opts.mobile);
+    var name = String(i.name || '').trim();
+    var phone = String(i.phone || '').replace(/[\s-]/g, '');
+    var email = String(i.email || '').trim();
+    if (!name || name.length > 30) return { ok: false, error: 'payer_name' };
+    if ((!mobile || phone) && !/^01[016789]\d{7,8}$/.test(phone)) return { ok: false, error: 'payer_phone' };
+    if ((!mobile || email) && (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return { ok: false, error: 'payer_email' };
+    var value = { fullName: name };
+    if (phone) value.phoneNumber = phone;
+    if (email) value.email = email;
+    return { ok: true, value: value };
+  }
 
-  // 서버가 준 결제수단 목록(/status methods)으로 보여 줄 버튼을 정한다. 목록이 없거나 비면 옛 서버로 보고 모두 보여 준다.
+  // Toss 직접연동 후보는 카드만 쓴다. 서버의 옛 결제수단 목록은 고객 화면에 되살리지 않는다.
   function visibleMethods(all, available) {
-    if (!Array.isArray(available) || available.length === 0) return all.slice();
-    return all.filter(function (m) { return available.indexOf(m) >= 0; });
+    return (all || []).filter(function (m) { return m === 'CARD' && (!Array.isArray(available) || available.length === 0 || available.indexOf('CARD') >= 0); });
   }
 
   function isMobileUA(ua) {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(String(ua || ''));
   }
 
-  // "결제하시는 분" 칸 중 보여 줄 것 — 모바일은 이름을 모를 때 이름 칸 하나만(대표 9/19: 모바일은 바로 결제창으로),
+  // "결제하시는 분" 칸 중 보여 줄 것 — Toss 직접연동 검수 전에는 고객 입력으로 카드 등록을 시작하지 않는다.
+  function payerFieldsToShow(mobile, prefill, requirement) {
+    var p = prefill || {};
+    // Toss Payments 직접연동 후보는 고객 입력 없이 서버가 만든 고객 키만 사용한다.
+    if (requirement === 'none') return { name: false, phone: false, email: false };
+    if (mobile) return { name: !String(p.fullName || '').trim(), phone: false, email: false };
+    return { name: true, phone: true, email: true };
+  }
 
   // ── 단계 선택형 결제(대표 확정 v0.26, API 계약 9/19) — ① 이용 방식 → ② 몇 분·누구 → ③ 요금제.
   // selection = 구독할 부모님만 [{ elderId, mode: 'app'|'phone' }]. 화면의 요금제 금액은 /status의 priceTable로 계산한
@@ -784,6 +800,13 @@
     if (selection && selection.length) body.selection = copySelection(selection);
     return body;
   }
+  function billingKeyBody(billingKey, pending) {
+    pending = pending || {};
+    var body = { billingKey: billingKey, method: pending.method, consent: { autoPay: true, version: pending.consentVersion } };
+    if (pending.plan) body.plan = pending.plan;
+    if (pending.selection && pending.selection.length) body.selection = copySelection(pending.selection);
+    return body;
+  }
   function selectionBody(selection) { return { selection: copySelection(selection) }; }
 
   // /checkout 응답의 월 금액 — 부모님별 줄(lines) 합계, 줄이 없으면(옛 서버) 이번 청구액(amount).
@@ -807,6 +830,26 @@
     var excluded = (elders || []).length > (selection || []).length;
     return selectionSummary(selection) + '으로 바꿀까요?' + (excluded ? ' ' + EXCLUDED_NOTE : '');
   }
+  // 결제 결과와 별도로 표시하는 서버 기준 번호 상태.
+  function numberLeaseNotice(lease) {
+    if (!lease || typeof lease !== 'object') return '';
+    switch (lease.state) {
+      case 'pending_inventory':
+        return '가족 전용 전화번호 배정이 대기 중이에요. 배정 완료 전에는 안부전화를 이용할 수 없어요. 번호 배정을 위해 다시 결제하지 마세요.';
+      case 'blocked':
+        return '가족 전용 전화번호 배정 확인이 필요해요. 고객센터(' + CS_PHONE + ')로 문의해 주세요. 번호 배정을 위해 다시 결제하지 마세요.';
+      case 'held':
+        var validDate = typeof lease.holdUntil === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(lease.holdUntil) && isFinite(Date.parse(lease.holdUntil));
+        return '현재 안부전화 발신은 중단되었어요. 가족 전용 번호는 실제 이용 종료 후 60일 동안 보존돼요. '
+          + (validDate ? '서버 기준 보존 종료일은 ' + new Date(Date.parse(lease.holdUntil) + 9 * 60 * 60 * 1000).getUTCFullYear() + '년 ' + formatKstDate(lease.holdUntil) + '이에요. ' : '보존 종료일은 확인 중이에요. ')
+          + '보존 기간 안에 다시 결제하면 기존 번호로 이용할 수 있어요. 기간이 지나면 회수될 수 있으며 같은 번호를 보장하지 않아요.';
+      case 'assigned':
+        return '가족 전용 전화번호가 배정되어 있어요. 체험에서 유료로 전환해도 같은 번호를 유지해요. 해지 예약만으로 회수하지 않으며 실제 이용 종료 후 60일 동안 보존돼요. 일시정지 중에도 번호는 유지돼요.';
+      default:
+        return '가족 전용 전화번호 상태를 확인하고 있어요. 배정 완료 여부는 확인 후 안내해 드릴게요.';
+    }
+  }
+
   // 구독 관리의 예상 금액 한 줄(표시용).
   function selectionPriceHint(plan, total) {
     if (total === null || total === undefined) return '';
@@ -814,6 +857,7 @@
   }
 
   return {
+    numberLeaseNotice: numberLeaseNotice,
     COUNT_WORDS: COUNT_WORDS, MODE_CHOICE: MODE_CHOICE, MODE_SHORT: MODE_SHORT, PHONE_MODE_PENDING: PHONE_MODE_PENDING, UNPAIRED_NOTE: UNPAIRED_NOTE,
     UNPAIRED_NOTE_NO_PHONE: UNPAIRED_NOTE_NO_PHONE,
     EXCLUDED_NOTE: EXCLUDED_NOTE, SAME_PRICE_HINT: SAME_PRICE_HINT, STEP_TEXT: STEP_TEXT, PLAN_KEYS: PLAN_KEYS,
@@ -822,17 +866,16 @@
     stepsSetCount: stepsSetCount, stepsSetChosen: stepsSetChosen, stepSelection: stepSelection,
     displayTotal: displayTotal, displayTotals: displayTotals, stepPlanCardModel: stepPlanCardModel,
     selectionSummary: selectionSummary, selectionDescribe: selectionDescribe, sameSelection: sameSelection, unpairedNotes: unpairedNotes,
-    validateSteps: validateSteps, checkoutBody: checkoutBody, selectionBody: selectionBody,
+    validateSteps: validateSteps, checkoutBody: checkoutBody, billingKeyBody: billingKeyBody, selectionBody: selectionBody,
     checkoutMonthly: checkoutMonthly, selectionAppliedText: selectionAppliedText, selectionConfirmText: selectionConfirmText,
     selectionPriceHint: selectionPriceHint, planBlockers: planBlockers, planLimitNote: planLimitNote, ensureValidPlan: ensureValidPlan,
-    isMobileUA: isMobileUA, visibleMethods: visibleMethods,
+    normalizePayer: normalizePayer, isMobileUA: isMobileUA, visibleMethods: visibleMethods, payerFieldsToShow: payerFieldsToShow,
     BILLING_CONSENT_VERSION: BILLING_CONSENT_VERSION, PLAN_NAMES: PLAN_NAMES, METHOD_LABELS: METHOD_LABELS, CHARGE_KINDS: CHARGE_KINDS,
     formatWon: formatWon, formatKstDate: formatKstDate, kstDayOfMonth: kstDayOfMonth, doneChargeLine: doneChargeLine,
     noticeLines: noticeLines, decideView: decideView, decideErrorView: decideErrorView,
     errorMessage: errorMessage, paymentStatusLabel: paymentStatusLabel,
     makeOAuthState: makeOAuthState, parseOAuthReturn: parseOAuthReturn,
     kakaoAuthorizeUrl: kakaoAuthorizeUrl, naverAuthorizeUrl: naverAuthorizeUrl,
-
     CANCEL_REASONS: CANCEL_REASONS, PAY_EVENTS: PAY_EVENTS, ONCE_PER_TAB_EVENTS: ONCE_PER_TAB_EVENTS, CS_PHONE: CS_PHONE,
     isReturnLoad: isReturnLoad, refundRequestLabel: refundRequestLabel,
     submitLabel: submitLabel, pauseOffer: pauseOffer, pauseManageText: pauseManageText,

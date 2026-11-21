@@ -4,24 +4,8 @@
   var CFG = window.PAY_CONFIG;
   var C = window.PayCore;
   var auth = window.PayAuth.createAuth({ fetch: window.fetch.bind(window), storage: window.sessionStorage, config: CFG });
-  // Only explicitly supporting app versions use native returns. Older apps keep web guidance.
-  var entryParams = new URLSearchParams(location.search);
-  var pendingAppReturn = entryParams.getAll('appHandoff').length === 1 && !!entryParams.get('appHandoff') &&
-    entryParams.getAll('appReturnVersion').length === 1 && entryParams.get('appReturnVersion') === '1';
-  var entrySession = auth.getSession();
-  var appReturnEnabled = entryParams.has('appHandoff') ? false :
-    !!(entrySession && entrySession.appEntry && entrySession.appReturnVersion === 1);
-  var returnedToApp = false;
-  function returnToApp(reason) {
-    if (location.origin !== 'https://www.krafte.net' || CFG.origin !== location.origin ||
-        !appReturnEnabled || returnedToApp || ['cancelled', 'handoff-expired'].indexOf(reason) < 0) return false;
-    returnedToApp = true;
-    TossCard.clear(sessionStorage);
-    clearUrl();
-    location.assign('banggeul://billing/' + reason);
-    return true;
-  }
   var OAUTH_STATE_KEY = 'banggeulPayOAuthState';
+  var IS_MOBILE = C.isMobileUA(navigator.userAgent); // 모바일은 결제자 칸을 줄인다(대표 9/19)
   var VIEWS = ['loading', 'login', 'register', 'done', 'manage', 'message'];
   // steps — 단계 선택 상태(등록 'reg' · 구독 관리 'mg'). stepMode — 등록 화면이 단계 선택으로 그려졌는지(새 서버).
   var state = { status: null, checkout: null, steps: {}, stepMode: false };
@@ -65,6 +49,12 @@
     } catch (e) { /* 측정 실패는 화면 흐름에 영향을 주지 않는다 */ }
   }
   function clearUrl() { history.replaceState(null, '', location.pathname); }
+  // 웹 로그인 화면으로 내려가지 않는 앱 전용 반환. 허용 상태 외에는 PayReturn이 URL 생성을 거부한다.
+  function returnToApp(status) {
+    var uri = window.PayReturn.appReturnUrl(CFG, status);
+    window.location.replace(uri);
+    return Promise.resolve();
+  }
   function randomHex() {
     var a = new Uint8Array(16);
     crypto.getRandomValues(a);
@@ -100,22 +90,10 @@
   // context: 'pause' — 쉬어가기 요청·취소에서 온 오류(period_ended 문구가 해지 취소와 다르다).
   function fail(err, context) {
     var code = (err && err.code) || (err && err.data && err.data.error) || 'unknown';
-    if (code === 'card_registration_disabled') {
-      state.checkout = null;
-      $('reg-consent').checked = false;
-      $('reg-submit').disabled = true;
-      message('검수 모드에서는 카드를 등록할 수 없어요', '서버에서 카드 등록을 차단했어요. 등록 성공으로 처리되지 않았으며, 다시 등록하거나 결제를 진행하지 마세요.');
-      return true;
-    }
-    if (code === 'legacy_provider_retired') {
-      message('이전 결제 내역 확인이 필요해요', C.errorMessage(code), {label:'고객센터 연결', href:'tel:' + C.CS_PHONE});
-      return true;
-    }
     // HTTP 401은 서버가 어떤 오류 코드를 실어 보내든 세션 만료와 같이 취급한다.
     if ((err && err.status === 401) || code === 'unauthorized') code = 'session_expired';
     if (code === 'session_expired') {
       auth.signOut();
-      if (returnToApp('handoff-expired')) return true;
       show('login');
       banner(C.errorMessage(code));
       return true; // 로그인 화면으로 보냈다 — 호출한 쪽은 이어서 서버 상태를 다시 묻지 않는다
@@ -131,8 +109,6 @@
 
   // ── 안내 화면 ──
   function message(title, body, action) {
-    var support = $('play-support');
-    if (support) support.remove();
     text($('msg-title'), title);
     text($('msg-body'), body);
     $('msg-plans').innerHTML = '';
@@ -153,7 +129,7 @@
   }
 
   // ── 상태 불러오기 → 화면 결정 ──
-  function load(retryChoice) {
+  function load() {
     banner('');
     show('loading');
     return auth.api('/family/billing/status').then(function (r) {
@@ -164,16 +140,14 @@
       if (r.status !== 200) throw r;
       state.status = r.data;
       var view = C.decideView(r.data);
-      if (view === 'not_owner') return message('대표 보호자만 결제할 수 있어요', '현재 가족의 대표 보호자 계정으로 로그인해 주세요.');
-      if (view === 'free') return message('무료로 이용 중인 가족이에요', '결제할 것이 없어요. 궁금한 점은 고객센터(' + C.CS_PHONE + ')로 연락해 주세요.');
-      // Restoring an existing Play purchase is independent of new-payment availability.
-      if (view === 'billing_off') {
-        if (playEntry()) {
-          if (playCheck.session !== playSession()) return checkPlay('entry');
-          return purchaseHelp(playCheck.request ? 'checking' : playCheck.phase);
-        }
-        return message('결제 기능을 준비하고 있어요', '무료 체험은 그대로 이용하실 수 있어요. 결제가 열리면 알려드릴게요.');
+      if (view === 'not_owner') return message('대표 보호자만 결제할 수 있어요', '가족을 처음 만든 대표 보호자 계정으로 로그인해 주세요. 초대받은 보호자는 현재 이용권만 확인할 수 있어요.');
+      // 공개 결제는 서버의 billingEnabled 값만으로 열지 않는다. 이 페이지의 고정
+      // 차단 스위치는 실결제 전환 승인과 별도 검수가 끝날 때까지 항상 우선한다.
+      if (CFG.publicCheckoutEnabled !== true) {
+        return message('결제 기능을 준비하고 있어요', '무료 체험은 그대로 이용하실 수 있어요. 기존 구매·구독 복원은 방글이 앱에서 먼저 확인해 주세요. 결제 실패·만료 안내를 받았거나 결제 결과를 확인하지 못하셨다면 중복 결제를 막기 위해 다시 시도하지 말고 고객센터(' + C.CS_PHONE + ')로 문의해 주세요. 다른 결제수단으로 우회할 수 없어요.');
       }
+      if (view === 'free') return message('무료로 이용 중인 가족이에요', '결제할 것이 없어요. 궁금한 점은 고객센터(' + C.CS_PHONE + ')로 연락해 주세요.');
+      if (view === 'billing_off') return message('결제 기능을 준비하고 있어요', '무료 체험은 그대로 이용하실 수 있어요. 결제가 열리면 알려드릴게요.');
       if (view === 'amount_error') {
         message('요금을 계산하지 못했어요', C.errorMessage(r.data.amountError));
         var composition = C.readOnlyCompositionLines(r.data);
@@ -183,18 +157,8 @@
         }
         return;
       }
-      if (playEntry() && (playCheck.session !== playSession() || !playCheck.allowed)) {
-        if (playCheck.session !== playSession()) return checkPlay('entry');
-        return purchaseHelp(playCheck.request ? 'checking' : playCheck.phase);
-      }
-      // Google Play subscriptions have no Toss billing key. Never route an
-      // active native subscription to card registration based on that absence.
-      if (playEntry() && r.data.subscription && r.data.subscription.status === 'active') {
-        playCheck.allowed = false;
-        return purchaseHelp('active');
-      }
       if (view === 'manage') return renderManage();
-      return renderRegister(false, retryChoice);
+      return renderRegister();
     }).catch(fail);
   }
 
@@ -330,14 +294,6 @@
     var s = state.status;
     C.PLAN_KEYS.forEach(function (p) {
       var m = C.stepPlanCardModel(p, selection, s.elders, s.priceTable);
-      if (name === 'regPlan' && playEntry()) {
-        var mode = selection && selection.length === 1 && selection[0].mode;
-        var catalog = Array.isArray(s.playProducts) ? s.playProducts : [];
-        var offers = catalog.filter(function (v) { return v && v.plan === p && v.mode === mode; });
-        if (s.billingChannel !== 'play_kr' || offers.length !== 1 || !offers[0].productId ||
-            !offers[0].basePlanId || !Number.isSafeInteger(offers[0].amount) || offers[0].amount <= 0) return;
-        m.priceText = '월 ' + C.formatWon(offers[0].amount);
-      }
       var card = el('div', 'plan-card');
       var head = el('label', 'plan-head');
       var input = document.createElement('input');
@@ -351,15 +307,6 @@
       head.appendChild(el('span', 'price', m.priceText));
       card.appendChild(head);
       var ids = [];
-      var ap = s.priceTable && s.priceTable.app && s.priceTable.app[p];
-      var ph = s.priceTable && s.priceTable.phone && s.priceTable.phone[p];
-      if (ap && ph) {
-        var comparison = el('p', 'plan-summary', '부모님 한 분 월 요금 · 앱 ' +
-          ap.base.toLocaleString('ko-KR') + '원 / 무설치 전화 ' + ph.base.toLocaleString('ko-KR') + '원');
-        comparison.id = name + '-' + p + '-mode-prices';
-        card.appendChild(comparison);
-        ids.push(comparison.id);
-      }
       m.features.forEach(function (segs, i) {
         var f = appendSegments(el('p', 'plan-summary'), segs);
         f.id = name + '-' + p + '-f' + i;
@@ -525,7 +472,8 @@
 
   // 채널이 연결된 결제수단만 보인다(대표 9/19). 고른 수단이 숨으면 첫 수단으로 옮긴다.
   function renderMethods() {
-    var show = (state.status.methods || []).filter(function (method) { return method === 'CARD'; });
+    var all = ['CARD']; // Toss Payments 직접연동 카드만 후보로 둔다. 다른 PG/결제수단 우회 금지.
+    var show = C.visibleMethods(all, state.status && state.status.methods);
     var inputs = document.querySelectorAll('input[name="method"]');
     var checkedVisible = false;
     Array.prototype.forEach.call(inputs, function (el) {
@@ -540,8 +488,11 @@
     }
   }
 
-  function renderRegister(fromManage, retryChoice) {
+  function renderRegister(fromManage) {
     var s = state.status;
+    var leaseNotice = C.numberLeaseNotice(s.outboundNumberLease);
+    text($('reg-number-lease'), leaseNotice);
+    $('reg-number-lease').hidden = !leaseNotice;
     renderMethods();
     // 새 서버(/status에 elders·priceTable)면 단계 선택, 아니면(옛 서버) 지금까지의 요금제 카드. 결제수단만 바꾸러 온
     // 경우엔 방식·인원·요금제를 여기서 고르지 않는다(구독 관리에서 바꾼다) — 둘 다 숨긴다.
@@ -549,8 +500,8 @@
     $('reg-steps').innerHTML = '';
     $('reg-steps').hidden = !state.stepMode;
     if (state.stepMode) {
-      var regSt = C.defaultStepState(s.elders, (retryChoice && retryChoice.selection) || s.selection, s.phoneModeAvailable);
-      state.steps.reg = { st: regSt, plan: C.ensureValidPlan((retryChoice && retryChoice.plan) || s.plan, displaySelection(regSt, s.elders), s.elders, s.priceTable), withPlans: true };
+      var regSt = C.defaultStepState(s.elders, s.selection, s.phoneModeAvailable);
+      state.steps.reg = { st: regSt, plan: C.ensureValidPlan(s.plan, displaySelection(regSt, s.elders), s.elders, s.priceTable), withPlans: true };
       renderSteps('reg');
       $('reg-plans').innerHTML = '';
     } else {
@@ -565,7 +516,6 @@
     $('reg-plan-card').hidden = !!fromManage || state.stepMode;
     text($('reg-submit'), C.submitLabel(null));
     show('register');
-    if (!fromManage) auth.api('/family/billing/status?view=plans').catch(function () {});
     track('register_view');
     return refreshCheckout();
   }
@@ -580,7 +530,6 @@
     $('reg-consent').checked = false;
     text($('reg-submit'), C.submitLabel(null));
     updateSubmit();
-    pendingPlay = null;
     var seq = ++checkoutSeq;
     // 단계 화면 — 고른 요금제·부모님(selection)으로 미리보기를 받는다. 다 고르기 전이면 서버에 묻지 않고 안내만 한다
     // (seq는 이미 올렸다 — 진행 중이던 이전 응답은 버려진다).
@@ -593,37 +542,13 @@
       if (!v.ok) { list.appendChild(li(v.message)); return Promise.resolve(); }
       sent = { plan: ctx.plan, selection: v.selection };
     }
-    if (method !== 'CARD') { list.appendChild(li(C.errorMessage('method_unavailable'))); return Promise.resolve(); }
-    if (playEntry()) {
-      var selection = sent ? sent.selection : state.status.selection;
-      var plan = sent ? sent.plan : state.status.plan;
-      var mode = selection && selection.length === 1 && selection[0].mode;
-      var catalog = state.status.playProducts;
-      var matches = Array.isArray(catalog) ? catalog.filter(function (item) {
-        return item && mode && item.mode === mode && item.plan === plan;
-      }) : [];
-      var product = matches.length === 1 && matches[0];
-      if (state.status.billingChannel !== 'play_kr' || !product ||
-          typeof product.productId !== 'string' || !product.productId.trim() ||
-          typeof product.basePlanId !== 'string' || !product.basePlanId.trim() ||
-          !Number.isSafeInteger(product.amount) || product.amount <= 0) {
-        list.appendChild(li('이 구성은 아직 앱에서 구독할 수 없어요.'));
-        return Promise.resolve();
-      }
-      state.checkout = {playProductId:product.productId, sent:{selection:selection, plan:plan}};
-      list.appendChild(li(C.PLAN_NAMES[plan] + ' · 월 ' + C.formatWon(product.amount)));
-      text($('reg-consent-label'), '선택한 요금제와 이용 방식을 확인했어요.');
-      text($('reg-submit'), '앱에서 결제 방식 선택하기');
-      updateSubmit();
-      return Promise.resolve();
-    }
     var body = sent ? C.checkoutBody(method, sent.plan, sent.selection) : { method: method };
     return auth.api('/family/billing/checkout', { method: 'POST', body: body }).then(function (r) {
       if (seq !== checkoutSeq) return; // 그 사이 더 최신 요청이 있었다 — 이 응답은 버린다
       if (r.status !== 200) throw r;
       // sent — 이 응답을 받은 요금제·selection. 등록(billing-key)은 화면이 아니라 이 값을 그대로 보낸다.
-      if (!TossCard.valid(r.data, location.hostname)) throw {code:'payment_window_failed'};
-      state.checkout = Object.assign({}, r.data, {sent:sent});
+      state.checkout = Object.assign({}, r.data, { method: method, sent: sent });
+      prefillPayer(r.data.customer || {});
       // 해지 예약 중 결제수단만 바꾸는 경우(chargeKind: 'none')는 동의 문구도 달라진다.
       text($('reg-consent-label'), r.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
       var planKey = r.data.plan || (sent && sent.plan);
@@ -658,10 +583,28 @@
       if (!loggedOut && state.stepMode) list.appendChild(li(C.errorMessage((e && e.data && e.data.error) || (e && e.code))));
     });
   }
+  // 서버가 준 결제자 정보(지난 등록값·로그인 이메일)로 빈 칸만 채운다 — 이미 입력한 값은 덮지 않는다.
+  function prefillPayer(c) {
+    if (!c) return;
+    [['payer-name', c.fullName], ['payer-phone', c.phoneNumber], ['payer-email', c.email]].forEach(function (p) {
+      var input = $(p[0]);
+      if (input && !input.value && p[1]) input.value = p[1];
+    });
+    // 모바일은 이름을 알면 "결제하시는 분" 칸 전체를 숨기고 버튼에서 바로 결제창으로 간다(대표 9/19).
+    // 칸이 숨어도 미리 채운 값(이름·있으면 휴대폰·이메일)은 그대로 결제창 요청에 실린다.
+    var show = C.payerFieldsToShow(IS_MOBILE, c, state.checkout && state.checkout.payerRequirement);
+    $('payer-name-row').hidden = !show.name;
+    $('payer-phone-row').hidden = !show.phone;
+    $('payer-email-row').hidden = !show.email;
+    $('payer-card').hidden = !(show.name || show.phone || show.email);
+  }
+
+  // 결제 준비값(checkout)이 없거나, 있어도 결제 성격(chargeKind)을 서버가 알 수 없는 값으로 줬으면 동의·등록을 막는다 —
+  // 무엇에 동의하는지 정해지기 전에는 누를 수 없게 한다.
   function updateSubmit() {
-    var ready = !!state.checkout && (!!state.checkout.playProductId || !!C.CHARGE_KINDS[state.checkout.chargeKind]);
+    var ready = !!state.checkout && !!C.CHARGE_KINDS[state.checkout.chargeKind];
     $('reg-consent').disabled = !ready;
-    $('reg-submit').disabled = registering || !!pendingPlay || (playEntry() && !playCheck.allowed) || !($('reg-consent').checked && ready);
+    $('reg-submit').disabled = !($('reg-consent').checked && ready);
   }
 
   function onPlanChange() {
@@ -700,259 +643,22 @@
       });
   }
 
-
-  // Native restore is a query, never a new purchase. Re-entry always checks again.
-  var playCheck = {session:null, request:null, timer:null, allowed:false, phase:'unknown'};
-  function playSession() {
-    var s = auth.getSession();
-    return s ? (s.refreshToken || s.idToken) : null;
-  }
-  function purchaseHelp(phase) {
-    playCheck.phase = phase;
-    var copy = {
-      active:['기존 구독을 이용 중이에요','서버에서 확인한 요금제와 결제 내역입니다. 중복 결제를 막기 위해 새 결제는 진행하지 않아요. Google Play 구매 복원 결과와는 별개예요.'],
-      expired:['이용 기간이 끝난 구매 내역입니다','이전 결제 내역을 확인할 수 있어요. 새 결제는 진행하지 않으며, 이용을 다시 시작하려면 고객센터에 문의해 주세요.'],
-      payment_pending:['확인 중인 결제 내역이 있어요','중복 결제를 막기 위해 새 결제를 잠시 보류했어요. 구매 내역을 다시 확인하거나 고객센터에 문의해 주세요.'],
-      unresolved:['확인이 끝나지 않은 구매 내역이 있어요','중복 결제를 막기 위해 새 결제를 잠시 보류했어요. 구매 내역을 다시 확인하거나 고객센터에 문의해 주세요.'],
-      checking:['구매 내역을 확인하고 있어요','잠시만 기다려 주세요.'],
-      verification_failed:['구매 내역 확인이 필요해요','Google Play 구매 내역은 확인했지만, 방글이 이용권 연결을 완료하지 못했어요. 구매 내역을 다시 확인해 주세요.'],
-      pending:['결제 승인을 기다리고 있어요','Google Play에서 결제 진행 상태를 확인해 주세요.'],
-      empty:['이 Google Play 계정에서 복원할 구매를 찾지 못했어요','구매에 사용한 Google Play 계정을 확인해 주세요.'],
-      empty_disabled:['복원할 Google Play 구매가 없어요','기존 구매 조회를 완료했어요. 신규 결제는 준비 중이며, 현재 이용 상태는 앱의 요금제 관리에서 확인할 수 있어요.'],
-      unknown:['결제 결과를 확인해 주세요','기존 구매 내역을 먼저 확인해 주세요. 응답이 없으면 앱을 업데이트한 뒤 다시 확인해 주세요.']
-    }[phase] || ['이용권 정보를 불러오지 못했어요','잠시 후 다시 확인해 주세요.'];
-    message(copy[0],copy[1],phase === 'checking' ? null :
-      {label:phase === 'pending' ? '상태 다시 확인' : '구매 내역 확인',onclick:function(){checkPlay('manual');}});
-    if ((phase === 'active' || phase === 'expired') && state.status && state.status.subscription && state.status.subscription.status === (phase === 'active' ? 'active' : 'expired')) {
-      // Read-only server subscription details. Do not grant new-purchase eligibility.
-      var snapshot = state.status;
-      var billing = snapshot.subscription.billing || {};
-      var panel = $('msg-plans');
-      var facts = el('dl', 'facts');
-      var plan = snapshot.currentPlan || snapshot.plan;
-      fact(facts, '요금제', C.PLAN_NAMES[plan] || '이용 중');
-      var amount = snapshot.amounts && snapshot.amounts[plan];
-      if (typeof amount === 'number') fact(facts, '월 요금', C.formatWon(amount));
-      fact(facts, '다음 결제일', billing.nextPaymentAt ? C.formatKstDate(billing.nextPaymentAt) : '');
-      panel.appendChild(facts);
-      panel.appendChild(el('h3', '', '결제 내역'));
-      var payments = (snapshot.payments || []).filter(function(p){return p.status !== 'revoked';});
-      if (!payments.length) panel.appendChild(el('p', '', '표시할 결제 내역이 없어요.'));
-      payments.forEach(function(p){
-        var row = el('p', '', [C.formatKstDate(p.paidAt || p.dueAt), C.formatWon(p.amount), C.paymentStatusLabel(p.status)].join(' · '));
-        row.style.cssText = 'white-space:normal;overflow-wrap:anywhere;line-height:1.6';
-        panel.appendChild(row);
-      });
-      panel.hidden = false;
+  function onRegister() {
+    // 방어적 이중 차단: 공개 전환 승인 전에는 SDK·카드 등록 API를 호출하지 않는다.
+    if (CFG.publicCheckoutEnabled !== true) {
+      return message('결제 기능을 준비하고 있어요', '지금은 결제수단을 등록하거나 결제할 수 없어요. 중복 결제를 막기 위해 다시 시도하지 말고 고객센터(' + C.CS_PHONE + ')로 문의해 주세요.');
     }
-    if (phase === 'empty_disabled' && state.status && state.status.subscription) {
-      var sub = state.status.subscription;
-      if (sub.status === 'trial' && sub.trialEndsAt && Number.isFinite(Date.parse(sub.trialEndsAt))) {
-        $('msg-body').appendChild(el('p', '', '무료 체험 종료일: ' + C.formatKstDate(sub.trialEndsAt)));
-      }
-    }
-    var old = $('play-support');
-    if (old) old.remove();
-    var link = el('a','btn','고객센터');
-    link.id = 'play-support';
-    link.href = 'mailto:kraft@krafte.net';
-    link.style.cssText = 'display:inline-flex;align-items:center;min-height:48px;white-space:normal;margin-top:16px';
-    $('msg-action').style.cssText = 'min-height:48px;white-space:normal;height:auto';
-    $('msg-body').parentNode.appendChild(link);
-  }
-  function checkPlay(reason) {
-    var session = playSession();
-    if (!session || (playCheck.request && playCheck.session === session)) return;
-    clearTimeout(playCheck.timer);
-    playCheck.session = session;
-    playCheck.allowed = false;
-    var id = randomHex();
-    playCheck.request = id;
-    purchaseHelp('checking');
-    playCheck.timer = setTimeout(function(){
-      if (playCheck.request !== id) return;
-      playCheck.request = null;
-      if (playSession() === session) purchaseHelp('unknown');
-    },20000);
-    location.assign('/android-billing/restore?requestId=' + id + '&reason=' + reason);
-  }
-  window.addEventListener('banggeul-billing-restore-result',async function(event){
-    var d = event.detail || {};
-    var session = playCheck.session;
-    if (!playCheck.request || d.requestId !== playCheck.request || session !== playSession()) return;
-    var id = playCheck.request;
-    // Keep the timeout active during server verification too.
-    // Keep the request locked while the authoritative server lookup is pending.
-    try {
-      if (d.status !== 'restored' && d.status !== 'empty') {
-        purchaseHelp(['pending','verification_failed'].indexOf(d.status)>=0 ? d.status : 'unknown');
-        return;
-      }
-      var r = await auth.api('/family/billing/status');
-      if (playCheck.request !== id || session !== playSession()) return;
-      if (r.status !== 200 || !r.data.isOwner) { purchaseHelp('unknown'); return; }
-      state.status = r.data;
-      if (d.status === 'restored' && r.data.subscription && r.data.subscription.status === 'active') {
-        playCheck.allowed = false;
-        purchaseHelp('active');
-        return;
-      }
-      if (d.status === 'empty') {
-        var eligibility = await auth.api('/family/billing/play/eligibility');
-        if (playCheck.request !== id || session !== playSession()) return;
-        var decision = eligibility.data || {};
-        var evidence = decision.evidence || {};
-        var checked = Date.parse(decision.checkedAt);
-        var fresh = Number.isFinite(checked) && checked <= Date.now() + 30000 && checked >= Date.now() - 300000;
-        var allowed = eligibility.status === 200 && decision.allowed === true && fresh &&
-          evidence.owner === true && evidence.activeSubscription === false &&
-          evidence.pendingPayment === false && evidence.unresolvedPurchase === false;
-        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
-            decision.reason === 'billing_disabled' && r.data.billingEnabled === false) {
-          purchaseHelp('empty_disabled');
-          return;
-        }
-        if (allowed && (!r.data.subscription || r.data.subscription.status !== 'active')) {
-          if (r.data.billingEnabled !== true) {
-            purchaseHelp('empty');
-            return;
-          }
-          playCheck.allowed = true;
-          return renderRegister(false);
-        }
-        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
-            decision.reason === 'active_subscription' && evidence.activeSubscription === true &&
-            r.data.subscription && r.data.subscription.status === 'active') {
-          purchaseHelp('active');
-          return;
-        }
-        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
-            decision.reason === 'expired_purchase_history' && evidence.activeSubscription === false &&
-            r.data.subscription && r.data.subscription.status === 'expired') {
-          purchaseHelp('expired');
-          return;
-        }
-        purchaseHelp(eligibility.status === 200 && decision.allowed === false ?
-          (decision.reason === 'unresolved_purchase' ? 'unresolved' :
-           decision.reason === 'pending_payment' ? 'payment_pending' : 'unknown') : 'unknown');
-        return;
-      }
-      purchaseHelp('unknown');
-    } catch(e) {
-      if (session === playSession()) purchaseHelp('unknown');
-    } finally {
-      if (playCheck.request === id) {
-        clearTimeout(playCheck.timer);
-        playCheck.request = null;
-      }
-    }
-  });
-
-  var pendingPlay = null;
-  var playPrepare = '/family/billing/play/prepare';
-  function playEntry() {
-    var session = auth.getSession();
-    var channel = state.status.billingChannel;
-    return channel === 'play_kr' || (channel !== 'web' && !!(session && session.appEntry));
-  }
-  async function startPlay(co) {
-    var response = await auth.api(playPrepare, {method:'POST', body:{
-      productId:co.playProductId, selection:co.sent.selection
-    }});
-    if (co !== state.checkout || currentView !== 'register' || !$('reg-consent').checked) return;
-    var id = response.data && response.data.attemptId;
-    if (response.status !== 200 || typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) {
-      throw Error('payment_window_failed');
-    }
-    pendingPlay = {id:id, checkout:co};
-    location.assign('/android-billing/start?checkoutId=' + encodeURIComponent(id));
-  }
-  window.addEventListener('banggeul-billing-result', async function (event) {
-    var detail = event.detail || {};
-    var pending = pendingPlay;
-    if (!pending || pending.id !== detail.checkoutId || pending.checkout !== state.checkout) return;
-    pendingPlay = null;
-    registering = true;
-    try {
-      if (['verification_failed','pending','unknown'].indexOf(detail.status) >= 0) {
-        playCheck.allowed = false;
-        purchaseHelp(detail.status);
-        return;
-      }
-      if (detail.status === 'cancelled' || detail.status === 'unavailable') {
-        banner(detail.status === 'cancelled' ? '결제 방식 선택을 취소했어요.' : '앱에서 결제할 수 없어요. 다시 시도해 주세요.');
-        return;
-      }
-      var result = await auth.api(playPrepare, {method:'POST', body:{checkoutId:pending.id}});
-      if (state.checkout !== pending.checkout || currentView !== 'register') return;
-      if (result.status !== 200 || result.data.checkoutId !== pending.id || result.data.status !== detail.status) throw Error();
-      if (detail.status === 'purchased') { await load(); return; }
-      if (detail.status !== 'external_ready') throw Error();
-      var sent = pending.checkout.sent;
-      var body = C.checkoutBody('CARD', sent.plan, sent.selection);
-      body.playAttemptId = pending.id;
-      var quote = await auth.api('/family/billing/checkout', {method:'POST', body:body});
-      if (state.checkout !== pending.checkout || currentView !== 'register') return;
-      if (quote.status !== 200 || !TossCard.valid(quote.data, location.hostname) ||
-          !C.CHARGE_KINDS[quote.data.chargeKind] || !Number.isSafeInteger(quote.data.amount) || quote.data.amount < 0) throw Error();
-      state.checkout = Object.assign({}, quote.data, {sent:sent, playAttemptId:pending.id});
-      $('reg-consent').checked = false;
-      var notice = $('reg-notice');
-      notice.innerHTML = '';
-      C.noticeLines(Object.assign({}, quote.data, {planName:C.PLAN_NAMES[sent.plan], monthlyAmount:C.checkoutMonthly(quote.data),
-        summary:C.selectionSummary(sent.selection), now:new Date()})).forEach(function (line) { notice.appendChild(li(line)); });
-      text($('reg-consent-label'), quote.data.chargeKind === 'none' ? CONSENT_LABEL_CANCEL_PENDING : CONSENT_LABEL_DEFAULT);
-      text($('reg-submit'), C.submitLabel(quote.data));
-    } catch (e) {
-      playCheck.allowed = false;
-      purchaseHelp('unknown');
-    } finally {
-      registering = false;
-      updateSubmit();
-    }
-  });
-
-  var registering = false;
-  async function onRegister() {
+    // Toss Payments 직접연동 외의 결제 경로·fallback은 없다. 이 분기는 테스트/disabled
+    // 상태에서는 도달하지 않으며, 실카드 등록·서버 API 처리는 별도 Go 승인 이후에만 연결한다.
     var co = state.checkout;
-    if (registering || pendingPlay || (playEntry() && !playCheck.allowed) || !co || !$('reg-consent').checked) return;
-    registering = true;
-    busy($('reg-submit'), true);
-    banner('');
-    try {
-      if (co.playProductId) { await startPlay(co); return; }
-      if (playEntry() && !co.playAttemptId) throw Error();
-      var context = {playAttemptId:co.playAttemptId, consent:{autoPay:true, version:C.BILLING_CONSENT_VERSION},
-        plan:co.sent && co.sent.plan, selection:co.sent && co.sent.selection};
-      await TossCard.open(co, context, window.TossPayments, sessionStorage, location.href, randomHex());
-    } catch (e) {
-      if (e && /^(USER_CANCEL|PAY_PROCESS_CANCELED)$/.test(e.code) && returnToApp('cancelled')) return;
-      banner(e && /^(USER_CANCEL|PAY_PROCESS_CANCELED)$/.test(e.code)
-        ? '카드 인증을 취소했어요. 다시 시도할 수 있어요.' : C.errorMessage('payment_window_failed'));
-    } finally {
-      registering = false;
-      busy($('reg-submit'), false);
-      updateSubmit();
-    }
-  }
-
-  async function finishToss(search) {
-    clearUrl();
-    var result = TossCard.take(search, sessionStorage);
-    if (!auth.getSession()) { show('login'); banner(C.errorMessage('session_expired')); return; }
-    if (result.error) {
-      if (result.error === 'cancel' && returnToApp('cancelled')) return;
-      await load(result.context);
-      if (result.error === 'invalid_card_number') banner('토스에서 카드번호를 확인할 수 없어요. 카드번호를 확인한 뒤 다시 등록해 주세요.');
-      else banner(result.error === 'cancel' ? '카드 인증을 취소했어요. 다시 시도할 수 있어요.' : C.errorMessage('payment_window_failed'));
-      return;
-    }
-    show('loading');
-    try {
-      var response = await auth.api('/family/billing/billing-key', {method:'POST', body:result.body});
-      if (response.status !== 200) throw response;
-      renderDone(response.data);
-    } catch (e) { track('register_fail'); fail(e); }
+    if (!co || !$('reg-consent').checked) return banner(C.errorMessage('consent_required'));
+    var returns = window.PayReturn;
+    return window.PayToss.requestBillingAuth(CFG, {
+      customerKey: co.customer && co.customer.customerId,
+      // Toss가 반환할 수 있는 URL은 단일 허용 origin의 웹 결제 페이지뿐이다.
+      // 취소(USER_CANCEL)는 failUrl에서 웹이 판별해 앱에는 cancelled 상태만 전달한다.
+      successUrl: returns.tossReturnUrl(CFG, 'success'), failUrl: returns.tossReturnUrl(CFG, 'failed'),
+    }).catch(function () { banner(C.errorMessage('toss_direct_failed')); });
   }
 
   function renderDone(result) {
@@ -970,6 +676,30 @@
     $('done-app').href = CFG.appDeepLink;
     show('done');
     track('register_success');
+    // 결제 응답 필드를 추정하지 않고 확정된 status 계약에서 최신 상태를 읽는다.
+    var notice = li('전화번호 배정 상태를 확인하고 있어요.');
+    notice.setAttribute('role', 'status');
+    list.appendChild(notice);
+    refreshDoneLease(notice);
+  }
+
+  function refreshDoneLease(notice) {
+    var finished = false;
+    var timer = setTimeout(function () { finish(null); }, 10000);
+    function finish(response) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      if (currentView !== 'done' || notice.parentNode !== $('done-lines')) return;
+      if (!response || response.status !== 200 || !response.data) {
+        text(notice, '결제 결과는 위 안내를 확인해 주세요. 전화번호 배정 상태를 불러오지 못했어요. 구독 관리에서 다시 확인해 주세요.');
+        return;
+      }
+      var message = C.numberLeaseNotice(response.data.outboundNumberLease);
+      text(notice, message);
+      notice.hidden = !message;
+    }
+    return auth.api('/family/billing/status').then(finish).catch(function () { finish(null); });
   }
 
   // ── 구독 관리 ──
@@ -1015,6 +745,7 @@
     fact(dl, '요금제', C.PLAN_NAMES[s.currentPlan] + ' · 월 ' + C.formatWon(s.amounts[s.currentPlan]));
     fact(dl, '다음 결제부터', b.pendingPlan ? C.PLAN_NAMES[b.pendingPlan] + ' · 월 ' + C.formatWon(s.amounts[b.pendingPlan]) : '');
     fact(dl, '결제수단', C.METHOD_LABELS[b.method] || '');
+    fact(dl, '가족 전용 전화번호', C.numberLeaseNotice(s.outboundNumberLease));
     fact(dl, '다음 결제일', b.nextPaymentAt ? C.formatKstDate(b.nextPaymentAt) : '');
     fact(dl, '이용 기간', b.cancelAtPeriodEnd ? C.formatKstDate(b.currentPeriodEnd || sub.trialEndsAt) + '까지 이용 후 해지돼요' : '');
     fact(dl, '결제 확인', b.graceEndsAt ? '결제가 되지 않았어요. ' + C.formatKstDate(b.graceEndsAt) + '까지 결제수단을 확인해 주세요.' : '');
@@ -1165,6 +896,8 @@
     $('cs-pause-limit').hidden = offer.kind !== 'limit';
     text($('cs-pause-limit'), offer.kind === 'limit' ? offer.text : '');
     text($('cs-keep'), C.cancelKeepText(s.subscription, new Date()));
+    var leaseNotice = C.numberLeaseNotice(s.outboundNumberLease);
+    if (leaseNotice) text($('cs-keep'), $('cs-keep').textContent + ' ' + leaseNotice);
     var refundText = C.cancelRefundText(s.subscription, s.payments);
     text($('cs-refund'), refundText);
     $('cs-refund').hidden = !refundText;
@@ -1217,17 +950,16 @@
   // ── 시작 ──
   function handleReturns() {
     var appHandoff = new URLSearchParams(location.search).get('appHandoff');
-    if (appHandoff !== null) {
-      TossCard.clear(sessionStorage);
+    if (appHandoff) {
       // 외부 리소스 요청 전에 주소에서 지워 방문 기록·Referer 노출을 막는다.
       clearUrl();
       show('loading');
-      return auth.signInWithAppHandoff(appHandoff, pendingAppReturn ? 1 : undefined).then(onLoginSuccess).catch(function (e) {
-        show('login');
-        banner('앱 로그인 연결이 만료되었어요. 앱에서 구독/결제를 다시 열어 주세요.');
+      return auth.signInWithAppHandoff(appHandoff).then(onLoginSuccess).catch(function () {
+        // handoff 만료를 일반 웹 로그인으로 전환하면 다른 계정에서 결제 흐름이 이어질 수 있다.
+        // native는 status만 받아 앱에서 새 단회용 handoff를 시작한다.
+        return returnToApp('handoff_expired');
       });
     }
-    if (new URLSearchParams(location.search).has('tossReturn')) return finishToss(location.search);
     var oauth = C.parseOAuthReturn(location.search);
     if (oauth) {
       var expected = sessionStorage.getItem(OAUTH_STATE_KEY);
@@ -1239,14 +971,17 @@
       return auth.signInWithWebCode({ provider: oauth.provider, code: oauth.code, state: oauth.state, redirectUri: CFG.redirectUri })
         .then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
     }
-    if (new URLSearchParams(location.search).has('pgReturn')) clearUrl();
+    var tossReturn = window.PayReturn.tossReturnState(location.search);
+    if (tossReturn) {
+      clearUrl();
+      if (tossReturn === 'cancelled') return returnToApp('cancelled');
+      return load().then(function () { banner(C.errorMessage('toss_direct_failed')); });
+    }
     if (!auth.getSession()) { show('login'); return Promise.resolve(); }
     return load();
   }
 
   function onLoginSuccess() {
-    var session = auth.getSession();
-    appReturnEnabled = !!(session && session.appEntry && session.appReturnVersion === 1);
     track('login_success');
     return load();
   }
@@ -1292,12 +1027,14 @@
   function bind() {
     $('login-naver').onclick = function () { startOAuth('naver'); };
     $('login-kakao').onclick = function () { startOAuth('kakao'); };
+    $('payer-form').onsubmit = function (ev) { ev.preventDefault(); }; // 엔터로 페이지가 새로고침되지 않게
+    prefillPayer({}); // 첫 화면부터 모바일은 이름 칸만(결제 준비값이 오면 다시 맞춘다)
     $('email-form').onsubmit = function (ev) {
       ev.preventDefault();
       show('loading');
       auth.signInWithEmail($('email').value.trim(), $('password').value).then(onLoginSuccess).catch(function (e) { show('login'); fail(e); });
     };
-    $('logout').onclick = function () { appReturnEnabled = false; TossCard.clear(sessionStorage); auth.signOut(); banner(''); show('login'); };
+    $('logout').onclick = function () { auth.signOut(); banner(''); show('login'); };
     $('play-link-login').href = CFG.playStoreUrl;
     Array.prototype.forEach.call(document.querySelectorAll('.cs-phone'), function (el) { el.textContent = C.CS_PHONE; });
     $('reg-consent').onchange = function () {
@@ -1389,17 +1126,8 @@
     };
   }
 
-  window.addEventListener('pageshow', function (ev) {
-    if (ev.persisted && currentView === 'register') {
-      TossCard.clear(sessionStorage);
-      registering = false;
-      busy($('reg-submit'), false);
-      if (playEntry()) { playCheck.allowed = false; checkPlay('entry'); }
-      else refreshCheckout();
-    }
-  });
   bind();
   initGoogle();
-  if (!new URLSearchParams(location.search).has('tossReturn') && !C.isReturnLoad(location.search)) track('pay_view');
+  if (!C.isReturnLoad(location.search)) track('pay_view');
   handleReturns();
 })();

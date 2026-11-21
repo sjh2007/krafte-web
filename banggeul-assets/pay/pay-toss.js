@@ -1,59 +1,28 @@
-// The checkout server owns the merchant key, family binding, amount and billing schedule.
-(function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.TossCard = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
+// Toss Payments 직접연동 어댑터. 기본값은 비활성(test/disabled)이며 다른 PG로 우회하지 않는다.
+(function (root) {
   'use strict';
-  var storageKey = 'banggeulTossAttempt';
-  function valid(co, hostname) {
-    var publicKey = hostname === 'www.krafte.net' || hostname === 'krafte.net'
-      ? /^live_ck_[A-Za-z0-9_-]+$/ : /^(test|live)_ck_[A-Za-z0-9_-]+$/;
-    return !!co && co.provider === 'TOSS_PAYMENTS' && co.method === 'CARD' &&
-      typeof co.clientKey === 'string' && publicKey.test(co.clientKey) &&
-      typeof co.customerKey === 'string' && /^[A-Za-z0-9_=-]{2,50}$/.test(co.customerKey);
+  var SDK_URL = 'https://js.tosspayments.com/v2/standard';
+  function disabled() {
+    return Promise.reject(Object.assign(new Error('toss_direct_disabled'), { code: 'toss_direct_disabled' }));
   }
-  function clear(storage) { storage.removeItem(storageKey); }
-  async function open(co, context, sdk, storage, url, nonce) {
-    var back = new URL(url);
-    if (!valid(co, back.hostname) || typeof sdk !== 'function') throw Error('payment_window_failed');
-    if (back.username || back.password || (back.protocol !== 'https:' &&
-        !(back.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(back.hostname)))) {
-      throw Error('payment_window_failed');
-    }
-    back.search = ''; back.hash = '';
-    back.searchParams.set('attempt', nonce);
-    back.searchParams.set('tossReturn', 'success');
-    var successUrl = back.href;
-    back.searchParams.set('tossReturn', 'fail');
-    storage.setItem(storageKey, JSON.stringify({nonce:nonce, orderId:co.orderId, customerKey:co.customerKey, context:context}));
-    try {
-      await sdk(co.clientKey).payment({customerKey:co.customerKey}).requestBillingAuth({
-        method:'CARD', successUrl:successUrl, failUrl:back.href
-      });
-    } catch (err) { clear(storage); throw err; }
+  function requestBillingAuth(config, request) {
+    if (!config || config.tossDirectEnabled !== true || !config.tossPaymentsClientKey) return disabled();
+    if (typeof root.TossPayments !== 'function') return loadSdk().then(function () { return requestBillingAuth(config, request); });
+    // Toss Payments SDK 직접 호출만 허용한다. 카드 등록 성공 뒤 서버 API 처리와 실제 청구는
+    // 별도 Go 승인·백엔드 검수 범위이며 이 비활성 후보에서는 실행되지 않는다.
+    return root.TossPayments(config.tossPaymentsClientKey).requestBillingAuth({
+      method: 'CARD', customerKey: request.customerKey, successUrl: request.successUrl, failUrl: request.failUrl,
+    });
   }
-  function take(search, storage) {
-    var q = new URLSearchParams(search);
-    var fields = ['attempt', 'tossReturn', 'authKey', 'customerKey', 'code'];
-    if (fields.some(function (field) { return q.getAll(field).length > 1; })) return {error:'invalid'};
-    if (q.get('tossReturn') === 'success' && q.has('code')) return {error:'invalid'};
-    if (q.get('tossReturn') === 'fail' && (q.has('authKey') || q.has('customerKey'))) return {error:'invalid'};
-    var pending;
-    try { pending = JSON.parse(storage.getItem(storageKey)); } catch (_) { clear(storage); }
-    if (!pending || pending.nonce !== q.get('attempt')) return {error:'invalid'};
-    clear(storage);
-    if (q.get('tossReturn') === 'fail' && q.get('code') === 'INVALID_CARD_NUMBER') return {error:'invalid_card_number', context:pending.context};
-    if (q.get('tossReturn') === 'fail') return {error:/^(USER_CANCEL|PAY_PROCESS_CANCELED)$/.test(q.get('code')) ? 'cancel' : 'invalid', context:pending.context};
-    var key = q.get('authKey');
-    if (q.get('tossReturn') !== 'success' || pending.customerKey !== q.get('customerKey') ||
-        !key || !key.trim() || key.length > 1000) return {error:'invalid'};
-    var ctx = pending.context;
-    var body = {method:'CARD', authKey:key, customerKey:pending.customerKey, consent:ctx.consent};
-    if (pending.orderId) body.orderId = pending.orderId;
-    if (ctx.playAttemptId) body.playAttemptId = ctx.playAttemptId;
-    if (ctx.plan) body.plan = ctx.plan;
-    if (ctx.selection) body.selection = ctx.selection;
-    return {body:body};
+  function loadSdk() {
+    if (!root.document) return Promise.reject(Object.assign(new Error('toss_sdk_unavailable'), { code: 'toss_sdk_unavailable' }));
+    return new Promise(function (resolve, reject) {
+      var script = root.document.createElement('script');
+      script.src = SDK_URL; script.async = true;
+      script.onload = resolve;
+      script.onerror = function () { reject(Object.assign(new Error('toss_sdk_unavailable'), { code: 'toss_sdk_unavailable' })); };
+      root.document.head.appendChild(script);
+    });
   }
-  return {valid:valid, open:open, take:take, clear:clear};
-});
+  root.PayToss = { requestBillingAuth: requestBillingAuth, SDK_URL: SDK_URL };
+})(window);
