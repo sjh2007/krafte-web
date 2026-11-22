@@ -39,3 +39,9 @@ test('앱 반환은 허용된 상태만, native 계약으로만 전달한다', (
   assert.throws(() => R.appReturnUrl(CONFIG, 'failed'), { code: 'invalid_return_origin' });
   assert.throws(() => R.appReturnUrl({ ...CONFIG, appHandoffReturnUri: 'https://attacker.example/' }, 'cancelled'), { code: 'invalid_return_origin' });
 });
+
+test('앱 반환 메시지는 고정 상태 문구만 사용하고 PG 값을 포함하지 않는다', () => {
+  assert.equal(R.appReturnMessage('handoff_expired'), '앱 로그인 연결이 만료되었어요. 앱에서 다시 시도해 주세요.');
+  assert.equal(R.appReturnMessage('cancelled'), '결제수단 등록을 취소했어요. 카드 등록이나 청구는 시작되지 않았어요.');
+  assert.throws(() => R.appReturnMessage('failed'), { code: 'invalid_return_origin' });
+});

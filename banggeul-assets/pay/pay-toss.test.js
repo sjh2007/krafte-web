@@ -23,6 +23,15 @@ test('Toss SDK 주소는 직접연동 표준 SDK뿐이다', () => {
 test('활성화 뒤에도 Toss Payments 직접 SDK만 호출한다', async () => {
   const calls = [];
   const toss = load((key) => ({ requestBillingAuth: (body) => { calls.push({ key, body }); return Promise.resolve(); } }));
-  await toss.requestBillingAuth({ tossDirectEnabled: true, tossPaymentsClientKey: 'test_ck' }, { customerKey: 'customer_1', successUrl: 'https://example.test/s', failUrl: 'https://example.test/f' });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ key: 'test_ck', body: { method: 'CARD', customerKey: 'customer_1', successUrl: 'https://example.test/s', failUrl: 'https://example.test/f' } }]);
+  await toss.requestBillingAuth({ tossDirectEnabled: true, tossPaymentsClientKey: 'client-key-from-secure-env' }, { customerKey: 'customer_1', successUrl: 'https://example.test/s', failUrl: 'https://example.test/f' });
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ key: 'client-key-from-secure-env', body: { method: 'CARD', customerKey: 'customer_1', successUrl: 'https://example.test/s', failUrl: 'https://example.test/f' } }]);
+});
+
+test('QA는 명시된 USER_CANCEL 증빙 capability 없이는 Billing Auth를 열지 않는다', async () => {
+  let calls = 0;
+  const toss = load(() => { calls++; return { requestBillingAuth: () => Promise.resolve() }; });
+  const config = { environment: 'qa', qaCancelOnly: true, tossDirectEnabled: true, tossPaymentsClientKey: 'client-key-from-secure-env' };
+  await assert.rejects(toss.requestBillingAuth(config, { customerKey: 'customer_1' }), { code: 'toss_direct_disabled' });
+  await toss.requestBillingAuth(config, { qaPurpose: 'user_cancel_evidence', customerKey: 'customer_1', successUrl: 'https://qa.example.test/s', failUrl: 'https://qa.example.test/f' });
+  assert.equal(calls, 1);
 });

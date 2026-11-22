@@ -67,5 +67,13 @@
     }
   }
 
-  return { PRODUCTION_WEB_ORIGIN: PRODUCTION_WEB_ORIGIN, tossReturnUrl: tossReturnUrl, tossReturnState: tossReturnState, appReturnUrl: appReturnUrl };
+  // native에는 상태 코드만 전달하고, 고객 메시지는 웹·Android가 같은 고정 문구로 각각 표시한다.
+  // PG 오류·인증 코드·결제 결과는 메시지에도 포함하지 않는다.
+  function appReturnMessage(status) {
+    if (status === 'handoff_expired') return '앱 로그인 연결이 만료되었어요. 앱에서 다시 시도해 주세요.';
+    if (status === 'cancelled') return '결제수단 등록을 취소했어요. 카드 등록이나 청구는 시작되지 않았어요.';
+    throw configError();
+  }
+
+  return { PRODUCTION_WEB_ORIGIN: PRODUCTION_WEB_ORIGIN, tossReturnUrl: tossReturnUrl, tossReturnState: tossReturnState, appReturnUrl: appReturnUrl, appReturnMessage: appReturnMessage };
 });
