@@ -109,6 +109,8 @@
 
   // ── 안내 화면 ──
   function message(title, body, action) {
+    var support = $('play-support');
+    if (support) support.remove();
     text($('msg-title'), title);
     text($('msg-body'), body);
     $('msg-plans').innerHTML = '';
@@ -141,6 +143,11 @@
       state.status = r.data;
       var view = C.decideView(r.data);
       if (view === 'not_owner') return message('대표 보호자만 결제할 수 있어요', '가족을 처음 만든 대표 보호자 계정으로 로그인해 주세요. 초대받은 보호자는 현재 이용권만 확인할 수 있어요.');
+      // Existing Play purchases may be queried while all new checkout remains blocked.
+      if (playEntry()) {
+        if (playCheck.session !== playSession()) return checkPlay('entry');
+        return purchaseHelp(playCheck.request ? 'checking' : playCheck.phase);
+      }
       // 공개 결제는 서버의 billingEnabled 값만으로 열지 않는다. 이 페이지의 고정
       // 차단 스위치는 실결제 전환 승인과 별도 검수가 끝날 때까지 항상 우선한다.
       if (CFG.publicCheckoutEnabled !== true) {
@@ -641,6 +648,158 @@
           }).catch(fail);
         });
       });
+  }
+
+  // Native restore is a query, never a new purchase. Re-entry always checks again.
+  var playCheck = {session:null, request:null, processing:null, timer:null, allowed:false, phase:'unknown'};
+  function playSession() {
+    var s = auth.getSession();
+    return s ? (s.refreshToken || s.idToken) : null;
+  }
+  function purchaseHelp(phase) {
+    playCheck.phase = phase;
+    var copy = {
+      active:['기존 구독을 이용 중이에요','서버에서 확인한 요금제와 결제 내역입니다. 중복 결제를 막기 위해 새 결제는 진행하지 않아요. Google Play 구매 복원 결과와는 별개예요.'],
+      expired:['이용 기간이 끝난 구매 내역입니다','이전 결제 내역을 확인할 수 있어요. 새 결제는 진행하지 않으며, 이용을 다시 시작하려면 고객센터에 문의해 주세요.'],
+      payment_pending:['확인 중인 결제 내역이 있어요','중복 결제를 막기 위해 새 결제를 잠시 보류했어요. 구매 내역을 다시 확인하거나 고객센터에 문의해 주세요.'],
+      unresolved:['확인이 끝나지 않은 구매 내역이 있어요','중복 결제를 막기 위해 새 결제를 잠시 보류했어요. 구매 내역을 다시 확인하거나 고객센터에 문의해 주세요.'],
+      checking:['구매 내역을 확인하고 있어요','잠시만 기다려 주세요.'],
+      verification_failed:['구매 내역 확인이 필요해요','Google Play 구매 내역은 확인했지만, 방글이 이용권 연결을 완료하지 못했어요. 구매 내역을 다시 확인해 주세요.'],
+      pending:['결제 승인을 기다리고 있어요','Google Play에서 결제 진행 상태를 확인해 주세요.'],
+      empty:['이 Google Play 계정에서 복원할 구매를 찾지 못했어요','구매에 사용한 Google Play 계정을 확인해 주세요.'],
+      empty_disabled:['복원할 Google Play 구매가 없어요','기존 구매 조회를 완료했어요. 신규 결제는 준비 중이며, 현재 이용 상태는 앱의 요금제 관리에서 확인할 수 있어요.'],
+      unknown:['결제 결과를 확인해 주세요','기존 구매 내역을 먼저 확인해 주세요. 응답이 없으면 앱을 업데이트한 뒤 다시 확인해 주세요.']
+    }[phase] || ['이용권 정보를 불러오지 못했어요','잠시 후 다시 확인해 주세요.'];
+    message(copy[0],copy[1],phase === 'checking' ? null :
+      {label:phase === 'pending' ? '상태 다시 확인' : '구매 내역 확인',onclick:function(){checkPlay('manual');}});
+    if ((phase === 'active' || phase === 'expired') && state.status && state.status.subscription && state.status.subscription.status === (phase === 'active' ? 'active' : 'expired')) {
+      // Read-only server subscription details. Do not grant new-purchase eligibility.
+      var snapshot = state.status;
+      var billing = snapshot.subscription.billing || {};
+      var panel = $('msg-plans');
+      var facts = el('dl', 'facts');
+      var plan = snapshot.currentPlan || snapshot.plan;
+      fact(facts, '요금제', C.PLAN_NAMES[plan] || '이용 중');
+      var amount = snapshot.amounts && snapshot.amounts[plan];
+      if (typeof amount === 'number') fact(facts, '월 요금', C.formatWon(amount));
+      fact(facts, '다음 결제일', billing.nextPaymentAt ? C.formatKstDate(billing.nextPaymentAt) : '');
+      panel.appendChild(facts);
+      panel.appendChild(el('h3', '', '결제 내역'));
+      var payments = (snapshot.payments || []).filter(function(p){return p.status !== 'revoked';});
+      if (!payments.length) panel.appendChild(el('p', '', '표시할 결제 내역이 없어요.'));
+      payments.forEach(function(p){
+        var row = el('p', '', [C.formatKstDate(p.paidAt || p.dueAt), C.formatWon(p.amount), C.paymentStatusLabel(p.status)].join(' · '));
+        row.style.cssText = 'white-space:normal;overflow-wrap:anywhere;line-height:1.6';
+        panel.appendChild(row);
+      });
+      panel.hidden = false;
+    }
+    if (phase === 'empty_disabled' && state.status && state.status.subscription) {
+      var sub = state.status.subscription;
+      if (sub.status === 'trial' && sub.trialEndsAt && Number.isFinite(Date.parse(sub.trialEndsAt))) {
+        $('msg-body').appendChild(el('p', '', '무료 체험 종료일: ' + C.formatKstDate(sub.trialEndsAt)));
+      }
+    }
+    var old = $('play-support');
+    if (old) old.remove();
+    var link = el('a','btn','고객센터');
+    link.id = 'play-support';
+    link.href = 'mailto:kraft@krafte.net';
+    link.style.cssText = 'display:inline-flex;align-items:center;min-height:48px;white-space:normal;margin-top:16px';
+    $('msg-action').style.cssText = 'min-height:48px;white-space:normal;height:auto';
+    $('msg-body').parentNode.appendChild(link);
+  }
+  function checkPlay(reason) {
+    var session = playSession();
+    if (!session || (playCheck.request && playCheck.session === session)) return;
+    clearTimeout(playCheck.timer);
+    playCheck.session = session;
+    playCheck.allowed = false;
+    var id = randomHex();
+    playCheck.request = id;
+    purchaseHelp('checking');
+    playCheck.timer = setTimeout(function(){
+      if (playCheck.request !== id) return;
+      playCheck.request = null;
+      if (playSession() === session) purchaseHelp('unknown');
+    },20000);
+    location.assign('/android-billing/restore?requestId=' + id + '&reason=' + reason);
+  }
+  window.addEventListener('banggeul-billing-restore-result',async function(event){
+    var d = event.detail || {};
+    var session = playCheck.session;
+    if (!playCheck.request || d.requestId !== playCheck.request || session !== playSession()) return;
+    var id = playCheck.request;
+    if (playCheck.processing === id) return;
+    playCheck.processing = id;
+    // Keep the timeout active during server verification too.
+    // Keep the request locked while the authoritative server lookup is pending.
+    try {
+      if (d.status !== 'restored' && d.status !== 'empty') {
+        purchaseHelp(['pending','verification_failed'].indexOf(d.status)>=0 ? d.status : 'unknown');
+        return;
+      }
+      var r = await auth.api('/family/billing/status');
+      if (playCheck.request !== id || session !== playSession()) return;
+      if (r.status !== 200 || !r.data.isOwner) { purchaseHelp('unknown'); return; }
+      state.status = r.data;
+      if (d.status === 'restored' && r.data.subscription && r.data.subscription.status === 'active') {
+        playCheck.allowed = false;
+        purchaseHelp('active');
+        return;
+      }
+      if (d.status === 'empty') {
+        var eligibility = await auth.api('/family/billing/play/eligibility');
+        if (playCheck.request !== id || session !== playSession()) return;
+        var decision = eligibility.data || {};
+        var evidence = decision.evidence || {};
+        var checked = Date.parse(decision.checkedAt);
+        var fresh = Number.isFinite(checked) && checked <= Date.now() + 30000 && checked >= Date.now() - 300000;
+        var allowed = eligibility.status === 200 && decision.allowed === true && fresh &&
+          evidence.owner === true && evidence.activeSubscription === false &&
+          evidence.pendingPayment === false && evidence.unresolvedPurchase === false;
+        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
+            decision.reason === 'billing_disabled' && r.data.billingEnabled === false) {
+          purchaseHelp('empty_disabled');
+          return;
+        }
+        if (allowed && (!r.data.subscription || r.data.subscription.status !== 'active')) {
+          purchaseHelp('empty_disabled');
+          return;
+        }
+        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
+            decision.reason === 'active_subscription' && evidence.activeSubscription === true &&
+            r.data.subscription && r.data.subscription.status === 'active') {
+          purchaseHelp('active');
+          return;
+        }
+        if (eligibility.status === 200 && decision.allowed === false && fresh && evidence.owner === true &&
+            decision.reason === 'expired_purchase_history' && evidence.activeSubscription === false &&
+            r.data.subscription && r.data.subscription.status === 'expired') {
+          purchaseHelp('expired');
+          return;
+        }
+        purchaseHelp(eligibility.status === 200 && decision.allowed === false ?
+          (decision.reason === 'unresolved_purchase' ? 'unresolved' :
+           decision.reason === 'pending_payment' ? 'payment_pending' : 'unknown') : 'unknown');
+        return;
+      }
+      purchaseHelp('unknown');
+    } catch(e) {
+      if (session === playSession()) purchaseHelp('unknown');
+    } finally {
+      if (playCheck.request === id) {
+        clearTimeout(playCheck.timer);
+        playCheck.request = null;
+      }
+    }
+  });
+
+
+  function playEntry() {
+    var session = auth.getSession();
+    var channel = state.status.billingChannel;
+    return channel === 'play_kr' || (channel !== 'web' && !!(session && session.appEntry));
   }
 
   function onRegister() {
